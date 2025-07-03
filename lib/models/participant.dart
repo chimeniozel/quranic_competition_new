@@ -13,6 +13,7 @@ class Participant {
   final bool participatedBefore; // هل شارك في نسخة سابقة من المسابقة
   final String ageGroup; // المجموعة العمرية ('كبار' أو 'صغار')
   final DateTime createdAt;
+  bool isEvaluated;
 
   Participant({
     required this.id,
@@ -29,6 +30,7 @@ class Participant {
     required this.participatedBefore,
     required this.ageGroup,
     required this.createdAt,
+    this.isEvaluated = false,
   });
 
   factory Participant.fromMap(Map<String, dynamic> map) {
@@ -47,6 +49,7 @@ class Participant {
       participatedBefore: map['participated_before'] as bool,
       ageGroup: map['age_group'] as String,
       createdAt: DateTime.parse(map['created_at'] as String),
+      isEvaluated: false,
     );
   }
 

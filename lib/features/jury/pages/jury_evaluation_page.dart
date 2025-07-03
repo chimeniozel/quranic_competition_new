@@ -4,19 +4,19 @@ import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/participant.dart';
 import 'package:quranic_competition/models/note_model.dart';
 import 'package:quranic_competition/models/evaluation.dart';
-import 'package:quranic_competition/core/services/evaluation_service.dart'; // À créer si ce n'est pas fait
+import 'package:quranic_competition/models/round.dart';
+import 'package:quranic_competition/core/services/evaluation_service.dart';
+import 'package:quranic_competition/core/services/round_service.dart';
 
 class JuryEvaluationPage extends StatefulWidget {
   final Participant participant;
   final AppUser appUser;
-  final int round;
   final CompetitionVersion version;
 
   const JuryEvaluationPage({
     super.key,
     required this.participant,
     required this.appUser,
-    required this.round,
     required this.version,
   });
 
@@ -26,11 +26,13 @@ class JuryEvaluationPage extends StatefulWidget {
 
 class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   final _formKey = GlobalKey<FormState>();
-  final _noteModel = NoteModel();
+  late NoteModel _noteModel;
   final _notesController = TextEditingController();
   final EvaluationService _evaluationService = EvaluationService();
+  final RoundService _roundService = RoundService();
 
   Evaluation? _existingEvaluation;
+  Round? _activeRound;
   bool _isSubmitting = false;
   bool _isLoading = true;
   double _totalScore = 0.0;
@@ -38,16 +40,29 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   @override
   void initState() {
     super.initState();
-    _loadExistingEvaluation();
+    _noteModel = NoteModel();
+    _loadActiveRoundAndEvaluation();
   }
 
-  Future<void> _loadExistingEvaluation() async {
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadActiveRoundAndEvaluation() async {
     try {
+      final round = await _roundService.getActiveRound(widget.version.id);
+      if (round == null) throw Exception('لا يوجد جولة نشطة حالياً');
+
+      setState(() => _activeRound = round);
+
       final eval = await _evaluationService.getEvaluationByJuryAndParticipant(
         juryId: widget.appUser.id,
         participantId: widget.participant.id,
-        round: widget.round,
-        versionId: widget.version.id, ageGroup: widget.participant.ageGroup,
+        roundId: round.id,
+        versionId: widget.version.id,
+        ageGroup: widget.participant.ageGroup,
       );
 
       if (eval != null) {
@@ -55,39 +70,50 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
         _notesController.text = eval.notes ?? '';
         _noteModel.result = eval.totalScore;
 
+        _noteModel
+          ..noteTajwid = eval.noteModel.noteTajwid
+          ..noteHousnSawtt = eval.noteModel.noteHousnSawtt;
+
         if (widget.participant.ageGroup == 'كبار') {
           _noteModel
-            ..noteTajwid = eval.noteModel.noteTajwid
-            ..noteHousnSawtt = eval.noteModel.noteHousnSawtt
             ..noteOu4oubetSawtt = eval.noteModel.noteOu4oubetSawtt
-            ..noteWaqfAndIbtidaa = eval.noteModel.noteWaqfAndIbtidaa
-            ..noteIltizamRiwaya = eval.noteModel.noteIltizamRiwaya;
+            ..noteWaqfAndIbtidaa = eval.noteModel.noteWaqfAndIbtidaa;
         } else {
-          _noteModel
-            ..noteTajwid = eval.noteModel.noteTajwid
-            ..noteHousnSawtt = eval.noteModel.noteHousnSawtt
-            ..noteIltizamRiwaya = eval.noteModel.noteIltizamRiwaya;
+          _noteModel.noteIltizamRiwaya = eval.noteModel.noteIltizamRiwaya;
         }
 
         _recalculateTotal();
       }
     } catch (e) {
-      print('Erreur lors du chargement de l’évaluation : $e');
+      print('Erreur : $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطأ: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _recalculateTotal() {
-    final notes = [
-      _noteModel.noteTajwid,
-      _noteModel.noteHousnSawtt,
-      if (widget.participant.ageGroup == 'كبار') ...[
-        _noteModel.noteOu4oubetSawtt,
-        _noteModel.noteWaqfAndIbtidaa,
-      ],
-      _noteModel.noteIltizamRiwaya,
-    ].whereType<double>().toList();
+    final notes = <double>[];
+
+    if (_noteModel.noteTajwid != null) notes.add(_noteModel.noteTajwid!);
+    if (_noteModel.noteHousnSawtt != null) {
+      notes.add(_noteModel.noteHousnSawtt!);
+    }
+
+    if (widget.participant.ageGroup == 'كبار') {
+      if (_noteModel.noteOu4oubetSawtt != null) {
+        notes.add(_noteModel.noteOu4oubetSawtt!);
+      }
+      if (_noteModel.noteWaqfAndIbtidaa != null) {
+        notes.add(_noteModel.noteWaqfAndIbtidaa!);
+      }
+    } else {
+      if (_noteModel.noteIltizamRiwaya != null) {
+        notes.add(_noteModel.noteIltizamRiwaya!);
+      }
+    }
 
     final total = notes.isEmpty ? 0.0 : notes.reduce((a, b) => a + b);
     setState(() {
@@ -97,48 +123,66 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate() || _activeRound == null) return;
 
     setState(() => _isSubmitting = true);
 
     final evaluation = Evaluation(
-      id: _existingEvaluation?.id ?? '', // vide = insert
+      id: _existingEvaluation?.id ?? '',
       participantId: widget.participant.id,
       juryId: widget.appUser.id,
       versionId: widget.version.id,
-      round: widget.round,
+      roundId: _activeRound!.id,
       totalScore: _totalScore,
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      notes:
+          _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
       submittedAt: DateTime.now(),
       noteModel: _noteModel,
     );
 
     try {
       if (_existingEvaluation == null) {
-        await _evaluationService.submitEvaluation(evaluation, widget.participant.ageGroup);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال التقييم بنجاح')));
+        await _evaluationService.submitEvaluation(
+          evaluation,
+          widget.participant.ageGroup,
+        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم إرسال التقييم بنجاح')));
       } else {
-        await _evaluationService.updateEvaluation(evaluation, widget.participant.ageGroup);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تعديل التقييم بنجاح')));
+        await _evaluationService.updateEvaluation(
+          evaluation,
+          widget.participant.ageGroup,
+        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم تعديل التقييم بنجاح')));
       }
-
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ أثناء إرسال التقييم: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطأ أثناء إرسال التقييم: $e')));
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  Widget _buildSlider(String label, void Function(double) onChanged) {
+  Widget _buildSlider(
+    String label,
+    double max,
+    void Function(double) onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label),
+        Text('$label (الحد الأقصى: $max)'),
         Slider(
           min: 0,
-          max: 20,
-          divisions: 20,
+          max: max,
+          divisions: max.toInt(),
           label: _getValueForLabel(label).toStringAsFixed(1),
           value: _getValueForLabel(label),
           onChanged: (value) {
@@ -173,40 +217,76 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text('تصحيح: ${widget.participant.fullName}')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    _buildSlider('التجويد', (v) => _noteModel.noteTajwid = v),
-                    _buildSlider('حسن الصوت', (v) => _noteModel.noteHousnSawtt = v),
-                    if (isAdult)
-                      _buildSlider('عذوبة الصوت', (v) => _noteModel.noteOu4oubetSawtt = v),
-                    if (isAdult)
-                      _buildSlider('الوقف والإبتداء', (v) => _noteModel.noteWaqfAndIbtidaa = v),
-                    _buildSlider('الإلتزام بالرواية', (v) => _noteModel.noteIltizamRiwaya = v),
-                    const SizedBox(height: 16),
-                    Text('النتيجة النهائية: $_totalScore', style: const TextStyle(fontSize: 18)),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(labelText: 'ملاحظات (اختياري)'),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-                    _isSubmitting
-                        ? const Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _activeRound == null
+              ? const Center(child: Text('لا يوجد جولة نشطة حالياً'))
+              : Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      _buildSlider(
+                        'التجويد',
+                        isAdult ? 70 : 15,
+                        (v) => _noteModel.noteTajwid = v,
+                      ),
+                      _buildSlider(
+                        'حسن الصوت',
+                        isAdult ? 5 : 3,
+                        (v) => _noteModel.noteHousnSawtt = v,
+                      ),
+                      if (isAdult) ...[
+                        _buildSlider(
+                          'عذوبة الصوت',
+                          5,
+                          (v) => _noteModel.noteOu4oubetSawtt = v,
+                        ),
+                        _buildSlider(
+                          'الوقف والإبتداء',
+                          20,
+                          (v) => _noteModel.noteWaqfAndIbtidaa = v,
+                        ),
+                      ] else
+                        _buildSlider(
+                          'الإلتزام بالرواية',
+                          2,
+                          (v) => _noteModel.noteIltizamRiwaya = v,
+                        ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'النتيجة النهائية: ${_totalScore.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'ملاحظات (اختياري)',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      _isSubmitting
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton(
                             onPressed: _submit,
-                            child: Text(_existingEvaluation == null ? 'إرسال التقييم' : 'تحديث التقييم'),
+                            child: Text(
+                              _existingEvaluation == null
+                                  ? 'إرسال التقييم'
+                                  : 'تحديث التقييم',
+                            ),
                           ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
     );
   }
 }

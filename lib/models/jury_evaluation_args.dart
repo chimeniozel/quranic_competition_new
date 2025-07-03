@@ -6,12 +6,10 @@ class JuryEvaluationArgs {
   Participant participant;
   AppUser appUser;
   CompetitionVersion version;
-  int round;
 
   JuryEvaluationArgs({
     required this.participant,
     required this.appUser,
     required this.version,
-    required this.round,
   });
 }

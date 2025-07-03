@@ -63,15 +63,9 @@ class ParticipantService {
         .select('participant_id, participants(*)')
         .eq('version_id', versionId);
 
-    if (response is List) {
-      return response.map<Participant>((record) {
-        final participantData = record['participants'] as Map<String, dynamic>;
-        return Participant.fromMap(participantData);
-      }).toList();
-    } else {
-      throw Exception(
-        'Échec de récupération des participants : réponse invalide',
-      );
-    }
+    return response.map<Participant>((record) {
+      final participantData = record['participants'] as Map<String, dynamic>;
+      return Participant.fromMap(participantData);
+    }).toList();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../../../core/services/competition_version_service.dart';
 import '../../../models/competition_version.dart';
 import 'package:go_router/go_router.dart';
@@ -191,7 +192,11 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                               labelStyle: TextStyle(color: Colors.white),
                             ),
                         IconButton(
-                          icon: const Icon(Icons.edit),
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedEdit03,
+                            color: Colors.red,
+                            size: 25.0,
+                          ),
                           onPressed: () async {
                             final result = await context.push<bool>(
                               '/admin/version_update',
@@ -207,7 +212,11 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                         ),
 
                         IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedDelete01,
+                            color: Colors.red,
+                            size: 25.0,
+                          ),
                           onPressed: () async {
                             final confirm = await showDialog<bool>(
                               context: context,

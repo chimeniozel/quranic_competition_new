@@ -18,15 +18,14 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Flutter Demo',
+      title: 'مسابقة أهل القرآن',
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
-      supportedLocales: [const Locale('ar')],
-      localizationsDelegates: [
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -34,21 +33,10 @@ class MyApp extends StatelessWidget {
       ],
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: "Tajawal",
-        textTheme: TextTheme(
-          titleLarge: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          titleMedium: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-          titleSmall: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        fontFamily: null, // Ne pas affecter les icônes
+        textTheme: ThemeData.light()
+            .textTheme
+            .apply(fontFamily: "Tajawal"), // Texte en Tajawal
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
     );

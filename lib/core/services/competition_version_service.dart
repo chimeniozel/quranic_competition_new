@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/models/round.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../models/competition_version.dart';
 
@@ -35,37 +36,40 @@ class CompetitionVersionService {
         .toList();
   }
 
-  Future<void> createVersion({
+Future<void> createVersion({
     required String name,
     required int year,
     required int maxAdults,
     required int maxChildren,
-    bool isRegistrationOpen = true,
+    required bool isRegistrationOpen,
   }) async {
-    try {
-      print('createVersion called with name=$name, year=$year');
+    final response = await _supabase.from('competition_versions').insert({
+      'name': name,
+      'year': year,
+      'max_adults': maxAdults,
+      'max_children': maxChildren,
+      'is_registration_open': isRegistrationOpen,
+      'is_active': true,
+    }).select().single();
 
-      final response =
-          await _supabase.from('competition_versions').insert({
-            'name': name,
-            'year': year,
-            'is_active': true,
-            'max_adults': maxAdults,
-            'max_children': maxChildren,
-            'is_registration_open': isRegistrationOpen,
-          }).select(); // <= important!
+    final versionId = response['id'] as String;
 
-      print('Insert response: $response');
-
-      if (response == null || response.isEmpty) {
-        throw Exception('Réponse vide après insertion');
+    // Créer automatiquement 2 tours
+    await _supabase.from('rounds').insert([
+      {
+        'version_id': versionId,
+        'number': 1,
+        'name': 'الجولة الأولى',
+        'is_active': true,
+      },
+      {
+        'version_id': versionId,
+        'number': 2,
+        'name': 'الجولة الثانية',
+        'is_active': false,
       }
-    } catch (e) {
-      print('Error in createVersion: $e');
-      rethrow;
-    }
+    ]);
   }
-
   /// Appelle la fonction stockée PostgreSQL via RPC
   Future<bool> tryAddParticipant({
     required String versionId,
@@ -106,7 +110,7 @@ class CompetitionVersionService {
 
     print('Delete response: $response');
 
-    if (response == null || (response is List && response.isEmpty)) {
+    if ((response.isEmpty)) {
       throw Exception('Erreur lors de la suppression : version introuvable');
     }
   }
@@ -132,14 +136,10 @@ class CompetitionVersionService {
               'is_registration_open': isRegistrationOpen,
             })
             .eq('id', id)
-            .select(); // Important: .select() pour récupérer les données mises à jour
-
-    if (response == null) {
-      throw Exception('Erreur lors de la mise à jour : réponse nulle');
-    }
+            .select();
 
     // Supabase retourne une List<dynamic> quand tu fais .select()
-    if (response is List && response.isEmpty) {
+    if (response.isEmpty) {
       throw Exception('Erreur lors de la mise à jour : version introuvable');
     }
 
@@ -148,6 +148,9 @@ class CompetitionVersionService {
     // Si tu utilises le client Dart officiel, il faut vérifier un objet Response avec 'error' dessus.
     // Ici, on suppose que la réponse est correcte si on arrive jusque là.
   }
+
+  
+
 }
 
 /// Exemple d'utilisation dans un Widget ou Controller (ne mets pas cette fonction dans le service !)
@@ -181,4 +184,6 @@ Future<void> onRegister(BuildContext context) async {
       context,
     ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
   }
+
+  
 }

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/features/admin/pages/update_version.dart';
 import 'package:quranic_competition/features/admin/pages/version_detail_page.dart';
+import 'package:quranic_competition/features/admin/pages/version_jurys_page.dart';
+import 'package:quranic_competition/features/admin/pages/version_results_page.dart';
 import 'package:quranic_competition/features/auth/pages/sign_up_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_detail_page.dart';
 import 'package:quranic_competition/features/participant/pages/participant_home_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
-import 'package:quranic_competition/models/participant.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../features/auth/pages/login_page.dart';
@@ -126,25 +127,32 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-  path: '/jury/participant',
-  builder: (context, state) {
-    final args = state.extra as JuryEvaluationArgs?;
+      path: '/jury/participant',
+      builder: (context, state) {
+        final args = state.extra as JuryEvaluationArgs?;
 
-    if (args == null) {
-      return const Scaffold(
-        body: Center(child: Text('Erreur : données manquantes')),
-      );
-    }
+        if (args == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : données manquantes')),
+          );
+        }
 
-    return JuryEvaluationPage(
-      participant: args.participant!,
-      appUser: args.appUser,
-      round: args.round,
-      version: args.version,
-    );
-  },
-),
+        return JuryEvaluationPage(
+          participant: args.participant,
+          appUser: args.appUser,
+          version: args.version,
+        );
+      },
+    ),
 
+    GoRoute(
+      name: 'jury-version-jurys',
+      path: '/jury/version_jurys',
+      builder: (context, state) {
+        final version = state.extra as CompetitionVersion;
+        return VersionJurysPage(version: version);
+      },
+    ),
 
     // Admin / Super Admin
     GoRoute(path: '/admin/dashboard', builder: (_, __) => AdminDashboardPage()),
@@ -177,5 +185,13 @@ final GoRouter appRouter = GoRouter(
         return VersionDetailPage(version: version);
       },
     ),
+    GoRoute(
+  path: '/admin/version_results',
+  builder: (context, state) {
+    final version = state.extra as CompetitionVersion;
+    return VersionResultsPage(version: version);
+  },
+),
+
   ],
 );

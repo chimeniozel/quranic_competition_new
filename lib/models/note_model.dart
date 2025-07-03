@@ -13,12 +13,12 @@ class NoteModel {
     double? noteWaqfAndIbtidaa,
     double? noteIltizamRiwaya,
     double? result,
-  })  : _noteTajwid = noteTajwid,
-        _noteHousnSawtt = noteHousnSawtt,
-        _noteOu4oubetSawtt = noteOu4oubetSawtt,
-        _noteWaqfAndIbtidaa = noteWaqfAndIbtidaa,
-        _noteIltizamRiwaya = noteIltizamRiwaya,
-        _result = result;
+  }) : _noteTajwid = noteTajwid,
+       _noteHousnSawtt = noteHousnSawtt,
+       _noteOu4oubetSawtt = noteOu4oubetSawtt,
+       _noteWaqfAndIbtidaa = noteWaqfAndIbtidaa,
+       _noteIltizamRiwaya = noteIltizamRiwaya,
+       _result = result;
 
   // setters
   set noteTajwid(double? value) {
@@ -53,21 +53,21 @@ class NoteModel {
   double? get noteIltizamRiwaya => _noteIltizamRiwaya;
   double? get result => _result;
 
-  // from Map
-  NoteModel.fromMapChild(Map<String, dynamic> map) {
-    noteTajwid = map["التجويد"].toDouble();
-    noteHousnSawtt = map["حسن الصوت"].toDouble();
-    noteIltizamRiwaya = map["الإلتزام بالرواية"].toDouble();
-    result = map["النتيجة"].toDouble();
+  // for adult participants
+  NoteModel.fromMapAdult(Map<String, dynamic> map) {
+    noteTajwid = (map["التجويد"] as num?)?.toDouble();
+    noteHousnSawtt = (map["حسن الصوت"] as num?)?.toDouble();
+    noteOu4oubetSawtt = (map["عذوبة الصوت"] as num?)?.toDouble();
+    noteWaqfAndIbtidaa = (map["الوقف والإبتداء"] as num?)?.toDouble();
+    result = (map["النتيجة"] as num?)?.toDouble();
   }
 
-  // from Map
-  NoteModel.fromMapAdult(Map<String, dynamic> map) {
-    noteTajwid = map["التجويد"].toDouble();
-    noteHousnSawtt = map["حسن الصوت"].toDouble();
-    noteOu4oubetSawtt = map["عذوبة الصوت"].toDouble();
-    noteWaqfAndIbtidaa = map["الوقف والإبتداء"].toDouble();
-    result = map["النتيجة"].toDouble();
+  // for children participants
+  NoteModel.fromMapChild(Map<String, dynamic> map) {
+    noteTajwid = (map["التجويد"] as num?)?.toDouble();
+    noteHousnSawtt = (map["حسن الصوت"] as num?)?.toDouble();
+    noteIltizamRiwaya = (map["الإلتزام بالرواية"] as num?)?.toDouble();
+    result = (map["النتيجة"] as num?)?.toDouble();
   }
 
   // to MapAdult
