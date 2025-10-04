@@ -36,21 +36,26 @@ class CompetitionVersionService {
         .toList();
   }
 
-Future<void> createVersion({
+  Future<void> createVersion({
     required String name,
     required int year,
     required int maxAdults,
     required int maxChildren,
     required bool isRegistrationOpen,
   }) async {
-    final response = await _supabase.from('competition_versions').insert({
-      'name': name,
-      'year': year,
-      'max_adults': maxAdults,
-      'max_children': maxChildren,
-      'is_registration_open': isRegistrationOpen,
-      'is_active': true,
-    }).select().single();
+    final response =
+        await _supabase
+            .from('competition_versions')
+            .insert({
+              'name': name,
+              'year': year,
+              'max_adults': maxAdults,
+              'max_children': maxChildren,
+              'is_registration_open': isRegistrationOpen,
+              'is_active': true,
+            })
+            .select()
+            .single();
 
     final versionId = response['id'] as String;
 
@@ -61,15 +66,18 @@ Future<void> createVersion({
         'number': 1,
         'name': 'الجولة الأولى',
         'is_active': true,
+        'result_is_published': false,
       },
       {
         'version_id': versionId,
         'number': 2,
-        'name': 'الجولة الثانية',
+        'name': 'الجولة النهائية',
         'is_active': false,
-      }
+        'result_is_published': false,
+      },
     ]);
   }
+
   /// Appelle la fonction stockée PostgreSQL via RPC
   Future<bool> tryAddParticipant({
     required String versionId,
@@ -148,42 +156,4 @@ Future<void> createVersion({
     // Si tu utilises le client Dart officiel, il faut vérifier un objet Response avec 'error' dessus.
     // Ici, on suppose que la réponse est correcte si on arrive jusque là.
   }
-
-  
-
-}
-
-/// Exemple d'utilisation dans un Widget ou Controller (ne mets pas cette fonction dans le service !)
-Future<void> onRegister(BuildContext context) async {
-  final service = CompetitionVersionService();
-
-  try {
-    final canAdd = await service.tryAddParticipant(
-      versionId: 'uuid-de-la-version',
-      ageGroup: 'كبار', // ou 'صغار'
-      fullName: 'Ahmed Mohamed',
-      phone: '+22212345678',
-      password: 'secret123',
-    );
-
-    if (!canAdd) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'La limite maximale de participants pour ce groupe est atteinte.',
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Inscription réussie !')));
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Erreur : $e')));
-  }
-
-  
 }

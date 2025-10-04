@@ -81,7 +81,10 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     );
 
     try {
-      await _service.registerParticipant(participant: participant,versionId: widget.versionId);
+      await _service.registerParticipant(
+        participant: participant,
+        versionId: widget.versionId,
+      );
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('تم التسجيل بنجاح')));

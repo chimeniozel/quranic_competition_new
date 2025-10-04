@@ -19,71 +19,155 @@ class VersionDetailPage extends StatefulWidget {
 class _VersionDetailPageState extends State<VersionDetailPage> {
   final ParticipantService _participantService = ParticipantService();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   List<Participant> _allParticipants = [];
   List<Participant> _filteredParticipants = [];
   String _selectedGroup = 'كبار';
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 0;
+  int _totalCount = 0;
+  String _searchQuery = '';
   AppUser? appUser;
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_applyFilter);
+    _searchController.addListener(_onSearchChanged);
+    _scrollController.addListener(_onScroll);
     _loadParticipants();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadParticipants() async {
-    setState(() => _isLoading = true);
-    AuthService authService = AuthService();
-    AppUser? user = await authService.getUserProfile();
-    final participants = await _participantService.fetchParticipantsByVersion(
-      widget.version.id,
-    );
-    setState(() {
-      appUser = user;
-      _allParticipants = participants;
-      _applyFilter();
-      _isLoading = false;
-    });
+  Future<void> _loadParticipants({bool reset = true}) async {
+    if (reset) {
+      setState(() => _isLoading = true);
+    } else {
+      setState(() => _isLoadingMore = true);
+    }
+
+    try {
+      AuthService authService = AuthService();
+      AppUser? user = await authService.getUserProfile();
+
+      // Charger tous les participants (seulement au premier chargement)
+      if (reset) {
+        final participants = await _participantService
+            .fetchParticipantsByVersion(widget.version.id);
+        setState(() {
+          appUser = user;
+          _allParticipants = participants;
+        });
+      }
+
+      // Appliquer les filtres et la pagination
+      _applyFilter(reset: reset);
+    } catch (e) {
+      print("Erreur lors du chargement des participants: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
+    }
   }
 
-  void _applyFilter() {
+  void _applyFilter({bool reset = true}) {
     List<Participant> filtered =
         _allParticipants.where((p) => p.ageGroup == _selectedGroup).toList();
 
-    int? searchTerm = int.tryParse(_searchController.text.trim());
-    if (searchTerm != null) {
-      filtered =
-          filtered.where((p) => p.registrationNumber == (searchTerm)).toList();
+    // Appliquer la recherche
+    if (_searchQuery.isNotEmpty) {
+      int? searchTerm = int.tryParse(_searchQuery.trim());
+      if (searchTerm != null) {
+        filtered =
+            filtered.where((p) => p.registrationNumber == searchTerm).toList();
+      }
     }
 
+    // Appliquer la pagination côté client
+    final totalCount = filtered.length;
+    final startIndex = _currentPage * 20;
+    final endIndex = (startIndex + 20).clamp(0, totalCount);
+
+    final paginatedParticipants = filtered.sublist(startIndex, endIndex);
+
     setState(() {
-      _filteredParticipants = filtered;
+      if (reset) {
+        _filteredParticipants = paginatedParticipants;
+        _currentPage = 0;
+      } else {
+        _filteredParticipants.addAll(paginatedParticipants);
+      }
+      _totalCount = totalCount;
+      _hasMore = endIndex < totalCount;
     });
   }
 
+  void _onSearchChanged() {
+    _searchQuery = _searchController.text;
+    _loadParticipants(reset: true);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (_hasMore && !_isLoadingMore) {
+        _loadMoreParticipants();
+      }
+    }
+  }
+
+  Future<void> _loadMoreParticipants() async {
+    if (!_hasMore || _isLoadingMore) return;
+
+    setState(() => _currentPage++);
+    await _loadParticipants(reset: false);
+  }
+
   void _selectGroup(String group) {
-    setState(() {
-      _selectedGroup = group;
-      _applyFilter();
-    });
+    if (group != _selectedGroup) {
+      setState(() {
+        _selectedGroup = group;
+        _currentPage = 0;
+        _hasMore = true;
+      });
+      _loadParticipants(reset: true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('تفاصيل النسخة: ${widget.version.name}'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.version.name),
+            if (_totalCount > 0)
+              Text(
+                'إجمالي: $_totalCount مشارك',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+          ],
+        ),
         actions: [
           TextButton(
-            child: const Text('لجنة التحكيم'),
+            child: const Text(
+              'لجنة التحكيم',
+              style: TextStyle(color: Colors.white),
+            ),
             onPressed: () {
               context.pushNamed('jury-version-jurys', extra: widget.version);
             },
@@ -161,22 +245,49 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                   ),
                   Expanded(
                     child:
-                        _filteredParticipants.isEmpty
+                        _filteredParticipants.isEmpty && !_isLoading
                             ? const Center(
                               child: Text('لا يوجد مشاركون في هذه الفئة'),
                             )
-                            : ListView.builder(
-                              itemCount: _filteredParticipants.length,
-                              itemBuilder: (context, index) {
-                                final participant =
-                                    _filteredParticipants[index];
-                                return ListTile(
-                                  title: Text(participant.fullName),
-                                  subtitle: Text(
-                                    'الفئة: ${participant.ageGroup} - رقم التسجيل: ${participant.registrationNumber}',
-                                  ),
-                                );
-                              },
+                            : RefreshIndicator(
+                              onRefresh: () => _loadParticipants(reset: true),
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                itemCount:
+                                    _filteredParticipants.length +
+                                    (_hasMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == _filteredParticipants.length) {
+                                    // Indicateur de chargement en bas
+                                    return _isLoadingMore
+                                        ? const Padding(
+                                          padding: EdgeInsets.all(16),
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        )
+                                        : _hasMore
+                                        ? Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Center(
+                                            child: ElevatedButton(
+                                              onPressed: _loadMoreParticipants,
+                                              child: const Text('تحميل المزيد'),
+                                            ),
+                                          ),
+                                        )
+                                        : const SizedBox.shrink();
+                                  }
+                                  final participant =
+                                      _filteredParticipants[index];
+                                  return ListTile(
+                                    title: Text(participant.fullName),
+                                    subtitle: Text(
+                                      'الفئة: ${participant.ageGroup} - رقم التسجيل: ${participant.registrationNumber}',
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                   ),
                 ],

@@ -47,7 +47,10 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
 
   Future<void> _loadParticipantsWithEvaluationStatus() async {
     setState(() => _isLoading = true);
-
+    var activeRound = await RoundService().getActiveRound(widget.version.id);
+    setState(() {
+      this.activeRound = activeRound;
+    });
     AuthService authService = AuthService();
     AppUser? user = await authService.getUserProfile();
     if (user == null) {
@@ -59,14 +62,18 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     });
     final versionId = widget.version.id;
     final juryId = user.id;
-    final roundId = await _getActiveRoundIdForVersion(versionId);
+    // final roundId = await _getActiveRoundIdForVersion(versionId);
 
-    print('RoundId attendu (normalisé): "${roundId?.trim().toLowerCase()}"');
+    print(
+      'RoundId attendu (normalisé): "${activeRound?.id.trim().toLowerCase()}"',
+    );
 
     // 1. Récupérer participants liés à la version
-    final participants = await _participantService.fetchParticipantsByVersion(
-      versionId,
-    );
+    final participants = await _participantService
+        .fetchParticipantsByVersionAndRounds(
+          versionId,
+          activeRound: activeRound,
+        );
 
     // 2. Récupérer évaluations du jury pour cette version
     final evaluationsResponse = await _evaluationService
@@ -75,18 +82,18 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     // Affichage debug des roundId des évaluations récupérées
     for (final eval in evaluationsResponse) {
       print(
-        'Evaluation roundId (normalisé): "${eval.roundId?.trim().toLowerCase()}"',
+        'Evaluation roundId (normalisé): "${eval.roundId.trim().toLowerCase()}"',
       );
     }
 
-    final normalizedRoundId = roundId?.trim().toLowerCase();
+    final normalizedRoundId = activeRound?.id.trim().toLowerCase();
 
     // 3. Construire set des participantIds évalués pour le round actif (comparaison normalisée)
     final Set<String> evaluatedParticipantIds =
         evaluationsResponse
             .where(
               (eval) =>
-                  (eval.roundId?.trim().toLowerCase() ?? '') ==
+                  (eval.roundId.trim().toLowerCase()) ==
                   (normalizedRoundId ?? ''),
             )
             .map((e) => e.participantId)
@@ -108,21 +115,6 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     });
   }
 
-  Future<String?> _getActiveRoundIdForVersion(String versionId) async {
-    RoundService _roundService = RoundService();
-    // Exemple d'appel au service round pour récupérer le round actif
-    final round = await _roundService.getActiveRound(versionId);
-    setState(() {
-      activeRound = round;
-    });
-    if (round == null) {
-      print('Aucun round actif trouvé pour version $versionId');
-      return null;
-    }
-    print('Round actif pour version $versionId : ${round.id}');
-    return round.id;
-  }
-
   void _applyFilter() {
     List<Participant> filtered =
         _allParticipants.where((p) => p.ageGroup == _selectedAgeGroup).toList();
@@ -138,24 +130,19 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     });
   }
 
-  void _selectGroup(String group) {
-    setState(() {
-      _selectedAgeGroup = group;
-      _applyFilter();
-    });
-  }
-
-  void _selectEvaluationFilter(String filter) {
-    setState(() {
-      _selectedEvaluationStatus = filter;
-      _applyFilter();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('تفاصيل النسخة: ${widget.version.name}')),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Text(widget.version.name),
+            activeRound != null && activeRound!.isActive
+                ? Text(" : ${activeRound?.name}")
+                : Text(""),
+          ],
+        ),
+      ),
       floatingActionButton:
           _filteredParticipants.isEmpty
               ? Container()

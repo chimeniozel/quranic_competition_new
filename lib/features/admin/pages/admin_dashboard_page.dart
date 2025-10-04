@@ -35,7 +35,30 @@ class AdminDashboardPage extends StatelessWidget {
               label: const Text('إدارة نسخ المسابقة'),
             ),
             const SizedBox(height: 20),
-            // Tu peux ajouter plus de boutons ici, ex: إدارة المستخدمين، لجنة التحكيم...
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/users');
+              },
+              icon: const Icon(Icons.people),
+              label: const Text('إدارة المستخدمين'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/quranic-benefits');
+              },
+              icon: const Icon(Icons.menu_book),
+              label: const Text('الفوائد القرآنية'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/tajweed-rules');
+              },
+              icon: const Icon(Icons.auto_stories),
+              label: const Text('أحكام التجويد'),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

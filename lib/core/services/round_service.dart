@@ -5,29 +5,29 @@ class RoundService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   Future<Round?> getActiveRound(String versionId) async {
-    final response = await _supabase
-        .from('rounds')
-        .select()
-        .eq('version_id', versionId)
-        .eq('is_active', true)
-        .order('number')
-        .maybeSingle();
+    final response =
+        await _supabase
+            .from('rounds')
+            .select()
+            .eq('version_id', versionId)
+            .eq('is_active', true)
+            .maybeSingle();
 
     if (response == null) return null;
     return Round.fromMap(response);
   }
 
   Future<List<Round>> getRoundsByVersion(String versionId) async {
-  final response = await _supabase
-      .from('rounds')
-      .select()
-      .eq('version_id', versionId)
-      .order('number', ascending: true);
+    final response = await _supabase
+        .from('rounds')
+        .select()
+        .eq('version_id', versionId)
+        .order('number', ascending: true);
 
-  if (response.isEmpty) {
-    throw Exception('Aucun tour trouvé pour cette version');
+    if (response.isEmpty) {
+      throw Exception('Aucun tour trouvé pour cette version');
+    }
+
+    return response.map<Round>((e) => Round.fromMap(e)).toList();
   }
-
-  return response.map<Round>((e) => Round.fromMap(e)).toList();
-}
 }

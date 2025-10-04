@@ -1,4 +1,5 @@
 import 'package:quranic_competition/models/participant.dart';
+import 'package:quranic_competition/models/round.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ParticipantService {
@@ -57,11 +58,64 @@ class ParticipantService {
     }
   }
 
-  Future<List<Participant>> fetchParticipantsByVersion(String versionId) async {
-    final response = await _supabase
-        .from('participant_versions')
-        .select('participant_id, participants(*)')
-        .eq('version_id', versionId);
+  Future<List<Participant>> fetchParticipantsByVersionAndRounds(
+    String versionId, {
+    Round? activeRound,
+  }) async {
+    dynamic response;
+
+    if (activeRound?.number == 1) {
+      // Round 1 ou pas encore défini → tous les participants
+      response = await _supabase
+          .from('participant_versions')
+          .select('participant_id, participants(*)')
+          .eq('version_id', versionId);
+          return response.map<Participant>((record) {
+          final participantData =
+              record['participants'] as Map<String, dynamic>;
+          return Participant.fromMap(participantData);
+        }).toList();
+    } else if (activeRound?.number == 2) {
+      // Round 2 et plus → uniquement ceux qui ont passé le round 1
+      response = await _supabase
+          .from('participant_versions')
+          .select('participant_id, participants(*)')
+          .eq('version_id', versionId)
+          .eq('passed_round1', true);
+          return response.map<Participant>((record) {
+          final participantData =
+              record['participants'] as Map<String, dynamic>;
+          return Participant.fromMap(participantData);
+        }).toList();
+    }
+    else {
+      return [];
+    }
+    
+  }
+
+  Future<List<Participant>> fetchParticipantsByVersion(
+    String versionId, {
+    Round? activeRound,
+  }) async {
+    final response;
+    if (activeRound == null) {
+      response = await _supabase
+          .from('participant_versions')
+          .select('participant_id, participants(*)')
+          .eq('version_id', versionId);
+    } else if (activeRound.name == 'الجولة الأولى') {
+      response = await _supabase
+          .from('participant_versions')
+          .select('participant_id, participants(*)')
+          .eq('version_id', versionId);
+    } else {
+      response = await _supabase
+          .from('participant_versions')
+          .select('participant_id, participants(*)')
+          .eq('version_id', versionId)
+          .eq('passed_round1', true);
+    }
 
     return response.map<Participant>((record) {
       final participantData = record['participants'] as Map<String, dynamic>;

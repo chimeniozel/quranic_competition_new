@@ -88,6 +88,38 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                 ),
               ],
             ),
+            const SizedBox(height: 20.0),
+            ElevatedButton(
+              onPressed: () {
+                context.push('/participant_result_page');
+              },
+              child: Text("نتائج المسابقة"),
+            ),
+            const SizedBox(height: 20.0),
+            ElevatedButton.icon(
+              onPressed: () {
+                print('🔍 Tentative de navigation vers /participant/benefits');
+                context.push('/participant/benefits');
+              },
+              icon: const Icon(Icons.menu_book),
+              label: const Text("الفوائد القرآنية"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/participant/tajweed');
+              },
+              icon: const Icon(Icons.auto_stories),
+              label: const Text("أحكام التجويد"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
           ],
         ),
       ),

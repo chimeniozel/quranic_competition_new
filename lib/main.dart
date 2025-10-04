@@ -34,10 +34,20 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: null, // Ne pas affecter les icônes
-        textTheme: ThemeData.light()
-            .textTheme
-            .apply(fontFamily: "Tajawal"), // Texte en Tajawal
+        cardTheme: CardTheme(color: Colors.white),
+        textTheme: ThemeData.light().textTheme.apply(
+          fontFamily: "Tajawal",
+        ), // Texte en Tajawal
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.deepPurple,
+          foregroundColor: Colors.white,
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: Colors.deepPurple,
+          foregroundColor: Colors.white,
+        ),
       ),
     );
   }

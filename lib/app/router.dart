@@ -8,8 +8,11 @@ import 'package:quranic_competition/features/auth/pages/sign_up_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_detail_page.dart';
 import 'package:quranic_competition/features/participant/pages/participant_home_page.dart';
+import 'package:quranic_competition/features/participant/pages/participant_result_page.dart';
+import 'package:quranic_competition/features/participant/pages/participant_benefits_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
+import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../features/auth/pages/login_page.dart';
@@ -22,8 +25,14 @@ import '../features/jury/pages/jury_home_page.dart';
 import '../features/jury/pages/jury_evaluation_page.dart';
 
 import '../features/admin/pages/admin_dashboard_page.dart';
-import '../features/admin/pages/user_verification_page.dart';
+import '../features/admin/pages/user_manage_page.dart';
 import '../features/admin/pages/version_management_page.dart';
+import '../features/admin/pages/quranic_benefits_page.dart';
+import '../features/admin/pages/quranic_benefit_form_page.dart';
+import '../features/admin/pages/tajweed_rules_page.dart';
+import '../features/admin/pages/tajweed_rule_form_page.dart';
+import '../features/participant/pages/participant_tajweed_page.dart';
+import '../features/participant/pages/tajweed_rule_detail_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -38,6 +47,10 @@ final GoRouter appRouter = GoRouter(
       '/forgot-password',
       '/participant/register',
       '/participant_home_page',
+      '/participant_result_page',
+      '/participant/benefits',
+      '/participant/tajweed',
+      '/participant/tajweed/detail',
     ].contains(path);
 
     if (user == null && !isPublicRoute) {
@@ -89,6 +102,30 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/participant_home_page',
       builder: (context, state) => ParticipantHomePage(),
+    ),
+    GoRoute(
+      path: '/participant_result_page',
+      builder: (context, state) => ParticipantResultPage(),
+    ),
+    GoRoute(
+      path: '/participant/benefits',
+      builder: (context, state) => const ParticipantBenefitsPage(),
+    ),
+    GoRoute(
+      path: '/participant/tajweed',
+      builder: (context, state) => const ParticipantTajweedPage(),
+    ),
+    GoRoute(
+      path: '/participant/tajweed/detail',
+      builder: (context, state) {
+        final rule = state.extra as TajweedRule?;
+        if (rule == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : règle manquante')),
+          );
+        }
+        return TajweedRuleDetailPage(rule: rule);
+      },
     ),
     GoRoute(
       path: '/participant/register',
@@ -156,7 +193,7 @@ final GoRouter appRouter = GoRouter(
 
     // Admin / Super Admin
     GoRoute(path: '/admin/dashboard', builder: (_, __) => AdminDashboardPage()),
-    GoRoute(path: '/admin/users', builder: (_, __) => UserVerificationPage()),
+    GoRoute(path: '/admin/users', builder: (_, __) => UserManagePage()),
     GoRoute(
       path: '/admin/versions',
       builder: (_, __) => VersionManagementPage(),
@@ -186,12 +223,55 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-  path: '/admin/version_results',
-  builder: (context, state) {
-    final version = state.extra as CompetitionVersion;
-    return VersionResultsPage(version: version);
-  },
-),
+      path: '/admin/version_results',
+      builder: (context, state) {
+        final version = state.extra as CompetitionVersion;
+        return VersionResultsPage(version: version);
+      },
+    ),
 
+    // Quranic Benefits Management
+    GoRoute(
+      path: '/admin/quranic-benefits',
+      builder: (_, __) => const QuranicBenefitsPage(),
+    ),
+    GoRoute(
+      path: '/admin/quranic-benefits/add',
+      builder: (_, __) => const QuranicBenefitFormPage(),
+    ),
+    GoRoute(
+      path: '/admin/quranic-benefits/edit/:id',
+      builder: (context, state) {
+        final benefitId = state.pathParameters['id'];
+        if (benefitId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de la faveur manquant')),
+          );
+        }
+        return QuranicBenefitFormPage(benefitId: benefitId);
+      },
+    ),
+
+    // Tajweed Rules Management
+    GoRoute(
+      path: '/admin/tajweed-rules',
+      builder: (_, __) => const TajweedRulesPage(),
+    ),
+    GoRoute(
+      path: '/admin/tajweed-rules/add',
+      builder: (_, __) => const TajweedRuleFormPage(),
+    ),
+    GoRoute(
+      path: '/admin/tajweed-rules/edit/:id',
+      builder: (context, state) {
+        final ruleId = state.pathParameters['id'];
+        if (ruleId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de la règle manquant')),
+          );
+        }
+        return TajweedRuleFormPage(ruleId: ruleId);
+      },
+    ),
   ],
 );

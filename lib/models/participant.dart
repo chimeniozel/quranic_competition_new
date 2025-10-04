@@ -20,7 +20,7 @@ class Participant {
     required this.fullName,
     required this.gender,
     required this.birthDate,
-     this.registrationNumber,
+    this.registrationNumber,
     required this.phone,
     required this.quranMemorized,
     required this.readingMethods,
