@@ -120,6 +120,29 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                 foregroundColor: Colors.white,
               ),
             ),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/participant/quiz');
+              },
+              icon: const Icon(Icons.quiz),
+              label: const Text("مسابقات التجويد"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/participant/archives');
+              },
+              icon: const Icon(Icons.archive),
+              label: const Text("أرشيف المسابقات"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
+            ),
           ],
         ),
       ),

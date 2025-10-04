@@ -58,6 +58,21 @@ class AdminDashboardPage extends StatelessWidget {
               icon: const Icon(Icons.auto_stories),
               label: const Text('أحكام التجويد'),
             ),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/quiz/levels');
+              },
+              icon: const Icon(Icons.quiz),
+              label: const Text('مسابقات التجويد'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.push('/admin/archives');
+              },
+              icon: const Icon(Icons.archive),
+              label: const Text('أرشيف المسابقات'),
+            ),
             const SizedBox(height: 20),
           ],
         ),

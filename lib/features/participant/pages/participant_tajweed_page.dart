@@ -556,7 +556,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
             const Text('أحكام التجويد'),
             if (_totalCount > 0)
               Text(
-                '$_totalCount قاعدة متاحة',
+                '$_totalCount أحكام متاحة',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.normal,

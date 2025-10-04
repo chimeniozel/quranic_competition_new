@@ -77,7 +77,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تفاصيل قاعدة التجويد'),
+        title: const Text('التفاصيل'),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -247,7 +247,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'محتوى القاعدة',
+                              'المحتوى',
                               style: TextStyle(
                                 color: Colors.blue[600],
                                 fontWeight: FontWeight.bold,

@@ -127,7 +127,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              rule.isActive ? 'تم إلغاء تفعيل القاعدة' : 'تم تفعيل القاعدة',
+              rule.isActive ? 'تم إلغاء التفعيل' : 'تم التفعيل',
             ),
             backgroundColor: Colors.green,
           ),
@@ -137,7 +137,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تغيير حالة القاعدة: $e'),
+            content: Text('خطأ في تغيير الحالة : $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -151,7 +151,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
       builder:
           (context) => AlertDialog(
             title: const Text('تأكيد الحذف'),
-            content: Text('هل أنت متأكد من حذف قاعدة "${rule.title}"؟'),
+            content: Text('هل أنت متأكد من الحذف "${rule.title}"؟'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -172,7 +172,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('تم حذف القاعدة بنجاح'),
+              content: Text('تم الحذف بنجاح'),
               backgroundColor: Colors.green,
             ),
           );
@@ -181,7 +181,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('خطأ في حذف القاعدة: $e'),
+              content: Text('خطأ في الحذف : $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -549,10 +549,10 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('قواعد التجويد'),
+            const Text('أحكام التجويد'),
             if (_totalCount > 0)
               Text(
-                '$_totalCount قاعدة متاحة',
+                '$_totalCount أحكام متاحة',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.normal,

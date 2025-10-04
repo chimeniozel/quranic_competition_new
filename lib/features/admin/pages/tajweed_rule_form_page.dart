@@ -107,6 +107,36 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
     });
   }
 
+  Future<String> _uploadImageToStorage(File imageFile) async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Générer un nom de fichier unique
+      final fileName =
+          'tajweed_rule_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final filePath = 'tajweed-rules/$fileName';
+
+      // Upload vers Supabase Storage
+      await supabase.storage
+          .from('images')
+          .uploadBinary(
+            filePath,
+            await imageFile.readAsBytes(),
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: false,
+            ),
+          );
+
+      // Obtenir l'URL publique
+      final imageUrl = supabase.storage.from('images').getPublicUrl(filePath);
+
+      return imageUrl;
+    } catch (e) {
+      throw Exception('خطأ في رفع الصورة: $e');
+    }
+  }
+
   Future<void> _loadRule() async {
     if (widget.ruleId == null) return;
 
@@ -130,7 +160,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحميل القاعدة: $e'),
+            content: Text('خطأ في التحميل : $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -155,6 +185,14 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
         throw Exception('المستخدم غير مسجل الدخول');
       }
 
+      // Gérer l'upload de l'image si une image est sélectionnée
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImageToStorage(_selectedImage!);
+      } else if (_imageUrlController.text.trim().isNotEmpty) {
+        imageUrl = _imageUrlController.text.trim();
+      }
+
       if (_isEditing && _existingRule != null) {
         // Mise à jour
         await _ruleService.updateRule(
@@ -166,10 +204,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
               _videoUrlController.text.trim().isNotEmpty
                   ? _videoUrlController.text.trim()
                   : null,
-          imageUrl:
-              _imageUrlController.text.trim().isNotEmpty
-                  ? _imageUrlController.text.trim()
-                  : null,
+          imageUrl: imageUrl,
         );
       } else {
         // Création
@@ -181,10 +216,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
               _videoUrlController.text.trim().isNotEmpty
                   ? _videoUrlController.text.trim()
                   : null,
-          imageUrl:
-              _imageUrlController.text.trim().isNotEmpty
-                  ? _imageUrlController.text.trim()
-                  : null,
+          imageUrl: imageUrl,
           authorId: user.id,
           authorName: user.userMetadata?['full_name'] ?? 'الإدارة',
         );
@@ -193,9 +225,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _isEditing ? 'تم تحديث القاعدة بنجاح' : 'تم إنشاء القاعدة بنجاح',
-            ),
+            content: Text(_isEditing ? 'تم التحديث بنجاح' : 'تم الإنشاء بنجاح'),
             backgroundColor: Colors.green,
           ),
         );
@@ -205,7 +235,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في حفظ القاعدة: $e'),
+            content: Text('خطأ في الحفظ : $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -261,9 +291,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _isEditing ? 'تعديل قاعدة التجويد' : 'إضافة قاعدة تجويد جديدة',
-        ),
+        title: Text(_isEditing ? 'تعديل' : 'إضافة'),
         actions: [
           if (_isLoading)
             const Padding(
@@ -293,13 +321,13 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'عنوان القاعدة',
-                          hintText: 'مثال: قاعدة النون الساكنة والتنوين',
+                          labelText: 'العنوان',
+                          hintText: 'مثال: النون الساكنة والتنوين',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال عنوان القاعدة';
+                            return 'يرجى إدخال العنوان ';
                           }
                           return null;
                         },
@@ -310,15 +338,15 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                       TextFormField(
                         controller: _contentController,
                         decoration: const InputDecoration(
-                          labelText: 'محتوى القاعدة',
-                          hintText: 'اشرح القاعدة بالتفصيل...',
+                          labelText: 'المحتوى',
+                          hintText: 'اشرح بالتفصيل...',
                           border: OutlineInputBorder(),
                           alignLabelWithHint: true,
                         ),
                         maxLines: 6,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال محتوى القاعدة';
+                            return 'يرجى إدخال المحتوى';
                           }
                           return null;
                         },
@@ -485,7 +513,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'ستكون القاعدة غير نشطة افتراضياً. يمكنك تفعيلها لاحقاً من قائمة القواعد.',
+                                  'سيكون المنشور غير نشط افتراضياً. يمكنك تفعيله لاحقاً.',
                                   style: TextStyle(
                                     color: Colors.orange[700],
                                     fontSize: 12,

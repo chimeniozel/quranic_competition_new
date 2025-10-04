@@ -12,6 +12,7 @@ import 'package:quranic_competition/features/participant/pages/participant_resul
 import 'package:quranic_competition/features/participant/pages/participant_benefits_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
+import 'package:quranic_competition/models/quiz_result.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,6 +34,18 @@ import '../features/admin/pages/tajweed_rules_page.dart';
 import '../features/admin/pages/tajweed_rule_form_page.dart';
 import '../features/participant/pages/participant_tajweed_page.dart';
 import '../features/participant/pages/tajweed_rule_detail_page.dart';
+import '../features/admin/pages/quiz_levels_page.dart';
+import '../features/admin/pages/quiz_level_form_page.dart';
+import '../features/admin/pages/quiz_questions_page.dart';
+import '../features/admin/pages/quiz_question_form_page.dart';
+import '../features/participant/pages/quiz_levels_page.dart';
+import '../features/participant/pages/quiz_page.dart';
+import '../features/participant/pages/quiz_result_page.dart';
+import '../features/admin/pages/competition_archives_page.dart';
+import '../features/admin/pages/competition_archive_form_page.dart';
+import '../features/admin/pages/competition_archive_detail_page.dart';
+import '../features/participant/pages/participant_archives_page.dart';
+import '../features/participant/pages/participant_archive_detail_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -41,17 +54,23 @@ final GoRouter appRouter = GoRouter(
     final path = state.matchedLocation;
 
     // 1. 🔐 L'utilisateur non connecté peut accéder à certaines pages
-    final isPublicRoute = [
-      '/login',
-      '/register',
-      '/forgot-password',
-      '/participant/register',
-      '/participant_home_page',
-      '/participant_result_page',
-      '/participant/benefits',
-      '/participant/tajweed',
-      '/participant/tajweed/detail',
-    ].contains(path);
+    final isPublicRoute =
+        [
+          '/login',
+          '/register',
+          '/forgot-password',
+          '/participant/register',
+          '/participant_home_page',
+          '/participant_result_page',
+          '/participant/benefits',
+          '/participant/tajweed',
+          '/participant/tajweed/detail',
+          '/participant/quiz',
+          '/participant/quiz/result',
+          '/participant/archives',
+        ].contains(path) ||
+        path.startsWith('/participant/quiz/level/') ||
+        path.startsWith('/participant/archives/detail/');
 
     if (user == null && !isPublicRoute) {
       return '/participant_home_page'; // redirige les utilisateurs non connectés
@@ -125,6 +144,50 @@ final GoRouter appRouter = GoRouter(
           );
         }
         return TajweedRuleDetailPage(rule: rule);
+      },
+    ),
+    GoRoute(
+      path: '/participant/quiz',
+      builder: (context, state) => const ParticipantQuizLevelsPage(),
+    ),
+    GoRoute(
+      path: '/participant/quiz/level/:levelId',
+      builder: (context, state) {
+        final levelId = state.pathParameters['levelId'];
+        if (levelId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID du niveau manquant')),
+          );
+        }
+        return QuizPage(levelId: levelId);
+      },
+    ),
+    GoRoute(
+      path: '/participant/quiz/result',
+      builder: (context, state) {
+        final result = state.extra as QuizResult?;
+        if (result == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : résultat manquant')),
+          );
+        }
+        return QuizResultPage(result: result);
+      },
+    ),
+    GoRoute(
+      path: '/participant/archives',
+      builder: (context, state) => const ParticipantArchivesPage(),
+    ),
+    GoRoute(
+      path: '/participant/archives/detail/:id',
+      builder: (context, state) {
+        final archiveId = state.pathParameters['id'];
+        if (archiveId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de l\'archive manquant')),
+          );
+        }
+        return ParticipantArchiveDetailPage(archiveId: archiveId);
       },
     ),
     GoRoute(
@@ -271,6 +334,93 @@ final GoRouter appRouter = GoRouter(
           );
         }
         return TajweedRuleFormPage(ruleId: ruleId);
+      },
+    ),
+
+    // Quiz Management
+    GoRoute(
+      path: '/admin/quiz/levels',
+      builder: (_, __) => const QuizLevelsPage(),
+    ),
+    GoRoute(
+      path: '/admin/quiz/levels/add',
+      builder: (_, __) => const QuizLevelFormPage(),
+    ),
+    GoRoute(
+      path: '/admin/quiz/levels/edit/:id',
+      builder: (context, state) {
+        final levelId = state.pathParameters['id'];
+        if (levelId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID du niveau manquant')),
+          );
+        }
+        return QuizLevelFormPage(levelId: levelId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/quiz/levels/:levelId/questions',
+      builder: (context, state) {
+        final levelId = state.pathParameters['levelId'];
+        if (levelId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID du niveau manquant')),
+          );
+        }
+        return QuizQuestionsPage(levelId: levelId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/quiz/questions/add',
+      builder: (context, state) {
+        final levelId = state.uri.queryParameters['levelId'];
+        return QuizQuestionFormPage(levelId: levelId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/quiz/questions/edit/:id',
+      builder: (context, state) {
+        final questionId = state.pathParameters['id'];
+        if (questionId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de la question manquant')),
+          );
+        }
+        return QuizQuestionFormPage(questionId: questionId);
+      },
+    ),
+
+    // Competition Archives Management
+    GoRoute(
+      path: '/admin/archives',
+      builder: (_, __) => const CompetitionArchivesPage(),
+    ),
+    GoRoute(
+      path: '/admin/archives/add',
+      builder: (_, __) => const CompetitionArchiveFormPage(),
+    ),
+    GoRoute(
+      path: '/admin/archives/edit/:id',
+      builder: (context, state) {
+        final archiveId = state.pathParameters['id'];
+        if (archiveId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de l\'archive manquant')),
+          );
+        }
+        return CompetitionArchiveFormPage(archiveId: archiveId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/archives/detail/:id',
+      builder: (context, state) {
+        final archiveId = state.pathParameters['id'];
+        if (archiveId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de l\'archive manquant')),
+          );
+        }
+        return CompetitionArchiveDetailPage(archiveId: archiveId);
       },
     ),
   ],
