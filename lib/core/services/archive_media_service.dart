@@ -5,27 +5,95 @@ import 'package:quranic_competition/models/archive_media.dart';
 class ArchiveMediaService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Récupérer tous les médias d'une archive
-  Future<List<ArchiveMedia>> getMediaByArchiveId(String archiveId) async {
+  // Récupérer tous les médias d'une version de compétition
+  Future<List<ArchiveMedia>> getMediaByVersionId(String versionId) async {
     try {
       final response = await _supabase
           .from('archive_media')
           .select('*')
-          .eq('archive_id', archiveId)
+          .eq('version_id', versionId)
           .order('order');
+
+      if (response == null || response.isEmpty) {
+        return [];
+      }
 
       return (response as List)
           .map((json) => ArchiveMedia.fromMap(json))
           .toList();
     } catch (e) {
-      print('Erreur lors de la récupération des médias: $e');
-      throw Exception('Impossible de récupérer les médias');
+      print(
+        'Erreur lors de la récupération des médias pour version $versionId: $e',
+      );
+      // Retourner une liste vide au lieu de lever une exception
+      return [];
+    }
+  }
+
+  // Récupérer tous les médias
+  Future<List<ArchiveMedia>> getAllMedia() async {
+    try {
+      // Essayer d'abord avec la nouvelle structure
+      final response = await _supabase
+          .from('archive_media')
+          .select('*')
+          .order('order');
+
+      if (response == null || response.isEmpty) {
+        return [];
+      }
+
+      return (response as List)
+          .map((json) => ArchiveMedia.fromMap(json))
+          .toList();
+    } catch (e) {
+      print('Erreur lors de la récupération de tous les médias: $e');
+      print(
+        'La table archive_media pourrait ne pas être correctement configurée',
+      );
+      // Retourner une liste vide au lieu de lever une exception
+      return [];
+    }
+  }
+
+  // Méthode alternative pour récupérer les médias avec gestion d'erreur améliorée
+  Future<List<ArchiveMedia>> getAllMediaSafe() async {
+    try {
+      // Vérifier d'abord si la table existe et a les bonnes colonnes
+      final response = await _supabase
+          .from('archive_media')
+          .select(
+            'id, version_id, type, url, title, is_active, order, created_at',
+          )
+          .order('order');
+
+      if (response == null) {
+        return [];
+      }
+
+      return (response as List)
+          .map((json) {
+            try {
+              return ArchiveMedia.fromMap(json);
+            } catch (parseError) {
+              print(
+                'Erreur de parsing pour le média: $json, erreur: $parseError',
+              );
+              return null;
+            }
+          })
+          .where((media) => media != null)
+          .cast<ArchiveMedia>()
+          .toList();
+    } catch (e) {
+      print('Erreur lors de la récupération sécurisée des médias: $e');
+      return [];
     }
   }
 
   // Créer un nouveau média
   Future<ArchiveMedia> createMedia({
-    required String archiveId,
+    required String versionId,
     required MediaType type,
     required String url,
     String? thumbnailUrl,
@@ -38,13 +106,14 @@ class ArchiveMediaService {
           await _supabase
               .from('archive_media')
               .insert({
-                'archive_id': archiveId,
+                'version_id': versionId, // Utiliser seulement version_id
                 'type': type.name,
                 'url': url,
                 'thumbnail_url': thumbnailUrl,
                 'title': title,
                 'description': description,
                 'order': order,
+                'is_active': true,
               })
               .select()
               .single();
@@ -52,7 +121,8 @@ class ArchiveMediaService {
       return ArchiveMedia.fromMap(response);
     } catch (e) {
       print('Erreur lors de la création du média: $e');
-      throw Exception('Impossible de créer le média');
+      print('Type d\'erreur: ${e.runtimeType}');
+      throw Exception('Impossible de créer le média: $e');
     }
   }
 
@@ -98,13 +168,13 @@ class ArchiveMediaService {
     }
   }
 
-  // Supprimer tous les médias d'une archive
-  Future<void> deleteAllMediaByArchiveId(String archiveId) async {
+  // Supprimer tous les médias d'une version de compétition
+  Future<void> deleteAllMediaByVersionId(String versionId) async {
     try {
       await _supabase
           .from('archive_media')
           .delete()
-          .eq('archive_id', archiveId);
+          .eq('version_id', versionId);
     } catch (e) {
       print('Erreur lors de la suppression des médias: $e');
       throw Exception('Impossible de supprimer les médias');
@@ -151,20 +221,21 @@ class ArchiveMediaService {
 
   // Créer plusieurs médias en une fois
   Future<List<ArchiveMedia>> createMultipleMedia({
-    required String archiveId,
+    required String versionId,
     required List<Map<String, dynamic>> mediaData,
   }) async {
     try {
       final List<Map<String, dynamic>> insertData =
           mediaData.map((data) {
             return {
-              'archive_id': archiveId,
+              'version_id': versionId,
               'type': data['type'],
               'url': data['url'],
               'thumbnail_url': data['thumbnailUrl'],
               'title': data['title'],
               'description': data['description'],
               'order': data['order'],
+              'is_active': true,
             };
           }).toList();
 
@@ -182,14 +253,14 @@ class ArchiveMediaService {
 
   // Récupérer les médias par type
   Future<List<ArchiveMedia>> getMediaByType(
-    String archiveId,
+    String versionId,
     MediaType type,
   ) async {
     try {
       final response = await _supabase
           .from('archive_media')
           .select('*')
-          .eq('archive_id', archiveId)
+          .eq('version_id', versionId)
           .eq('type', type.name)
           .order('order');
 
@@ -199,6 +270,85 @@ class ArchiveMediaService {
     } catch (e) {
       print('Erreur lors de la récupération des médias par type: $e');
       throw Exception('Impossible de récupérer les médias par type');
+    }
+  }
+
+  // Récupérer tous les médias d'une compétition (version directe)
+  Future<List<ArchiveMedia>> getMediaByCompetitionVersion(
+    String versionId,
+  ) async {
+    try {
+      final response = await _supabase
+          .from('archive_media')
+          .select('*')
+          .eq('version_id', versionId)
+          .order('order');
+
+      return (response as List)
+          .map((json) => ArchiveMedia.fromMap(json))
+          .toList();
+    } catch (e) {
+      print('Erreur lors de la récupération des médias par compétition: $e');
+      throw Exception('Impossible de récupérer les médias de la compétition');
+    }
+  }
+
+  // Changer le statut d'un média
+  Future<ArchiveMedia> toggleMediaStatus(String id) async {
+    try {
+      // D'abord, récupérer le média actuel
+      final currentMedia =
+          await _supabase
+              .from('archive_media')
+              .select('*')
+              .eq('id', id)
+              .single();
+
+      final newStatus = !(currentMedia['is_active'] as bool);
+
+      final response =
+          await _supabase
+              .from('archive_media')
+              .update({'is_active': newStatus})
+              .eq('id', id)
+              .select()
+              .single();
+
+      return ArchiveMedia.fromMap(response);
+    } catch (e) {
+      print('Erreur lors du changement de statut du média: $e');
+      throw Exception('Impossible de changer le statut du média');
+    }
+  }
+
+  // Récupérer les médias avec filtres (actif/inactif, type)
+  Future<List<ArchiveMedia>> getMediaWithFilters({
+    required String versionId,
+    MediaType? type,
+    bool? isActive,
+  }) async {
+    try {
+      var query = _supabase
+          .from('archive_media')
+          .select('*')
+          .eq('version_id', versionId);
+
+      if (type != null) {
+        query = query.eq('type', type.name);
+      }
+
+      if (isActive != null) {
+        query = query.eq('is_active', isActive);
+      }
+
+      final response = await query.order('order');
+
+      return (response as List)
+          .map((json) => ArchiveMedia.fromMap(json))
+          .toList();
+    } catch (e) {
+      print('Erreur lors de la récupération des médias filtrés: $e');
+      throw Exception('Impossible de récupérer les médias filtrés');
     }
   }
 }

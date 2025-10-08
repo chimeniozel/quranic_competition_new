@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/app/router.dart';
+import 'package:quranic_competition/core/widgets/auth_initializer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -20,33 +21,35 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'مسابقة أهل القرآن',
-      routerConfig: appRouter,
-      debugShowCheckedModeBanner: false,
-      supportedLocales: const [Locale('ar')],
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: null, // Ne pas affecter les icônes
-        cardTheme: CardTheme(color: Colors.white),
-        textTheme: ThemeData.light().textTheme.apply(
-          fontFamily: "Tajawal",
-        ), // Texte en Tajawal
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-        ),
-        floatingActionButtonTheme: FloatingActionButtonThemeData(
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
+    return AuthInitializer(
+      child: MaterialApp.router(
+        title: 'مسابقة أهل القرآن',
+        routerConfig: appRouter,
+        debugShowCheckedModeBanner: false,
+        supportedLocales: const [Locale('ar')],
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: ThemeData(
+          useMaterial3: true,
+          fontFamily: null, // Ne pas affecter les icônes
+          cardTheme: CardTheme(color: Colors.white),
+          textTheme: ThemeData.light().textTheme.apply(
+            fontFamily: "Tajawal",
+          ), // Texte en Tajawal
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+          ),
+          floatingActionButtonTheme: FloatingActionButtonThemeData(
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+          ),
         ),
       ),
     );

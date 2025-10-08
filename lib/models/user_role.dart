@@ -1,39 +1,89 @@
-class UserRole {
-  final String name;
-  final bool canDelete;
-  final bool canEdit;
-  final bool canPublish;
-  final bool canEndVersion;
-  final bool canVerifyAccounts;
+enum UserRole {
+  superAdmin('super_admin', 'مدير عام'),
+  admin('admin', 'مدير'),
+  jury('jury', 'عضو لجنة التحكيم'),
+  member('membre', 'عضو عادي');
 
-  UserRole({
-    required this.name,
-    required this.canDelete,
-    required this.canEdit,
-    required this.canPublish,
-    required this.canEndVersion,
-    required this.canVerifyAccounts,
-  });
+  const UserRole(this.code, this.displayName);
 
-  factory UserRole.fromMap(Map<String, dynamic> map) {
-    return UserRole(
-      name: map['name'],
-      canDelete: map['can_delete'],
-      canEdit: map['can_edit'],
-      canPublish: map['can_publish'],
-      canEndVersion: map['can_end_version'],
-      canVerifyAccounts: map['can_verify_accounts'],
+  final String code;
+  final String displayName;
+
+  static UserRole fromString(String code) {
+    return UserRole.values.firstWhere(
+      (role) => role.code == code,
+      orElse: () => UserRole.member,
     );
   }
+}
 
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'can_delete': canDelete,
-      'can_edit': canEdit,
-      'can_publish': canPublish,
-      'can_end_version': canEndVersion,
-      'can_verify_accounts': canVerifyAccounts,
-    };
+class UserPermissions {
+  final bool canCreateVersions;
+  final bool canPublishContent;
+  final bool canValidateAccounts;
+  final bool canDelete;
+  final bool canModify;
+  final bool canModifyVersions;
+  final bool canAssignRoles;
+  final bool canViewContent;
+
+  const UserPermissions({
+    required this.canCreateVersions,
+    required this.canPublishContent,
+    required this.canValidateAccounts,
+    required this.canDelete,
+    required this.canModify,
+    required this.canModifyVersions,
+    required this.canAssignRoles,
+    required this.canViewContent,
+  });
+
+  static UserPermissions forRole(UserRole role) {
+    switch (role) {
+      case UserRole.superAdmin:
+        return const UserPermissions(
+          canCreateVersions: true,
+          canPublishContent: true,
+          canValidateAccounts: true,
+          canDelete: true,
+          canModify: true,
+          canModifyVersions: true,
+          canAssignRoles: true,
+          canViewContent: true,
+        );
+      case UserRole.admin:
+        return const UserPermissions(
+          canCreateVersions: true,
+          canPublishContent: true,
+          canValidateAccounts: true,
+          canDelete: false,
+          canModify: false,
+          canModifyVersions: false,
+          canAssignRoles: false,
+          canViewContent: true,
+        );
+      case UserRole.jury:
+        return const UserPermissions(
+          canCreateVersions: false,
+          canPublishContent: false,
+          canValidateAccounts: false,
+          canDelete: false,
+          canModify: false,
+          canModifyVersions: false,
+          canAssignRoles: false,
+          canViewContent: true,
+        );
+      case UserRole.member:
+        return const UserPermissions(
+          canCreateVersions: false,
+          canPublishContent: false,
+          canValidateAccounts: false,
+          canDelete: false,
+          canModify: false,
+          canModifyVersions: false,
+          canAssignRoles: false,
+          canViewContent: true,
+        );
+    }
   }
 }

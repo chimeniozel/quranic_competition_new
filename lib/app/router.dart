@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/features/admin/pages/update_version.dart';
+import 'package:quranic_competition/features/admin/pages/edit_media_page.dart';
+import 'package:quranic_competition/features/admin/pages/batch_add_media_page.dart';
+import 'package:quranic_competition/models/archive_media.dart';
 import 'package:quranic_competition/features/admin/pages/version_detail_page.dart';
 import 'package:quranic_competition/features/admin/pages/version_jurys_page.dart';
 import 'package:quranic_competition/features/admin/pages/version_results_page.dart';
@@ -15,18 +18,14 @@ import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/forgot_password_page.dart';
 import '../features/auth/pages/waiting_verification_page.dart';
-
 import '../features/participant/pages/participant_register_page.dart';
-
 import '../features/jury/pages/jury_home_page.dart';
 import '../features/jury/pages/jury_evaluation_page.dart';
-
 import '../features/admin/pages/admin_dashboard_page.dart';
-import '../features/admin/pages/user_manage_page.dart';
+import '../features/admin/pages/user_management_page.dart';
 import '../features/admin/pages/version_management_page.dart';
 import '../features/admin/pages/quranic_benefits_page.dart';
 import '../features/admin/pages/quranic_benefit_form_page.dart';
@@ -41,11 +40,10 @@ import '../features/admin/pages/quiz_question_form_page.dart';
 import '../features/participant/pages/quiz_levels_page.dart';
 import '../features/participant/pages/quiz_page.dart';
 import '../features/participant/pages/quiz_result_page.dart';
-import '../features/admin/pages/competition_archives_page.dart';
-import '../features/admin/pages/competition_archive_form_page.dart';
-import '../features/admin/pages/competition_archive_detail_page.dart';
 import '../features/participant/pages/participant_archives_page.dart';
-import '../features/participant/pages/participant_archive_detail_page.dart';
+import '../features/participant/pages/participant_competition_archives_page.dart';
+import '../features/admin/pages/new_competition_archives_page.dart';
+import '../features/admin/pages/new_competition_media_management_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -70,7 +68,7 @@ final GoRouter appRouter = GoRouter(
           '/participant/archives',
         ].contains(path) ||
         path.startsWith('/participant/quiz/level/') ||
-        path.startsWith('/participant/archives/detail/');
+        path.startsWith('/participant/archives/competition/');
 
     if (user == null && !isPublicRoute) {
       return '/participant_home_page'; // redirige les utilisateurs non connectés
@@ -179,15 +177,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ParticipantArchivesPage(),
     ),
     GoRoute(
-      path: '/participant/archives/detail/:id',
+      path: '/participant/archives/competition',
+      builder: (context, state) => const ParticipantArchivesPage(),
+    ),
+    GoRoute(
+      path: '/participant/archives/competition/:versionId',
       builder: (context, state) {
-        final archiveId = state.pathParameters['id'];
-        if (archiveId == null) {
+        final versionId = state.pathParameters['versionId'];
+        if (versionId == null) {
           return const Scaffold(
-            body: Center(child: Text('Erreur : ID de l\'archive manquant')),
+            body: Center(child: Text('Erreur : ID de la version manquant')),
           );
         }
-        return ParticipantArchiveDetailPage(archiveId: archiveId);
+        return ParticipantCompetitionArchivesPage(versionId: versionId);
       },
     ),
     GoRoute(
@@ -256,7 +258,7 @@ final GoRouter appRouter = GoRouter(
 
     // Admin / Super Admin
     GoRoute(path: '/admin/dashboard', builder: (_, __) => AdminDashboardPage()),
-    GoRoute(path: '/admin/users', builder: (_, __) => UserManagePage()),
+    GoRoute(path: '/admin/users', builder: (_, __) => UserManagementPage()),
     GoRoute(
       path: '/admin/versions',
       builder: (_, __) => VersionManagementPage(),
@@ -390,37 +392,85 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    // Competition Archives Management
+    // Route pour l'ajout en lot de médias
     GoRoute(
-      path: '/admin/archives',
-      builder: (_, __) => const CompetitionArchivesPage(),
-    ),
-    GoRoute(
-      path: '/admin/archives/add',
-      builder: (_, __) => const CompetitionArchiveFormPage(),
-    ),
-    GoRoute(
-      path: '/admin/archives/edit/:id',
+      path: '/admin/archives/batch-add',
       builder: (context, state) {
-        final archiveId = state.pathParameters['id'];
-        if (archiveId == null) {
-          return const Scaffold(
-            body: Center(child: Text('Erreur : ID de l\'archive manquant')),
-          );
-        }
-        return CompetitionArchiveFormPage(archiveId: archiveId);
+        return const BatchAddMediaPage();
       },
     ),
     GoRoute(
-      path: '/admin/archives/detail/:id',
+      path: '/admin/media/edit',
       builder: (context, state) {
-        final archiveId = state.pathParameters['id'];
-        if (archiveId == null) {
+        final media = state.extra as ArchiveMedia?;
+        if (media == null) {
           return const Scaffold(
-            body: Center(child: Text('Erreur : ID de l\'archive manquant')),
+            body: Center(child: Text('Erreur : Données du média manquantes')),
           );
         }
-        return CompetitionArchiveDetailPage(archiveId: archiveId);
+        return EditMediaPage(media: media);
+      },
+    ),
+    GoRoute(
+      path: '/admin/archives/add/:versionId',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId'];
+        if (versionId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de la version manquant')),
+          );
+        }
+        // Créer un média temporaire pour la création
+        final newMedia = ArchiveMedia(
+          id: '', // Sera généré par la base de données
+          versionId: versionId,
+          type: MediaType.image, // Type par défaut
+          url: '',
+          title: null,
+          description: null,
+          order: 1, // Sera ajusté par le service
+          isActive: true,
+          createdAt: DateTime.now(),
+        );
+        return EditMediaPage(media: newMedia);
+      },
+    ),
+
+    // New Competition Archives Structure
+    GoRoute(
+      path: '/admin/archives',
+      builder: (_, __) => const NewCompetitionArchivesPage(),
+    ),
+    GoRoute(
+      path: '/admin/archives/new',
+      builder: (_, __) => const NewCompetitionArchivesPage(),
+    ),
+    GoRoute(
+      path: '/admin/archives/competition',
+      builder: (_, __) => const NewCompetitionArchivesPage(),
+    ),
+    GoRoute(
+      path: '/admin/archives/competition/:versionId',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId'];
+        if (versionId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de la version manquant')),
+          );
+        }
+        return NewCompetitionMediaManagementPage(versionId: versionId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/archives/competition/new/:versionId',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId'];
+        if (versionId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : ID de la version manquant')),
+          );
+        }
+        return NewCompetitionMediaManagementPage(versionId: versionId);
       },
     ),
   ],

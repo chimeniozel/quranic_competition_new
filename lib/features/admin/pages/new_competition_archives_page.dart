@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:quranic_competition/core/services/archive_media_service.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
+import 'package:quranic_competition/core/services/archive_media_service.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/archive_media.dart';
 
-class ParticipantArchivesPage extends StatefulWidget {
-  const ParticipantArchivesPage({super.key});
+class NewCompetitionArchivesPage extends StatefulWidget {
+  const NewCompetitionArchivesPage({super.key});
 
   @override
-  State<ParticipantArchivesPage> createState() =>
-      _ParticipantArchivesPageState();
+  State<NewCompetitionArchivesPage> createState() =>
+      _NewCompetitionArchivesPageState();
 }
 
-class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
+class _NewCompetitionArchivesPageState
+    extends State<NewCompetitionArchivesPage> {
   final CompetitionVersionService _versionService = CompetitionVersionService();
   final ArchiveMediaService _mediaService = ArchiveMediaService();
 
@@ -90,15 +91,14 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
 
   List<ArchiveMedia> _getMediaForVersion(String versionId) {
     return _allMedia.where((media) {
-      return media.versionId == versionId &&
-          media.isActive; // Seulement les médias actifs
+      return media.versionId == versionId;
     }).toList();
   }
 
   int _getActiveMediaCount(String versionId) {
     return _getMediaForVersion(
       versionId,
-    ).length; // Tous les médias retournés sont déjà actifs
+    ).where((media) => media.isActive).length;
   }
 
   int _getTotalMediaCount(String versionId) {
@@ -113,9 +113,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: InkWell(
-        onTap:
-            () =>
-                context.push('/participant/archives/competition/${version.id}'),
+        onTap: () => context.push('/admin/archives/competition/${version.id}'),
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -148,6 +146,26 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                       ],
                     ),
                   ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: activeMediaCount > 0 ? Colors.green : Colors.grey,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      activeMediaCount > 0
+                          ? 'نشط ($activeMediaCount)'
+                          : 'غير نشط',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -167,6 +185,13 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                   Text(
                     'نشط: $activeMediaCount',
                     style: TextStyle(fontSize: 12, color: Colors.green[600]),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.cancel, size: 16, color: Colors.red[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    'غير نشط: ${totalMediaCount - activeMediaCount}',
+                    style: TextStyle(fontSize: 12, color: Colors.red[600]),
                   ),
                 ],
               ),
@@ -197,19 +222,32 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
 
               const SizedBox(height: 16),
 
-              // Bouton pour voir tous les détails
+              // Boutons d'action
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed:
                           () => context.push(
-                            '/participant/archives/competition/${version.id}',
+                            '/admin/archives/competition/${version.id}',
                           ),
-                      icon: const Icon(Icons.visibility),
-                      label: const Text('عرض جميع الأرشيف'),
+                      icon: const Icon(Icons.perm_media),
+                      label: const Text('إدارة الأرشيف'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[600],
+                        backgroundColor: Colors.purple[600],
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed:
+                          () => context.push('/admin/archives/batch-add'),
+                      icon: const Icon(Icons.add_box),
+                      label: const Text('إضافة أرشيف'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -297,6 +335,11 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                     ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/admin/archives/batch-add'),
+        tooltip: 'إضافة أرشيف',
+        child: const Icon(Icons.add_box),
       ),
     );
   }

@@ -2,6 +2,8 @@
 
 import 'package:flutter/rendering.dart';
 import 'package:quranic_competition/models/app_user.dart';
+import 'package:quranic_competition/models/user_role.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
@@ -28,20 +30,21 @@ class AuthService {
         return 'Erreur lors de la création du compte';
       }
 
-      // Insérer dans la table users, avec phone et email
-      final insertRes = await _supabase.from('users').insert({
-        'id': user.id,
-        'phone': phone,
-        'email': email,
-        'full_name': fullName,
-        'role': role,
-        'is_verified': false,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-
-      // insertRes est une liste d'objets insérés (pas null si OK)
-      if (insertRes == null || (insertRes is List && insertRes.isEmpty)) {
-        return 'Erreur lors de l\'insertion dans la table users';
+      // Le trigger handle_new_user() va automatiquement créer le profil
+      // Mais nous pouvons mettre à jour le profil avec les informations supplémentaires
+      try {
+        await _supabase
+            .from('profiles')
+            .update({
+              'full_name': fullName,
+              'phone': phone,
+              'role': role,
+              'is_validated': false,
+            })
+            .eq('id', user.id);
+      } catch (e) {
+        debugPrint('Erreur lors de la mise à jour du profil: $e');
+        // Ce n'est pas critique, le profil existe déjà grâce au trigger
       }
 
       return null; // Succès
@@ -66,6 +69,9 @@ class AuthService {
         return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
       }
 
+      // Initialiser les permissions après la connexion
+      await _initializeUserPermissions(res.user!.id);
+
       return null; // Succès
     } catch (e) {
       return e.toString();
@@ -74,7 +80,45 @@ class AuthService {
 
   /// Déconnexion de l'utilisateur.
   Future<void> signOut() async {
+    // Nettoyer les permissions avant la déconnexion
+    PermissionService().clearPermissions();
     await Supabase.instance.client.auth.signOut();
+  }
+
+  /// Initialiser les permissions de l'utilisateur après la connexion
+  Future<void> _initializeUserPermissions(String userId) async {
+    try {
+      // Récupérer le rôle de l'utilisateur depuis la table profiles
+      final response =
+          await _supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', userId)
+              .single();
+
+      if (response['role'] != null) {
+        final userRole = UserRole.fromString(response['role']);
+        PermissionService().setUserRole(userRole);
+
+        debugPrint('🔐 Permissions initialisées pour ${userRole.displayName}');
+      } else {
+        // Rôle par défaut si non trouvé
+        PermissionService().setUserRole(UserRole.member);
+        debugPrint('🔐 Rôle par défaut assigné: Membre ordinaire');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de l\'initialisation des permissions: $e');
+      // Rôle par défaut en cas d'erreur
+      PermissionService().setUserRole(UserRole.member);
+    }
+  }
+
+  /// Initialiser les permissions pour l'utilisateur actuel (à appeler au démarrage de l'app)
+  Future<void> initializeCurrentUserPermissions() async {
+    final user = _supabase.auth.currentUser;
+    if (user != null) {
+      await _initializeUserPermissions(user.id);
+    }
   }
 
   /// Récupérer le profil utilisateur actuel depuis la table users.
