@@ -1,8 +1,11 @@
-// lib/features/auth/pages/login_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/error_service.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,35 +16,13 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _authService = AuthService();
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = AuthService();
+  final _errorService = ErrorService();
 
   bool _isLoading = false;
-
-  void _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    final error = await _authService.signIn(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
-    } else {
-      // Connexion réussie, redirige vers dashboard selon rôle
-      // Par exemple, Navigator.pushReplacementNamed(context, '/');
-      context.go('/');
-    }
-  }
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -50,63 +31,237 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final error = await _authService.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (error != null) {
+        _showErrorDialog(error);
+      } else {
+        // Connexion réussie
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_errorService.getSuccessMessage('login_success')),
+              backgroundColor: AppTheme.successColor,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Navigation vers la page appropriée selon le rôle
+          final user = await _authService.getUserProfile();
+          if (user != null) {
+            switch (user.role) {
+              case 'admin':
+              case 'super_admin':
+                context.go('/admin/dashboard');
+                break;
+              case 'jury':
+                context.go('/jury/home');
+                break;
+              case 'membre':
+                context.go('/participant_home_page');
+                break;
+              default:
+                context.go('/');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      _showErrorDialog(_errorService.analyzeException(e));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: AppTheme.errorColor),
+              SizedBox(width: AppTheme.spacingS),
+              Text('خطأ في تسجيل الدخول'),
+            ],
+          ),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('موافق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (!_isValidEmail(value)) {
+      return _errorService.getErrorMessage('AUTH_INVALID_EMAIL');
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (value.length < 6) {
+      return _errorService.getErrorMessage('AUTH_PASSWORD_TOO_SHORT');
+    }
+    return null;
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل الدخول')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'البريد الإلكتروني',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'الرجاء إدخال البريد الإلكتروني';
-                  }
-                  // Validation simple email regex
-                  final emailRegex = RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  );
-                  if (!emailRegex.hasMatch(value)) {
-                    return 'البريد الإلكتروني غير صالح';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'كلمة المرور'),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'الرجاء إدخال كلمة المرور';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                    onPressed: _submit,
-                    child: const Text('دخول'),
+      appBar: const ModernAppBar(title: 'تسجيل الدخول'),
+      body: ModernPullToRefresh(
+        onRefresh: () async {
+          // Rafraîchir la page si nécessaire
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppTheme.spacingM),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header avec icône
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingL),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusL),
                   ),
-                  const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  context.push('/register');
-                },
-                child: const Text('التسجيل'),
-              ),
-            ],
+                  child: Column(
+                    children: [
+                      Icon(Icons.login, size: 60, color: Colors.white),
+                      const SizedBox(height: AppTheme.spacingM),
+                      Text(
+                        'مرحباً بك',
+                        style: AppTheme.headingMedium.copyWith(
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppTheme.spacingS),
+                      Text(
+                        'سجل دخولك للوصول إلى المسابقة القرآنية',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: Colors.white70,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingXL),
+
+                // Champs de saisie modernes
+                ModernTextField(
+                  controller: _emailController,
+                  label: 'البريد الإلكتروني',
+                  hint: 'أدخل بريدك الإلكتروني',
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  validator: _validateEmail,
+                ),
+                const SizedBox(height: AppTheme.spacingM),
+
+                ModernTextField(
+                  controller: _passwordController,
+                  label: 'كلمة المرور',
+                  hint: 'أدخل كلمة المرور',
+                  obscureText: _obscurePassword,
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                  validator: _validatePassword,
+                ),
+                const SizedBox(height: AppTheme.spacingXL),
+
+                // Bouton de connexion
+                PrimaryButton(
+                  text: 'تسجيل الدخول',
+                  icon: Icons.login,
+                  onPressed: _submit,
+                  isLoading: _isLoading,
+                  fullWidth: true,
+                ),
+                const SizedBox(height: AppTheme.spacingM),
+
+                // Liens d'action
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => context.push('/forgot-password'),
+                      child: const Text('نسيت كلمة المرور؟'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.push('/register'),
+                      child: const Text('إنشاء حساب جديد'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.spacingL),
+
+                // Informations supplémentaires
+                ModernCard(
+                  backgroundColor: AppTheme.infoColor.withOpacity(0.1),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: AppTheme.infoColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppTheme.spacingM),
+                      Expanded(
+                        child: Text(
+                          'تأكد من استخدام بيانات الدخول الصحيحة للوصول إلى حسابك',
+                          style: TextStyle(
+                            color: AppTheme.infoColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

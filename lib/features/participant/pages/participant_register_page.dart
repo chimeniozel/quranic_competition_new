@@ -78,6 +78,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       participatedBefore: _participatedBefore,
       ageGroup: widget.ageGroup,
       createdAt: DateTime.now(),
+      isAccepted: true,
     );
 
     try {

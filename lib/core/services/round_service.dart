@@ -17,6 +17,19 @@ class RoundService {
     return Round.fromMap(response);
   }
 
+  Future<Round?> getPublishedRound(String versionId) async {
+    final response = await _supabase
+        .from('rounds')
+        .select()
+        .eq('version_id', versionId)
+        .eq('result_is_published', true)
+        .order('number', ascending: false)
+        .limit(1);
+
+    if (response.isEmpty) return null;
+    return Round.fromMap(response.first);
+  }
+
   Future<List<Round>> getRoundsByVersion(String versionId) async {
     final response = await _supabase
         .from('rounds')

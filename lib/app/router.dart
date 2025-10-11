@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:quranic_competition/features/admin/pages/update_version.dart';
-import 'package:quranic_competition/features/admin/pages/edit_media_page.dart';
-import 'package:quranic_competition/features/admin/pages/batch_add_media_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/update_version.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/participant_detail_page.dart';
+import 'package:quranic_competition/features/admin/pages/media_management/edit_media_page.dart';
+import 'package:quranic_competition/features/admin/pages/media_management/batch_add_media_page.dart';
 import 'package:quranic_competition/models/archive_media.dart';
-import 'package:quranic_competition/features/admin/pages/version_detail_page.dart';
-import 'package:quranic_competition/features/admin/pages/version_jurys_page.dart';
-import 'package:quranic_competition/features/admin/pages/version_results_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/version_detail_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/version_jurys_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/version_results_page.dart';
 import 'package:quranic_competition/features/auth/pages/sign_up_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_detail_page.dart';
@@ -20,30 +21,34 @@ import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/forgot_password_page.dart';
+import '../features/auth/pages/change_password_page.dart';
 import '../features/auth/pages/waiting_verification_page.dart';
+import '../features/shared/pages/user_profile_page.dart';
+import '../features/shared/pages/security_settings_page.dart';
+import '../features/shared/pages/ui_showcase_page.dart';
 import '../features/participant/pages/participant_register_page.dart';
 import '../features/jury/pages/jury_home_page.dart';
 import '../features/jury/pages/jury_evaluation_page.dart';
 import '../features/admin/pages/admin_dashboard_page.dart';
-import '../features/admin/pages/user_management_page.dart';
-import '../features/admin/pages/version_management_page.dart';
-import '../features/admin/pages/quranic_benefits_page.dart';
-import '../features/admin/pages/quranic_benefit_form_page.dart';
-import '../features/admin/pages/tajweed_rules_page.dart';
-import '../features/admin/pages/tajweed_rule_form_page.dart';
+import '../features/admin/pages/user_management/user_management_page.dart';
+import '../features/admin/pages/competition_management/version_management_page.dart';
+import '../features/admin/pages/content_management/quranic_benefits_page.dart';
+import '../features/admin/pages/content_management/quranic_benefit_form_page.dart';
+import '../features/admin/pages/content_management/tajweed_rules_page.dart';
+import '../features/admin/pages/content_management/tajweed_rule_form_page.dart';
 import '../features/participant/pages/participant_tajweed_page.dart';
 import '../features/participant/pages/tajweed_rule_detail_page.dart';
-import '../features/admin/pages/quiz_levels_page.dart';
-import '../features/admin/pages/quiz_level_form_page.dart';
-import '../features/admin/pages/quiz_questions_page.dart';
-import '../features/admin/pages/quiz_question_form_page.dart';
+import '../features/admin/pages/quiz_management/quiz_levels_page.dart';
+import '../features/admin/pages/quiz_management/quiz_level_form_page.dart';
+import '../features/admin/pages/quiz_management/quiz_questions_page.dart';
+import '../features/admin/pages/quiz_management/quiz_question_form_page.dart';
 import '../features/participant/pages/quiz_levels_page.dart';
 import '../features/participant/pages/quiz_page.dart';
 import '../features/participant/pages/quiz_result_page.dart';
 import '../features/participant/pages/participant_archives_page.dart';
 import '../features/participant/pages/participant_competition_archives_page.dart';
-import '../features/admin/pages/new_competition_archives_page.dart';
-import '../features/admin/pages/new_competition_media_management_page.dart';
+import '../features/admin/pages/media_management/new_competition_archives_page.dart';
+import '../features/admin/pages/media_management/new_competition_media_management_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -66,6 +71,7 @@ final GoRouter appRouter = GoRouter(
           '/participant/quiz',
           '/participant/quiz/result',
           '/participant/archives',
+          '/ui-showcase',
         ].contains(path) ||
         path.startsWith('/participant/quiz/level/') ||
         path.startsWith('/participant/archives/competition/');
@@ -109,6 +115,19 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/forgot-password',
       builder: (context, state) => ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: '/change-password',
+      builder: (context, state) => ChangePasswordPage(),
+    ),
+    GoRoute(path: '/profile', builder: (context, state) => UserProfilePage()),
+    GoRoute(
+      path: '/security-settings',
+      builder: (context, state) => SecuritySettingsPage(),
+    ),
+    GoRoute(
+      path: '/ui-showcase',
+      builder: (context, state) => UIShowcasePage(),
     ),
     GoRoute(
       path: '/waiting-verification',
@@ -239,11 +258,7 @@ final GoRouter appRouter = GoRouter(
           );
         }
 
-        return JuryEvaluationPage(
-          participant: args.participant,
-          appUser: args.appUser,
-          version: args.version,
-        );
+        return JuryEvaluationPage(args: args);
       },
     ),
 
@@ -471,6 +486,25 @@ final GoRouter appRouter = GoRouter(
           );
         }
         return NewCompetitionMediaManagementPage(versionId: versionId);
+      },
+    ),
+    GoRoute(
+      path: '/admin/participant/:participantId',
+      name: 'participant-detail',
+      builder: (context, state) {
+        final participantId = state.pathParameters['participantId'];
+        final participantData = state.extra as Map<String, dynamic>?;
+        if (participantId == null || participantData == null) {
+          return const Scaffold(
+            body: Center(
+              child: Text('Erreur : Données du participant manquantes'),
+            ),
+          );
+        }
+        return ParticipantDetailPage(
+          participant: participantData['participant'],
+          version: participantData['version'],
+        );
       },
     ),
   ],

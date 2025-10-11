@@ -1,24 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:quranic_competition/models/app_user.dart';
-import 'package:quranic_competition/models/competition_version.dart';
-import 'package:quranic_competition/models/participant.dart';
 import 'package:quranic_competition/models/note_model.dart';
 import 'package:quranic_competition/models/evaluation.dart';
 import 'package:quranic_competition/models/round.dart';
+import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/core/services/evaluation_service.dart';
-import 'package:quranic_competition/core/services/round_service.dart';
 
 class JuryEvaluationPage extends StatefulWidget {
-  final Participant participant;
-  final AppUser appUser;
-  final CompetitionVersion version;
+  final JuryEvaluationArgs args;
 
-  const JuryEvaluationPage({
-    super.key,
-    required this.participant,
-    required this.appUser,
-    required this.version,
-  });
+  const JuryEvaluationPage({super.key, required this.args});
 
   @override
   State<JuryEvaluationPage> createState() => _JuryEvaluationPageState();
@@ -29,19 +19,21 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   late NoteModel _noteModel;
   final _notesController = TextEditingController();
   final EvaluationService _evaluationService = EvaluationService();
-  final RoundService _roundService = RoundService();
 
   Evaluation? _existingEvaluation;
   Round? _activeRound;
   bool _isSubmitting = false;
   bool _isLoading = true;
   double _totalScore = 0.0;
+  bool _isReadOnly = false;
 
   @override
   void initState() {
     super.initState();
     _noteModel = NoteModel();
-    _loadActiveRoundAndEvaluation();
+    _isReadOnly = widget.args.isReadOnly;
+    _activeRound = widget.args.round;
+    _loadEvaluation();
   }
 
   @override
@@ -50,19 +42,16 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
     super.dispose();
   }
 
-  Future<void> _loadActiveRoundAndEvaluation() async {
+  Future<void> _loadEvaluation() async {
     try {
-      final round = await _roundService.getActiveRound(widget.version.id);
-      if (round == null) throw Exception('لا يوجد جولة نشطة حالياً');
-
-      setState(() => _activeRound = round);
+      if (_activeRound == null) throw Exception('لا يوجد جولة محددة');
 
       final eval = await _evaluationService.getEvaluationByJuryAndParticipant(
-        juryId: widget.appUser.id,
-        participantId: widget.participant.id,
-        roundId: round.id,
-        versionId: widget.version.id,
-        ageGroup: widget.participant.ageGroup,
+        juryId: widget.args.appUser.id,
+        participantId: widget.args.participant.id,
+        roundId: _activeRound!.id,
+        versionId: widget.args.version.id,
+        ageGroup: widget.args.participant.ageGroup,
       );
 
       if (eval != null) {
@@ -74,7 +63,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
           ..noteTajwid = eval.noteModel.noteTajwid
           ..noteHousnSawtt = eval.noteModel.noteHousnSawtt;
 
-        if (widget.participant.ageGroup == 'كبار') {
+        if (widget.args.participant.ageGroup == 'كبار') {
           _noteModel
             ..noteOu4oubetSawtt = eval.noteModel.noteOu4oubetSawtt
             ..noteWaqfAndIbtidaa = eval.noteModel.noteWaqfAndIbtidaa;
@@ -102,7 +91,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
       notes.add(_noteModel.noteHousnSawtt!);
     }
 
-    if (widget.participant.ageGroup == 'كبار') {
+    if (widget.args.participant.ageGroup == 'كبار') {
       if (_noteModel.noteOu4oubetSawtt != null) {
         notes.add(_noteModel.noteOu4oubetSawtt!);
       }
@@ -123,15 +112,22 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   }
 
   Future<void> _submit() async {
+    if (_isReadOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم نشر النتائج - لا يمكن تعديل التقييم')),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate() || _activeRound == null) return;
 
     setState(() => _isSubmitting = true);
 
     final evaluation = Evaluation(
       id: _existingEvaluation?.id ?? '',
-      participantId: widget.participant.id,
-      juryId: widget.appUser.id,
-      versionId: widget.version.id,
+      participantId: widget.args.participant.id,
+      juryId: widget.args.appUser.id,
+      versionId: widget.args.version.id,
       roundId: _activeRound!.id,
       totalScore: _totalScore,
       notes:
@@ -146,7 +142,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
       if (_existingEvaluation == null) {
         await _evaluationService.submitEvaluation(
           evaluation,
-          widget.participant.ageGroup,
+          widget.args.participant.ageGroup,
         );
         ScaffoldMessenger.of(
           context,
@@ -154,7 +150,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
       } else {
         await _evaluationService.updateEvaluation(
           evaluation,
-          widget.participant.ageGroup,
+          widget.args.participant.ageGroup,
         );
         ScaffoldMessenger.of(
           context,
@@ -185,10 +181,13 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
           divisions: max.toInt(),
           label: _getValueForLabel(label).toStringAsFixed(1),
           value: _getValueForLabel(label),
-          onChanged: (value) {
-            onChanged(value);
-            _recalculateTotal();
-          },
+          onChanged:
+              _isReadOnly
+                  ? null
+                  : (value) {
+                    onChanged(value);
+                    _recalculateTotal();
+                  },
         ),
       ],
     );
@@ -213,21 +212,76 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdult = widget.participant.ageGroup == 'كبار';
+    final isAdult = widget.args.participant.ageGroup == 'كبار';
+    final roundStatus =
+        _isReadOnly
+            ? ' (تم نشر النتائج - قراءة فقط)'
+            : ' (نشطة - يمكن التقييم)';
+    final statusColor = _isReadOnly ? Colors.blue : Colors.green;
 
     return Scaffold(
-      appBar: AppBar(title: Text('تصحيح: ${widget.participant.fullName}')),
+      appBar: AppBar(
+        title: Text('المتسابق رقم : ${widget.args.participant.registrationNumber}'),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: statusColor),
+            ),
+            child: Text(
+              _activeRound?.name ?? 'غير محدد' + roundStatus,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _activeRound == null
-              ? const Center(child: Text('لا يوجد جولة نشطة حالياً'))
+              ? const Center(child: Text('لا يوجد جولة محددة'))
               : Padding(
                 padding: const EdgeInsets.all(16),
                 child: Form(
                   key: _formKey,
                   child: ListView(
                     children: [
+                      // Message d'information pour le mode lecture seule
+                      if (_isReadOnly)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info, color: Colors.blue, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'تم نشر النتائج - يمكنك عرض التقييم فقط',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       _buildSlider(
                         'التجويد',
                         isAdult ? 70 : 15,
@@ -266,23 +320,51 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _notesController,
-                        decoration: const InputDecoration(
+                        enabled: !_isReadOnly,
+                        decoration: InputDecoration(
                           labelText: 'ملاحظات (اختياري)',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          filled: _isReadOnly,
+                          fillColor: _isReadOnly ? Colors.grey.shade100 : null,
                         ),
                         maxLines: 3,
                       ),
                       const SizedBox(height: 16),
-                      _isSubmitting
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton(
-                            onPressed: _submit,
-                            child: Text(
-                              _existingEvaluation == null
-                                  ? 'إرسال التقييم'
-                                  : 'تحديث التقييم',
+                      if (!_isReadOnly) ...[
+                        _isSubmitting
+                            ? const Center(child: CircularProgressIndicator())
+                            : ElevatedButton(
+                              onPressed: _submit,
+                              child: Text(
+                                _existingEvaluation == null
+                                    ? 'إرسال التقييم'
+                                    : 'تحديث التقييم',
+                              ),
                             ),
+                      ] else ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.lock, color: Colors.grey.shade600),
+                              const SizedBox(width: 8),
+                              Text(
+                                'تم نشر النتائج - لا يمكن تعديل التقييم',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

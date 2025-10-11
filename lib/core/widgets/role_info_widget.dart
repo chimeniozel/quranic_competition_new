@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/user_role.dart';
+import 'package:quranic_competition/core/widgets/ui_components.dart';
+import 'package:quranic_competition/core/theme/app_theme.dart';
 
 class RoleInfoWidget extends StatelessWidget {
   final bool showDetails;
@@ -46,103 +48,97 @@ class RoleInfoWidget extends StatelessWidget {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                permissionService.getRoleDisplayName(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: _getRoleColor(role),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _getRoleDescription(role),
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-          if (showDetails) ...[
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 12),
-            Text(
-              'الصلاحيات المتاحة:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            ..._buildPermissionList(permissions),
-          ],
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildPermissionList(UserPermissions permissions) {
-    final permissionItems = [
-      ('إنشاء نسخ المسابقات', permissions.canCreateVersions),
-      ('نشر المحتوى', permissions.canPublishContent),
-      ('التحقق من الحسابات', permissions.canValidateAccounts),
-      ('حذف العناصر', permissions.canDelete),
-      ('تعديل العناصر', permissions.canModify),
-      ('تعديل نسخ المسابقات', permissions.canModifyVersions),
-      ('تعيين الأدوار', permissions.canAssignRoles),
-      ('عرض المحتوى', permissions.canViewContent),
-    ];
-
-    return permissionItems.map((item) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+    return ModernCard(
+      backgroundColor: AppTheme.backgroundColor,
+      padding: const EdgeInsets.all(8),
+      child: Container(
+        height: showDetails ? null : 50,
         child: Row(
           children: [
-            Icon(
-              item.$2 ? Icons.check_circle : Icons.cancel,
-              size: 16,
-              color: item.$2 ? Colors.green[600] : Colors.red[400],
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                item.$1,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: item.$2 ? Colors.green[700] : Colors.red[600],
-                  fontWeight: item.$2 ? FontWeight.w500 : FontWeight.normal,
-                ),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _getRoleColor(role).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusS),
+              ),
+              child: Icon(
+                _getRoleIcon(role),
+                color: _getRoleColor(role),
+                size: 16,
               ),
             ),
+            const SizedBox(width: AppTheme.spacingS),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    permissionService.getRoleDisplayName(),
+                    style: AppTheme.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: _getRoleColor(role),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    _getRoleDescription(role),
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (!showDetails)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _getRoleColor(role).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'نشط',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: _getRoleColor(role),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 9,
+                  ),
+                ),
+              ),
           ],
         ),
-      );
-    }).toList();
+      ),
+    );
   }
 
   Color _getRoleColor(UserRole role) {
     switch (role) {
       case UserRole.superAdmin:
-        return Colors.purple[600]!;
+        return AppTheme.warningColor;
       case UserRole.admin:
-        return Colors.blue[600]!;
+        return AppTheme.primaryColor;
       case UserRole.jury:
-        return Colors.orange[600]!;
+        return AppTheme.infoColor;
       case UserRole.member:
-        return Colors.grey[600]!;
+        return AppTheme.textSecondaryColor;
+    }
+  }
+
+  IconData _getRoleIcon(UserRole role) {
+    switch (role) {
+      case UserRole.superAdmin:
+        return Icons.admin_panel_settings;
+      case UserRole.admin:
+        return Icons.manage_accounts;
+      case UserRole.jury:
+        return Icons.gavel;
+      case UserRole.member:
+        return Icons.person;
     }
   }
 

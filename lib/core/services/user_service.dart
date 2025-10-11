@@ -4,10 +4,10 @@ import 'package:quranic_competition/models/app_user.dart';
 class UserService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Récupère un utilisateur par son ID
+  /// Récupère un utilisateur par son ID depuis la table profiles
   Future<AppUser?> getUserById(String id) async {
     final response =
-        await _supabase.from('users').select().eq('id', id).maybeSingle();
+        await _supabase.from('profiles').select().eq('id', id).maybeSingle();
 
     if (response == null) return null;
 
@@ -17,15 +17,15 @@ class UserService {
   /// Récupère tous les jurys liés à une version
   Future<List<AppUser>> getJurysByVersion(String versionId) async {
     final response = await _supabase
-        .from('jury_assignments') // nom correct de ta table de lien
+        .from('jury_assignments')
         .select(
-          'users(*)',
-        ) // récupère les données de l'utilisateur via la relation
+          'profiles(*)',
+        ) // récupère les données de l'utilisateur via la relation avec profiles
         .eq('version_id', versionId);
 
     // Assure-toi que response est bien une List
     return response
-        .map<AppUser>((item) => AppUser.fromMap(item['users']))
+        .map<AppUser>((item) => AppUser.fromMap(item['profiles']))
         .toList();
   }
 
@@ -37,7 +37,10 @@ class UserService {
   }
 
   Future<List<AppUser>> getAllJurys() async {
-    final response = await _supabase.from('users').select().eq('role', 'jury');
+    final response = await _supabase
+        .from('profiles')
+        .select()
+        .eq('role', 'jury');
     return (response as List).map((e) => AppUser.fromMap(e)).toList();
   }
 
@@ -70,7 +73,7 @@ class UserService {
     }
 
     final response = await _supabase
-        .from('users')
+        .from('profiles')
         .select()
         .neq('id', currentUserId)
         .order('created_at', ascending: false);
@@ -92,7 +95,7 @@ class UserService {
 
     // Récupérer tous les utilisateurs d'abord (pour simplifier)
     final allUsers = await _supabase
-        .from('users')
+        .from('profiles')
         .select()
         .neq('id', currentUserId)
         .order('created_at', ascending: false);
@@ -163,8 +166,8 @@ class UserService {
     required bool isVerified,
   }) async {
     await _supabase
-        .from('users')
-        .update({'is_verified': isVerified})
+        .from('profiles')
+        .update({'is_validated': isVerified})
         .eq('id', userId);
   }
 
@@ -173,7 +176,7 @@ class UserService {
     required String userId,
     required String newRole,
   }) async {
-    await _supabase.from('users').update({'role': newRole}).eq('id', userId);
+    await _supabase.from('profiles').update({'role': newRole}).eq('id', userId);
   }
 
   /// Récupère les utilisateurs par rôle
@@ -184,7 +187,7 @@ class UserService {
     }
 
     final response = await _supabase
-        .from('users')
+        .from('profiles')
         .select()
         .eq('role', role)
         .neq('id', currentUserId)
@@ -201,9 +204,9 @@ class UserService {
     }
 
     final response = await _supabase
-        .from('users')
+        .from('profiles')
         .select()
-        .eq('is_verified', true)
+        .eq('is_validated', true)
         .neq('id', currentUserId)
         .order('created_at', ascending: false);
 
@@ -218,9 +221,9 @@ class UserService {
     }
 
     final response = await _supabase
-        .from('users')
+        .from('profiles')
         .select()
-        .eq('is_verified', false)
+        .eq('is_validated', false)
         .neq('id', currentUserId)
         .order('created_at', ascending: false);
 
@@ -231,11 +234,11 @@ class UserService {
   Future<void> deleteUser(String userId) async {
     // Option 1: Soft delete - marquer comme supprimé
     await _supabase
-        .from('users')
-        .update({'is_verified': false, 'role': 'deleted'})
+        .from('profiles')
+        .update({'is_validated': false, 'role': 'deleted'})
         .eq('id', userId);
 
     // Option 2: Hard delete (décommentez si nécessaire)
-    // await _supabase.from('users').delete().eq('id', userId);
+    // await _supabase.from('profiles').delete().eq('id', userId);
   }
 }

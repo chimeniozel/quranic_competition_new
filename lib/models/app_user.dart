@@ -20,11 +20,16 @@ class AppUser {
   factory AppUser.fromMap(Map<String, dynamic> map) {
     return AppUser(
       id: map['id'],
-      fullName: map['full_name'],
-      phone: map['phone'],
-      email: map['email'],
-      role: map['role'],
-      isVerified: map['is_verified'],
+      fullName: map['full_name'] ?? '',
+      phone: map['phone'] ?? '',
+      email:
+          map['email'] ??
+          '', // Peut être null si récupéré depuis profiles uniquement
+      role: map['role'] ?? 'membre',
+      isVerified:
+          map['is_validated'] ??
+          map['is_verified'] ??
+          false, // Support des deux formats
       createdAt: DateTime.parse(map['created_at']),
     );
   }
@@ -36,7 +41,7 @@ class AppUser {
       'phone': phone,
       'email': email,
       'role': role,
-      'is_verified': isVerified,
+      'is_validated': isVerified, // Utilise is_validated pour la table profiles
       'created_at': createdAt.toIso8601String(),
     };
   }

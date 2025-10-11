@@ -276,9 +276,9 @@ class UserManagementService {
       );
 
       if (response.user != null) {
-        // Mettre à jour le rôle dans la table des utilisateurs
+        // Mettre à jour le rôle dans la table profiles
         await _supabase
-            .from('users')
+            .from('profiles')
             .update({'role': role.code})
             .eq('id', response.user!.id);
       }

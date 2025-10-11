@@ -4,10 +4,12 @@ import 'package:flutter/rendering.dart';
 import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
+import 'package:quranic_competition/core/services/error_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final ErrorService _errorService = ErrorService();
 
   /// Inscription d'un nouvel utilisateur avec téléphone, mot de passe, nom complet et rôle.
   Future<String?> signUp({
@@ -18,6 +20,15 @@ class AuthService {
     required String role, // ex: jury, admin
   }) async {
     try {
+      // Validation préliminaire
+      final validationError = _validateSignUpData(
+        email,
+        password,
+        phone,
+        fullName,
+      );
+      if (validationError != null) return validationError;
+
       final res = await _supabase.auth.signUp(
         email: email,
         password: password,
@@ -27,7 +38,7 @@ class AuthService {
 
       final user = res.user;
       if (user == null) {
-        return 'Erreur lors de la création du compte';
+        return _errorService.getErrorMessage('USER_CREATION_FAILED');
       }
 
       // Le trigger handle_new_user() va automatiquement créer le profil
@@ -49,24 +60,33 @@ class AuthService {
 
       return null; // Succès
     } catch (e) {
-      debugPrint(e.toString());
-      return e.toString();
+      debugPrint('Erreur signUp: $e');
+      return _errorService.analyzeException(e);
     }
   }
 
-  /// Connexion avec téléphone et mot de passe.
+  /// Connexion avec email et mot de passe.
   Future<String?> signIn({
     required String email,
     required String password,
   }) async {
     try {
+      // Validation préliminaire
+      if (email.isEmpty || password.isEmpty) {
+        return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+      }
+
+      if (!_isValidEmail(email)) {
+        return _errorService.getErrorMessage('AUTH_INVALID_EMAIL');
+      }
+
       final res = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       if (res.user == null) {
-        return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+        return _errorService.getErrorMessage('AUTH_INVALID_CREDENTIALS');
       }
 
       // Initialiser les permissions après la connexion
@@ -74,7 +94,8 @@ class AuthService {
 
       return null; // Succès
     } catch (e) {
-      return e.toString();
+      debugPrint('Erreur signIn: $e');
+      return _errorService.analyzeException(e);
     }
   }
 
@@ -121,13 +142,17 @@ class AuthService {
     }
   }
 
-  /// Récupérer le profil utilisateur actuel depuis la table users.
+  /// Récupérer le profil utilisateur actuel depuis la table profiles.
   Future<AppUser?> getUserProfile() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return null;
 
     final response =
-        await _supabase.from('users').select().eq('id', user.id).maybeSingle();
+        await _supabase
+            .from('profiles')
+            .select()
+            .eq('id', user.id)
+            .maybeSingle();
 
     if (response == null) {
       print('Profil utilisateur non trouvé');
@@ -135,5 +160,67 @@ class AuthService {
     }
 
     return AppUser.fromMap(response);
+  }
+
+  /// Validation des données d'inscription
+  String? _validateSignUpData(
+    String email,
+    String password,
+    String phone,
+    String fullName,
+  ) {
+    // Validation du nom complet
+    if (fullName.trim().isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (fullName.length < 2) {
+      return _errorService.getErrorMessage('VALIDATION_TOO_SHORT');
+    }
+
+    // Validation de l'email
+    if (email.trim().isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (!_isValidEmail(email)) {
+      return _errorService.getErrorMessage('AUTH_INVALID_EMAIL');
+    }
+
+    // Validation du téléphone
+    if (phone.trim().isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (!_isValidPhone(phone)) {
+      return _errorService.getErrorMessage('AUTH_INVALID_PHONE');
+    }
+
+    // Validation du mot de passe
+    if (password.isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (!_isValidPassword(password)) {
+      return _errorService.getErrorMessage('AUTH_WEAK_PASSWORD');
+    }
+
+    return null; // Pas d'erreur
+  }
+
+  /// Valide un email
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  /// Valide un numéro de téléphone
+  bool _isValidPhone(String phone) {
+    return RegExp(r'^\+?[\d\s\-\(\)]{8,15}$').hasMatch(phone);
+  }
+
+  /// Valide un mot de passe
+  bool _isValidPassword(String password) {
+    // Au moins 8 caractères, une majuscule, une minuscule, un chiffre
+    if (password.length < 8) return false;
+    if (!password.contains(RegExp(r'[A-Z]'))) return false;
+    if (!password.contains(RegExp(r'[a-z]'))) return false;
+    if (!password.contains(RegExp(r'[0-9]'))) return false;
+    return true;
   }
 }

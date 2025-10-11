@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/error_service.dart';
+import '../../../core/widgets/password_field_widget.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -12,13 +14,15 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
+  final _errorService = ErrorService();
 
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _fullNameController = TextEditingController();
 
-  String _role = 'participant'; // Valeurs possibles: participant, jury, admin
+  String _role = 'membre'; // Valeurs possibles: membre, jury, admin
   bool _isLoading = false;
 
   void _submit() async {
@@ -37,17 +41,103 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = false);
 
     if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      _showErrorDialog(error);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم التسجيل بنجاح! الرجاء انتظار التوثيق.'),
-        ),
-      );
-      Navigator.of(context).pop(); // Retour à la page login, par ex.
+      _showSuccessDialog();
     }
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 8),
+              Text('خطأ في التسجيل'),
+            ],
+          ),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('موافق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.green),
+              SizedBox(width: 8),
+              Text('تم التسجيل بنجاح'),
+            ],
+          ),
+          content: const Text(
+            'تم إنشاء حسابك بنجاح!\n\n'
+            'يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب.\n'
+            'بعد ذلك، ستتمكن من تسجيل الدخول.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.go('/login');
+              },
+              child: const Text('موافق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String? _validateFullName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (value.trim().length < 2) {
+      return _errorService.getErrorMessage('VALIDATION_TOO_SHORT');
+    }
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (!_isValidEmail(value)) {
+      return _errorService.getErrorMessage('AUTH_INVALID_EMAIL');
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+    if (!_isValidPhone(value)) {
+      return _errorService.getErrorMessage('AUTH_INVALID_PHONE');
+    }
+    return null;
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  bool _isValidPhone(String phone) {
+    return RegExp(r'^\+?[\d\s\-\(\)]{8,15}$').hasMatch(phone);
   }
 
   @override
@@ -55,6 +145,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _fullNameController.dispose();
     super.dispose();
   }
@@ -62,83 +153,130 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل جديد')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('إنشاء حساب جديد'),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: ListView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Header avec icône
+              Icon(
+                Icons.person_add_outlined,
+                size: 80,
+                color: Colors.deepPurple.shade300,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'إنشاء حساب جديد',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'املأ البيانات التالية لإنشاء حسابك',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              // Nom complet
               TextFormField(
                 controller: _fullNameController,
-                decoration: const InputDecoration(labelText: 'الاسم الكامل'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'الرجاء إدخال الاسم الكامل';
-                  }
-                  return null;
-                },
+                textDirection: TextDirection.rtl,
+                decoration: InputDecoration(
+                  labelText: 'الاسم الكامل',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                validator: _validateFullName,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // Email
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
                   labelText: 'البريد الإلكتروني',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'الرجاء إدخال البريد الإلكتروني';
-                  }
-                  // Validation simple email regex
-                  final emailRegex = RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  );
-                  if (!emailRegex.hasMatch(value)) {
-                    return 'البريد الإلكتروني غير صالح';
-                  }
-                  return null;
-                },
+                validator: _validateEmail,
               ),
+              const SizedBox(height: 16),
 
-              const SizedBox(height: 12),
+              // Téléphone
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'رقم الهاتف'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'الرجاء إدخال رقم الهاتف';
-                  }
-                  if (!RegExp(r'^\+?[\d]{8,15}$').hasMatch(value)) {
-                    return 'رقم الهاتف غير صالح';
-                  }
-                  return null;
-                },
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  labelText: 'رقم الهاتف',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  hintText: '+966501234567',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                validator: _validatePhone,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
+              const SizedBox(height: 16),
+
+              // Mot de passe avec validation avancée
+              PasswordFieldWidget(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'كلمة المرور'),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.length < 6) {
-                    return 'كلمة المرور يجب أن تكون على الأقل 6 أحرف';
-                  }
-                  return null;
-                },
+                labelText: 'كلمة المرور',
+                showStrengthIndicator: true,
+                showSuggestions: true,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // Confirmation mot de passe
+              ConfirmPasswordFieldWidget(
+                controller: _confirmPasswordController,
+                passwordController: _passwordController,
+                labelText: 'تأكيد كلمة المرور',
+              ),
+              const SizedBox(height: 16),
+              // Sélection du rôle
               DropdownButtonFormField<String>(
                 value: _role,
-                decoration: const InputDecoration(labelText: 'الدور'),
+                decoration: InputDecoration(
+                  labelText: 'الدور',
+                  prefixIcon: const Icon(Icons.work_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
                 items: const [
-                  DropdownMenuItem(value: 'participant', child: Text('متسابق')),
+                  DropdownMenuItem(value: 'membre', child: Text('عضو عادي')),
                   DropdownMenuItem(
                     value: 'jury',
                     child: Text('عضو لجنة التحكيم'),
                   ),
-                  DropdownMenuItem(value: 'admin', child: Text('إدارة')),
+                  DropdownMenuItem(value: 'admin', child: Text('مدير')),
                 ],
                 onChanged: (value) {
                   if (value != null) {
@@ -146,19 +284,40 @@ class _SignUpPageState extends State<SignUpPage> {
                   }
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
+
+              // Bouton d'inscription
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
                     onPressed: _submit,
-                    child: const Text('تسجيل'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'إنشاء الحساب',
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  context.push('/login');
-                },
-                child: const Text('تسجيل دخول'),
+              const SizedBox(height: 16),
+
+              // Lien vers la connexion
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('لديك حساب بالفعل؟ '),
+                  TextButton(
+                    onPressed: () {
+                      context.go('/login');
+                    },
+                    child: const Text('تسجيل الدخول'),
+                  ),
+                ],
               ),
             ],
           ),

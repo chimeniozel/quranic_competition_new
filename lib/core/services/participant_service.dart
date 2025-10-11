@@ -70,11 +70,10 @@ class ParticipantService {
           .from('participant_versions')
           .select('participant_id, participants(*)')
           .eq('version_id', versionId);
-          return response.map<Participant>((record) {
-          final participantData =
-              record['participants'] as Map<String, dynamic>;
-          return Participant.fromMap(participantData);
-        }).toList();
+      return response.map<Participant>((record) {
+        final participantData = record['participants'] as Map<String, dynamic>;
+        return Participant.fromMap(participantData);
+      }).toList();
     } else if (activeRound?.number == 2) {
       // Round 2 et plus → uniquement ceux qui ont passé le round 1
       response = await _supabase
@@ -82,16 +81,13 @@ class ParticipantService {
           .select('participant_id, participants(*)')
           .eq('version_id', versionId)
           .eq('passed_round1', true);
-          return response.map<Participant>((record) {
-          final participantData =
-              record['participants'] as Map<String, dynamic>;
-          return Participant.fromMap(participantData);
-        }).toList();
-    }
-    else {
+      return response.map<Participant>((record) {
+        final participantData = record['participants'] as Map<String, dynamic>;
+        return Participant.fromMap(participantData);
+      }).toList();
+    } else {
       return [];
     }
-    
   }
 
   Future<List<Participant>> fetchParticipantsByVersion(
@@ -121,5 +117,29 @@ class ParticipantService {
       final participantData = record['participants'] as Map<String, dynamic>;
       return Participant.fromMap(participantData);
     }).toList();
+  }
+
+  // Supprimer un participant
+  Future<void> deleteParticipant(String participantId) async {
+    try {
+      await _supabase.from('participants').delete().eq('id', participantId);
+    } catch (e) {
+      throw Exception('Erreur lors de la suppression du participant: $e');
+    }
+  }
+
+  // Mettre à jour le statut d'acceptation d'un participant
+  Future<void> updateParticipantAcceptance(
+    String participantId,
+    bool isAccepted,
+  ) async {
+    try {
+      await _supabase
+          .from('participants')
+          .update({'is_accepted': isAccepted})
+          .eq('id', participantId);
+    } catch (e) {
+      throw Exception('Erreur lors de la mise à jour du statut: $e');
+    }
   }
 }
