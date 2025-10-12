@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/core/services/archive_media_service.dart';
-import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/archive_media.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 
 class ParticipantCompetitionArchivesPage extends StatefulWidget {
   final String versionId;
@@ -25,7 +28,6 @@ class _ParticipantCompetitionArchivesPageState
   final CompetitionVersionService _versionService = CompetitionVersionService();
   final ArchiveMediaService _mediaService = ArchiveMediaService();
 
-  CompetitionVersion? _version;
   List<ArchiveMedia> _allMedia = [];
   List<ArchiveMedia> _filteredMedia = [];
   String? _competitionName;
@@ -54,7 +56,6 @@ class _ParticipantCompetitionArchivesPageState
       final activeMedia = media.where((media) => media.isActive).toList();
 
       setState(() {
-        _version = version;
         _competitionName = version.name;
         _allMedia = activeMedia; // Seulement les médias actifs
         _filteredMedia = activeMedia; // Seulement les médias actifs
@@ -120,11 +121,10 @@ class _ParticipantCompetitionArchivesPageState
               children: [
                 if (title != null && title.isNotEmpty) ...[
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppTheme.spacingM),
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: AppTheme.labelLarge.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -144,10 +144,10 @@ class _ParticipantCompetitionArchivesPageState
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ElevatedButton(
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  child: PrimaryButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('إغلاق'),
+                    text: 'إغلاق',
                   ),
                 ),
               ],
@@ -157,94 +157,109 @@ class _ParticipantCompetitionArchivesPageState
   }
 
   Widget _buildMediaCard(ArchiveMedia media) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      child: InkWell(
-        onTap: () {
-          if (media.type == MediaType.video) {
-            if (media.url.isNotEmpty) {
-              _launchVideo(media.url);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('خطأ: رابط الفيديو غير متوفر'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          } else {
-            _showImageDialog(media.url, media.title);
-          }
-        },
-        child:
-            media.type == MediaType.video
-                ? // Vidéo : fond rouge avec titre en bas
-                Container(
-                  color: Colors.red[600],
-                  child: Column(
-                    children: [
-                      // Zone principale avec icône de lecture
-                      Expanded(
-                        child: Container(
-                          color: Colors.red[600],
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.play_circle_filled,
-                                size: 64,
-                                color: Colors.white,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'فيديو',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Titre en bas
-                      Container(
-                        width: double.infinity,
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(8),
-                        child: Text(
-                          media.title != null && media.title!.isNotEmpty
-                              ? media.title!
-                              : 'فيديو ${media.order}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        child: InkWell(
+          onTap: () {
+            if (media.type == MediaType.video) {
+              if (media.url.isNotEmpty) {
+                _launchVideo(media.url);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('خطأ: رابط الفيديو غير متوفر'),
+                    backgroundColor: Colors.red,
                   ),
-                )
-                : // Image : expansion complète sans titre
-                Image.network(
-                  media.url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported, size: 32),
-                      ),
-                    );
-                  },
-                ),
+                );
+              }
+            } else {
+              _showImageDialog(media.url, media.title);
+            }
+          },
+          child:
+              media.type == MediaType.video
+                  ? // Vidéo : fond rouge avec titre en bas
+                  Container(
+                    height: double.infinity,
+                    width: double.infinity,
+                    color: AppTheme.errorColor,
+                    child: Column(
+                      children: [
+                        // Zone principale avec icône de lecture
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            color: AppTheme.errorColor,
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.play_circle_filled,
+                                  size: 64,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(height: AppTheme.spacingS),
+                                Text(
+                                  'فيديو',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Titre en bas
+                        Container(
+                          width: double.infinity,
+                          color: Colors.white,
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          child: Text(
+                            media.title != null && media.title!.isNotEmpty
+                                ? media.title!
+                                : 'فيديو ${media.order}',
+                            style: AppTheme.labelSmall.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  : // Image : expansion complète sans titre
+                  Image.network(
+                    media.url,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        color: AppTheme.backgroundColor,
+                        child: const Center(
+                          child: Icon(Icons.image_not_supported, size: 32),
+                        ),
+                      );
+                    },
+                  ),
+        ),
       ),
     );
   }
@@ -274,150 +289,288 @@ class _ParticipantCompetitionArchivesPageState
 
   Widget _buildFilterButton(String filter, String label, int count) {
     final isSelected = _selectedFilter == filter;
-    return ElevatedButton(
-      onPressed: () => _applyFilter(filter),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.blue[600] : Colors.grey[200],
-        foregroundColor: isSelected ? Colors.white : Colors.black,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return GestureDetector(
+      onTap: () => _applyFilter(filter),
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacingS),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                  : AppTheme.backgroundColor,
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$count',
+              style: AppTheme.labelLarge.copyWith(
+                color:
+                    isSelected
+                        ? AppTheme.primaryColor
+                        : AppTheme.textPrimaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: AppTheme.labelSmall.copyWith(
+                color:
+                    isSelected
+                        ? AppTheme.primaryColor
+                        : AppTheme.textSecondaryColor,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Text('$label ($count)'),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: ModernAppBar(title: _competitionName ?? 'المسابقة'),
+        body: const LoadingOverlay(child: SizedBox()),
+      );
     }
 
     if (_allMedia.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(_competitionName ?? 'المسابقة'),
-          backgroundColor: Colors.blue[600],
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: Text(
-            'لا توجد أرشيفات متاحة لهذه المسابقة',
-            style: TextStyle(fontSize: 16),
-          ),
+        appBar: ModernAppBar(title: _competitionName ?? 'المسابقة'),
+        body: EmptyState(
+          icon: Icons.archive_outlined,
+          title: 'لا توجد أرشيفات',
+          subtitle: 'لا توجد أرشيفات متاحة لهذه المسابقة',
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_competitionName ?? 'المسابقة'),
-        backgroundColor: Colors.blue[600],
-        foregroundColor: Colors.white,
-      ),
+      appBar: ModernAppBar(title: _competitionName ?? 'المسابقة'),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // En-tête avec statistiques
-            Card(
-              color: Colors.green[50],
+            ModernCard(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppTheme.spacingM),
                 child: Column(
                   children: [
-                    Text(
-                      _competitionName!,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Column(
-                          children: [
-                            Text(
-                              '${_allMedia.length}',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[600],
-                              ),
+                        Container(
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          decoration: BoxDecoration(
+                            color: AppTheme.successColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusM,
                             ),
-                            const Text(
-                              'أرشيف متاحة',
-                              style: TextStyle(fontSize: 14),
+                          ),
+                          child: Icon(
+                            Icons.archive,
+                            color: AppTheme.successColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          child: Text(
+                            _competitionName!,
+                            style: AppTheme.labelLarge.copyWith(
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
+                          ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      decoration: BoxDecoration(
+                        color: AppTheme.successColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Column(
+                            children: [
+                              Text(
+                                '${_allMedia.length}',
+                                style: AppTheme.labelLarge.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.successColor,
+                                  fontSize: 24,
+                                ),
+                              ),
+                              Text(
+                                'أرشيف متاحة',
+                                style: AppTheme.labelMedium.copyWith(
+                                  color: AppTheme.successColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppTheme.spacingS),
 
             // Boutons de filtre
             if (_allMedia.isNotEmpty) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildFilterButton('all', 'الكل', _allMedia.length),
-                  const SizedBox(width: 8),
-                  _buildFilterButton(
-                    'video',
-                    'فيديو',
-                    _allMedia.where((m) => m.type == MediaType.video).length,
+              ModernCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.filter_list,
+                              color: AppTheme.primaryColor,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingS),
+                          Text(
+                            'تصفية الأرشيف',
+                            style: AppTheme.labelLarge.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildFilterButton(
+                              'all',
+                              'الكل',
+                              _allMedia.length,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingS),
+                          Expanded(
+                            child: _buildFilterButton(
+                              'video',
+                              'فيديو',
+                              _allMedia
+                                  .where((m) => m.type == MediaType.video)
+                                  .length,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingS),
+                          Expanded(
+                            child: _buildFilterButton(
+                              'image',
+                              'صور',
+                              _allMedia
+                                  .where((m) => m.type == MediaType.image)
+                                  .length,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildFilterButton(
-                    'image',
-                    'صور',
-                    _allMedia.where((m) => m.type == MediaType.image).length,
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppTheme.spacingS),
             ],
 
             // Grille des médias filtrés
             if (_filteredMedia.isNotEmpty) ...[
-              Text(
-                _selectedFilter == 'all'
-                    ? 'جميع الأرشيف (${_filteredMedia.length})'
-                    : _selectedFilter == 'video'
-                    ? 'الفيديوهات (${_filteredMedia.length})'
-                    : 'الصور (${_filteredMedia.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              ModernCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            decoration: BoxDecoration(
+                              color: AppTheme.warningColor.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.grid_view,
+                              color: AppTheme.warningColor,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingS),
+                          Expanded(
+                            child: Text(
+                              _selectedFilter == 'all'
+                                  ? 'جميع الأرشيف (${_filteredMedia.length})'
+                                  : _selectedFilter == 'video'
+                                  ? 'الفيديوهات (${_filteredMedia.length})'
+                                  : 'الصور (${_filteredMedia.length})',
+                              style: AppTheme.labelLarge.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: AppTheme.spacingS,
+                              mainAxisSpacing: AppTheme.spacingS,
+                              childAspectRatio: 1.1,
+                            ),
+                        itemCount: _filteredMedia.length,
+                        itemBuilder: (context, index) {
+                          final mediaItem = _filteredMedia[index];
+                          return _buildMediaCard(mediaItem);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1.1,
-                ),
-                itemCount: _filteredMedia.length,
-                itemBuilder: (context, index) {
-                  final mediaItem = _filteredMedia[index];
-                  return _buildMediaCard(mediaItem);
-                },
               ),
             ] else if (_allMedia.isNotEmpty) ...[
-              const Center(
-                child: Text(
-                  'لا توجد عناصر للعرض',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
+              EmptyState(
+                icon: Icons.filter_alt_off,
+                title: 'لا توجد عناصر',
+                subtitle: 'لا توجد عناصر للعرض بالفلتر المحدد',
               ),
             ],
           ],

@@ -14,6 +14,7 @@ import 'package:quranic_competition/features/jury/pages/jury_version_detail_page
 import 'package:quranic_competition/features/participant/pages/participant_home_page.dart';
 import 'package:quranic_competition/features/participant/pages/participant_result_page.dart';
 import 'package:quranic_competition/features/participant/pages/participant_benefits_page.dart';
+import 'package:quranic_competition/features/participant/pages/participants_list_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
@@ -47,6 +48,9 @@ import '../features/participant/pages/quiz_page.dart';
 import '../features/participant/pages/quiz_result_page.dart';
 import '../features/participant/pages/participant_archives_page.dart';
 import '../features/participant/pages/participant_competition_archives_page.dart';
+import '../features/participant/pages/participant_detail_page.dart'
+    as participant_pages;
+import '../models/participant.dart';
 import '../features/admin/pages/media_management/new_competition_archives_page.dart';
 import '../features/admin/pages/media_management/new_competition_media_management_page.dart';
 
@@ -74,7 +78,9 @@ final GoRouter appRouter = GoRouter(
           '/ui-showcase',
         ].contains(path) ||
         path.startsWith('/participant/quiz/level/') ||
-        path.startsWith('/participant/archives/competition/');
+        path.startsWith('/participant/archives/competition/') ||
+        path.startsWith('/participant/list/') ||
+        path.startsWith('/participant/detail/');
 
     if (user == null && !isPublicRoute) {
       return '/participant_home_page'; // redirige les utilisateurs non connectés
@@ -228,6 +234,43 @@ final GoRouter appRouter = GoRouter(
         return ParticipantRegisterPage(
           versionId: versionId,
           ageGroup: ageGroup,
+        );
+      },
+    ),
+
+    // Liste des participants
+    GoRoute(
+      path: '/participant/list/:versionId',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId']!;
+
+        return ParticipantsListPage(versionId: versionId);
+      },
+    ),
+    GoRoute(
+      path: '/participant/list/:versionId/:ageGroup',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId']!;
+        final ageGroup = state.pathParameters['ageGroup']!;
+
+        return ParticipantsListPage(versionId: versionId, ageGroup: ageGroup);
+      },
+    ),
+
+    // Détails d'un participant
+    GoRoute(
+      path: '/participant/detail/:participantId',
+      builder: (context, state) {
+        final participant = state.extra as Participant?;
+
+        if (participant == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : participant manquant')),
+          );
+        }
+
+        return participant_pages.ParticipantDetailPage(
+          participant: participant,
         );
       },
     ),

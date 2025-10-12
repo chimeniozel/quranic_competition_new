@@ -1,6 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/participant_service.dart';
+import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/models/participant.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 
 class ParticipantRegisterPage extends StatefulWidget {
   final String versionId;
@@ -19,12 +25,12 @@ class ParticipantRegisterPage extends StatefulWidget {
 class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _service = ParticipantService();
+  final _competitionService = CompetitionVersionService();
 
   // Controllers
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _birthDateController = TextEditingController();
-  final _residenceController = TextEditingController();
 
   String? _quranMemorized;
   String? _readingMethods;
@@ -36,6 +42,126 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
   bool _participatedBefore = false;
   DateTime? _selectedBirthDate;
   bool _isLoading = false;
+  bool _isRegistrationAllowed = false;
+  String? _registrationErrorMessage;
+  StreamSubscription<Map<String, dynamic>>? _versionSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _startListeningToVersionChanges();
+  }
+
+  @override
+  void dispose() {
+    _versionSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _startListeningToVersionChanges() {
+    print(
+      '🔍 Début de l\'écoute des changements pour la version: ${widget.versionId}',
+    );
+
+    _versionSubscription = _competitionService
+        .listenToVersionChanges(widget.versionId)
+        .listen(
+          (versionData) {
+            print('📡 Données reçues: $versionData');
+
+            if (mounted && versionData.isNotEmpty) {
+              final bool isActive = versionData['is_active'] as bool? ?? false;
+              final bool isRegistrationOpen =
+                  versionData['is_registration_open'] as bool? ?? false;
+
+              print(
+                '📊 État actuel: isActive=$isActive, isRegistrationOpen=$isRegistrationOpen',
+              );
+
+              final bool wasAllowed = _isRegistrationAllowed;
+              final bool nowAllowed = isActive && isRegistrationOpen;
+
+              print('🔄 Changement d\'état: $wasAllowed -> $nowAllowed');
+
+              setState(() {
+                _isRegistrationAllowed = nowAllowed;
+                if (!_isRegistrationAllowed) {
+                  if (!isActive) {
+                    _registrationErrorMessage = 'المسابقة غير نشطة';
+                  } else if (!isRegistrationOpen) {
+                    _registrationErrorMessage = 'التسجيل مغلق لهذه المسابقة';
+                  }
+                } else {
+                  _registrationErrorMessage = null;
+                }
+              });
+
+              // Notifier l'utilisateur du changement d'état
+              if (mounted && wasAllowed != nowAllowed) {
+                print('🚨 Notification de changement d\'état affichée');
+                if (!nowAllowed) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        _registrationErrorMessage ?? 'التسجيل غير متاح',
+                      ),
+                      backgroundColor: Colors.orange,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('التسجيل متاح الآن'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            } else {
+              print('⚠️ Données vides ou widget non monté');
+            }
+          },
+          onError: (error) {
+            print('❌ Erreur dans le stream: $error');
+            if (mounted) {
+              setState(() {
+                _isRegistrationAllowed = false;
+                _registrationErrorMessage = 'خطأ في التحقق من حالة المسابقة';
+              });
+            }
+          },
+        );
+  }
+
+  Future<void> _checkRegistrationStatus() async {
+    try {
+      final activeVersions =
+          await _competitionService.fetchActiveVersionsWithOpenRegistration();
+      final versionExists = activeVersions.any(
+        (version) => version.id == widget.versionId,
+      );
+
+      if (!versionExists) {
+        setState(() {
+          _isRegistrationAllowed = false;
+          _registrationErrorMessage = 'المسابقة غير نشطة أو التسجيل مغلق';
+        });
+      } else {
+        setState(() {
+          _isRegistrationAllowed = true;
+          _registrationErrorMessage = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isRegistrationAllowed = false;
+        _registrationErrorMessage = 'خطأ في التحقق من حالة المسابقة';
+      });
+      print('Erreur lors de la vérification du statut d\'inscription: $e');
+    }
+  }
 
   Future<void> _pickBirthDate() async {
     final date = await showDatePicker(
@@ -54,6 +180,45 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
   }
 
   Future<void> _submit() async {
+    // Vérifier en temps réel si l'inscription est toujours autorisée
+    await _checkRegistrationStatus();
+
+    if (!_isRegistrationAllowed) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text(
+              'التسجيل غير متاح',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              _registrationErrorMessage ?? 'التسجيل غير متاح حالياً',
+              style: const TextStyle(fontSize: 16),
+            ),
+            backgroundColor: Colors.white,
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Fermer le dialog
+                  Navigator.of(context).pop(); // Retourner à la page précédente
+                },
+                child: const Text(
+                  'موافق',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBirthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -62,39 +227,210 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       return;
     }
 
+    // Validation que tous les champs requis sont remplis
+    if (_gender == null || _gender!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى اختيار الجنس'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_quranMemorized == null || _quranMemorized!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى اختيار مستوى الحفظ'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_readingMethods == null || _readingMethods!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى اختيار عدد الروايات'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_residence == null || _residence!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى اختيار مكان الإقامة'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Règle métier 2 : Si wonPreviousRanks == true, alors participatedBefore doit être automatiquement true
+    if (_wonPreviousRanks && !_participatedBefore) {
+      setState(() {
+        _participatedBefore = true;
+      });
+    }
+
     setState(() => _isLoading = true);
+
+    // Déterminer si le participant doit être automatiquement refusé
+    final bool isOutsideCountry = _residence == 'خارج موريتانيا';
+    final bool hasWonPreviousRanks = _wonPreviousRanks;
+    final bool shouldAutoReject = isOutsideCountry || hasWonPreviousRanks;
+
+    // Déterminer la raison de refus
+    String? rejectionReason;
+    if (shouldAutoReject) {
+      if (isOutsideCountry && hasWonPreviousRanks) {
+        rejectionReason =
+            'الإقامة خارج موريتانيا وحصوله على المرتبة الأولى أو الثانية في مسابقة سابقة';
+      } else if (isOutsideCountry) {
+        rejectionReason = 'الإقامة خارج موريتانيا';
+      } else if (hasWonPreviousRanks) {
+        rejectionReason = 'حصوله على المرتبة الأولى أو الثانية في مسابقة سابقة';
+      }
+      print('🚫 Raison de refus déterminée: $rejectionReason');
+    }
 
     final participant = Participant(
       id: '',
       fullName: _fullNameController.text.trim(),
-      gender: _gender ?? '',
+      gender: _gender!,
       birthDate: _selectedBirthDate!,
       phone: _phoneController.text.trim(),
-      quranMemorized: _quranMemorized ?? "",
-      readingMethods: _readingMethods ?? "",
-      residence: _residenceController.text.trim(),
+      quranMemorized: _quranMemorized!,
+      readingMethods: _readingMethods!,
+      residence: _residence!,
       hasIjaza: _hasIjaza,
       wonPreviousRanks: _wonPreviousRanks,
       participatedBefore: _participatedBefore,
       ageGroup: widget.ageGroup,
       createdAt: DateTime.now(),
-      isAccepted: true,
+      isAccepted:
+          !shouldAutoReject, // Automatiquement refusé si conditions remplies
+      rejectionReason: rejectionReason, // Ajouter la raison de refus
     );
 
     try {
-      await _service.registerParticipant(
+      final result = await _service.registerParticipant(
         participant: participant,
         versionId: widget.versionId,
       );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم التسجيل بنجاح')));
-      Navigator.of(context).pop();
+
+      // Extraire le numéro d'enregistrement du résultat
+      String registrationNumber = 'غير محدد';
+      try {
+        // Traiter result comme dynamic pour éviter les erreurs de type
+        final dynamic resultData = result;
+        if (resultData is Map<String, dynamic>) {
+          final regNum = resultData['registration_number'];
+          registrationNumber = regNum?.toString() ?? 'غير محدد';
+        } else {
+          // Si result est un int (numéro d'enregistrement direct)
+          registrationNumber = resultData.toString();
+        }
+      } catch (e) {
+        // Garder la valeur par défaut
+        print('Erreur lors de l\'extraction du numéro d\'enregistrement: $e');
+      }
+
+      // Convertir le numéro d'enregistrement en français
+      final String frenchRegistrationNumber = _convertToFrenchNumbers(
+        registrationNumber,
+      );
+
+      // Message personnalisé selon le statut d'acceptation
+      String message;
+      if (shouldAutoReject) {
+        if (isOutsideCountry && hasWonPreviousRanks) {
+          message =
+              'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً للأسباب التالية:\n• الإقامة خارج موريتانيا\n• حصولك على المرتبة الأولى أو الثانية في مسابقة سابقة';
+        } else if (isOutsideCountry) {
+          message =
+              'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك تقيم خارج موريتانيا';
+        } else {
+          message =
+              'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة سابقة';
+        }
+      } else {
+        message = 'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber';
+      }
+
+      // Afficher le message dans un dialog au lieu d'un SnackBar
+      showDialog(
+        context: context,
+        barrierDismissible: false, // L'utilisateur doit cliquer sur OK
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              shouldAutoReject ? 'تم التسجيل مع رفض الطلب' : 'تم التسجيل بنجاح',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            content: Text(message, style: const TextStyle(fontSize: 16)),
+            backgroundColor: Colors.white,
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Fermer le dialog
+                  Navigator.of(context).pop(); // Retourner à la page précédente
+                },
+                child: const Text(
+                  'موافق',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
     } catch (e) {
       print('فشل التسجيل: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('فشل التسجيل: $e')));
+
+      // Message d'erreur plus convivial pour l'utilisateur
+      String errorMessage = 'حدث خطأ أثناء التسجيل';
+      Color backgroundColor = Colors.red;
+
+      if (e.toString().contains(
+        'type \'Null\' is not a subtype of type \'int\'',
+      )) {
+        errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في معالجة البيانات';
+        backgroundColor = Colors.orange; // Orange car l'inscription a réussi
+      } else if (e.toString().contains('is_accepted') &&
+          e.toString().contains('null')) {
+        errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في تحديد حالة القبول';
+        backgroundColor = Colors.orange; // Orange car l'inscription a réussi
+      } else if (e.toString().contains('التسجيل غير متاح لهذه المسابقة')) {
+        errorMessage = 'التسجيل غير متاح لهذه المسابقة';
+      } else if (e.toString().contains('network') ||
+          e.toString().contains('connection')) {
+        errorMessage = 'خطأ في الاتصال، تحقق من اتصال الإنترنت';
+      } else if (e.toString().contains('duplicate') ||
+          e.toString().contains('already exists')) {
+        errorMessage = 'هذا المشارك مسجل مسبقاً';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: backgroundColor,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      // Si c'est une erreur de type cast mais que l'inscription a probablement réussi, fermer quand même
+      if (e.toString().contains(
+        'type \'Null\' is not a subtype of type \'int\'',
+      )) {
+        Navigator.of(context).pop();
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -103,178 +439,526 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.ageGroup == "كبار" ? 'تسجيل الكبار' : 'تسجيل الصغار',
-        ),
+      appBar: ModernAppBar(
+        title: widget.ageGroup == "كبار" ? 'تسجيل الكبار' : 'تسجيل الصغار',
+        actions: [
+          // Bouton de test pour forcer une vérification
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Vérifier le statut',
+            onPressed: () {
+              print('🔄 Vérification manuelle du statut');
+              _checkRegistrationStatus();
+            },
+          ),
+          // Indicateur de statut d'inscription en temps réel
+          Container(
+            padding: const EdgeInsets.all(8),
+            child: Icon(
+              _isRegistrationAllowed ? Icons.check_circle : Icons.cancel,
+              color: _isRegistrationAllowed ? Colors.green : Colors.red,
+              size: 20,
+            ),
+          ),
+        ],
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _fullNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'الاسم الثلاثي',
-                        ),
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty
-                                    ? 'هذا الحقل مطلوب'
-                                    : null,
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: _gender,
-                        items: const [
-                          DropdownMenuItem(value: 'ذكر', child: Text('ذكر')),
-                          DropdownMenuItem(value: 'أنثى', child: Text('أنثى')),
-                        ],
-                        onChanged: (value) => setState(() => _gender = value),
-                        decoration: const InputDecoration(labelText: 'الجنس'),
-                        validator: (v) => v == null ? 'اختر الجنس' : null,
-                      ),
-                      TextFormField(
-                        controller: _birthDateController,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'تاريخ الميلاد',
-                        ),
-                        onTap: _pickBirthDate,
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty
-                                    ? 'هذا الحقل مطلوب'
-                                    : null,
-                      ),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: const InputDecoration(
-                          labelText: 'رقم الهاتف',
-                        ),
-                        keyboardType: TextInputType.phone,
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty
-                                    ? 'هذا الحقل مطلوب'
-                                    : null,
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: _quranMemorized,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'القرآن كاملاً',
-                            child: Text('القرآن كاملاً'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'نصف القرآن',
-                            child: Text('نصف القرآن'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'أقل من نصف',
-                            child: Text('أقل من نصف'),
+              ? const LoadingOverlay(child: SizedBox())
+              : ModernPullToRefresh(
+                onRefresh: () async {
+                  // Simuler un refresh
+                  await Future.delayed(const Duration(milliseconds: 500));
+                },
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        // Message d'information si l'inscription n'est pas autorisée
+                        if (!_isRegistrationAllowed &&
+                            _registrationErrorMessage != null) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            margin: const EdgeInsets.only(
+                              bottom: AppTheme.spacingM,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                              border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+                                Text(
+                                  'التسجيل غير متاح',
+                                  style: AppTheme.labelLarge.copyWith(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+                                Text(
+                                  _registrationErrorMessage!,
+                                  style: AppTheme.labelMedium.copyWith(
+                                    color: Colors.red[700],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
-                        onChanged: (value) {
-                          setState(() {
-                            _quranMemorized = value;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'كم تحفظ من القرآن',
-                        ),
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty
-                                    ? 'اختر مستوى الحفظ'
-                                    : null,
-                      ),
 
-                      DropdownButtonFormField<String>(
-                        value: _readingMethods,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'رواية واحدة',
-                            child: Text('رواية واحدة'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'أكثر من رواية',
-                            child: Text('أكثر من رواية'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _readingMethods = value;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'كم رواية تقرأ بها',
-                        ),
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty
-                                    ? 'اختر عدد الروايات'
-                                    : null,
-                      ),
+                        // Section des informations personnelles
+                        ModernCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingS,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusM,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.person,
+                                        color: AppTheme.primaryColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Text(
+                                      'المعلومات الشخصية',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppTheme.spacingM),
 
-                      DropdownButtonFormField<String>(
-                        value: _residence,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'داخل موريتانيا',
-                            child: Text('داخل موريتانيا'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'خارج موريتانيا',
-                            child: Text('خارج موريتانيا'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _residence = value;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'مكان الإقامة الحالية',
-                        ),
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty
-                                    ? 'اختر مكان الإقامة'
-                                    : null,
-                      ),
+                                TextFormField(
+                                  controller: _fullNameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'الاسم الثلاثي',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) =>
+                                          v == null || v.isEmpty
+                                              ? 'هذا الحقل مطلوب'
+                                              : null,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
 
-                      SwitchListTile(
-                        title: const Text('هل حصلت على إجازة؟'),
-                        value: _hasIjaza,
-                        onChanged: (v) => setState(() => _hasIjaza = v),
-                      ),
-                      SwitchListTile(
-                        title: const Text(
-                          'هل حصلت على المراتب 1 إلى 2 في مسابقة أهل القرآن أو غيرها؟',
+                                DropdownButtonFormField<String>(
+                                  value: _gender,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'ذكر',
+                                      child: Text('ذكر'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'أنثى',
+                                      child: Text('أنثى'),
+                                    ),
+                                  ],
+                                  onChanged:
+                                      (value) =>
+                                          setState(() => _gender = value),
+                                  decoration: InputDecoration(
+                                    labelText: 'الجنس',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) => v == null ? 'اختر الجنس' : null,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+
+                                TextFormField(
+                                  controller: _birthDateController,
+                                  readOnly: true,
+                                  onTap: _pickBirthDate,
+                                  decoration: InputDecoration(
+                                    labelText: 'تاريخ الميلاد',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) =>
+                                          v == null || v.isEmpty
+                                              ? 'هذا الحقل مطلوب'
+                                              : null,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+
+                                TextFormField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: InputDecoration(
+                                    labelText: 'رقم الهاتف',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) =>
+                                          v == null || v.isEmpty
+                                              ? 'هذا الحقل مطلوب'
+                                              : null,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        value: _wonPreviousRanks,
-                        onChanged: (v) => setState(() => _wonPreviousRanks = v),
-                      ),
-                      SwitchListTile(
-                        title: const Text('هل شاركت في نسخة ماضية؟'),
-                        value: _participatedBefore,
-                        onChanged:
-                            (v) => setState(() => _participatedBefore = v),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _submit,
-                        child: const Text('تسجيل'),
-                      ),
-                    ],
+                        const SizedBox(height: AppTheme.spacingS),
+                        // Section des المعلومات القرآنية
+                        ModernCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingS,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.successColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusM,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.menu_book,
+                                        color: AppTheme.successColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Text(
+                                      'المعلومات القرآنية',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppTheme.spacingM),
+
+                                DropdownButtonFormField<String>(
+                                  value: _quranMemorized,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'القرآن كاملاً',
+                                      child: Text('القرآن كاملاً'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'نصف القرآن',
+                                      child: Text('نصف القرآن'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'أقل من نصف',
+                                      child: Text('أقل من نصف'),
+                                    ),
+                                  ],
+                                  onChanged:
+                                      (value) => setState(
+                                        () => _quranMemorized = value,
+                                      ),
+                                  decoration: InputDecoration(
+                                    labelText: 'كم تحفظ من القرآن',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) =>
+                                          v == null || v.isEmpty
+                                              ? 'اختر مستوى الحفظ'
+                                              : null,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+
+                                DropdownButtonFormField<String>(
+                                  value: _readingMethods,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'رواية واحدة',
+                                      child: Text('رواية واحدة'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'أكثر من رواية',
+                                      child: Text('أكثر من رواية'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _readingMethods = value;
+                                      // Règle métier 1 : Si plus d'une rواية, alors القرآن كاملاً automatiquement
+                                      if (value == 'أكثر من رواية') {
+                                        _quranMemorized = 'القرآن كاملاً';
+                                      }
+                                      // Si رواية واحدة, alors pas d'إجازة
+                                      else if (value == 'رواية واحدة') {
+                                        _hasIjaza = false;
+                                      }
+                                    });
+                                  },
+                                  decoration: InputDecoration(
+                                    labelText: 'كم رواية تقرأ بها',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) =>
+                                          v == null || v.isEmpty
+                                              ? 'اختر عدد الروايات'
+                                              : null,
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+
+                                DropdownButtonFormField<String>(
+                                  value: _residence,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'داخل موريتانيا',
+                                      child: Text('داخل موريتانيا'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'خارج موريتانيا',
+                                      child: Text('خارج موريتانيا'),
+                                    ),
+                                  ],
+                                  onChanged:
+                                      (value) =>
+                                          setState(() => _residence = value),
+                                  decoration: InputDecoration(
+                                    labelText: 'مكان الإقامة الحالية',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                    ),
+                                  ),
+                                  validator:
+                                      (v) =>
+                                          v == null || v.isEmpty
+                                              ? 'اختر مكان الإقامة'
+                                              : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingS),
+
+                        // Section des questions supplémentaires
+                        ModernCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingS,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.warningColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusM,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.help_outline,
+                                        color: AppTheme.warningColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Text(
+                                      'أسئلة إضافية',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+
+                                _buildSwitchTile(
+                                  title: 'هل حصلت على إجازة؟',
+                                  value: _hasIjaza,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _hasIjaza = v;
+                                      // Règle métier 1 : Si إجازة, alors القرآن كاملاً automatiquement
+                                      if (v) {
+                                        _quranMemorized = 'القرآن كاملاً';
+                                      }
+                                      // Si pas d'إجازة, alors forcément رواية واحدة
+                                      else if (!v) {
+                                        _readingMethods = 'رواية واحدة';
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: AppTheme.spacingM),
+
+                                _buildSwitchTile(
+                                  title: 'هل شاركت في نسخة ماضية؟',
+                                  value: _participatedBefore,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _participatedBefore = v;
+                                      // Si on décoche "شاركت في نسخة ماضية", alors décocher automatiquement "حصلت على المراتب"
+                                      if (!v) {
+                                        _wonPreviousRanks = false;
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+
+                                _buildSwitchTile(
+                                  title:
+                                      'هل حصلت على المراتب 1 إلى 2 في مسابقة أهل القرآن أو غيرها؟',
+                                  value: _wonPreviousRanks,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _wonPreviousRanks = v;
+                                      // Règle métier 2 : Si wonPreviousRanks devient true, participatedBefore devient automatiquement true
+                                      if (v) {
+                                        _participatedBefore = true;
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingM),
+
+                        // Bouton de soumission
+                        SizedBox(
+                          width: double.infinity,
+                          child: PrimaryButton(
+                            onPressed: _isRegistrationAllowed ? _submit : null,
+                            text:
+                                _isRegistrationAllowed
+                                    ? 'تسجيل'
+                                    : 'التسجيل غير متاح',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
     );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        border: Border.all(color: AppTheme.dividerColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: AppTheme.labelMedium.copyWith(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppTheme.primaryColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Fonction pour convertir les chiffres arabes en français
+  String _convertToFrenchNumbers(String text) {
+    const Map<String, String> arabicToFrench = {
+      '٠': '0',
+      '١': '1',
+      '٢': '2',
+      '٣': '3',
+      '٤': '4',
+      '٥': '5',
+      '٦': '6',
+      '٧': '7',
+      '٨': '8',
+      '٩': '9',
+    };
+
+    String result = text;
+    arabicToFrench.forEach((arabic, french) {
+      result = result.replaceAll(arabic, french);
+    });
+    return result;
   }
 }

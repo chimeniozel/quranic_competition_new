@@ -290,7 +290,7 @@ class ModernBottomNavigation extends StatelessWidget {
                                     : AppTheme.textSecondaryColor,
                             size: 24,
                           ),
-                          const SizedBox(height: AppTheme.spacingXS),
+                          const SizedBox(height: AppTheme.spacingS),
                           Text(
                             item.label,
                             style: TextStyle(
@@ -459,7 +459,7 @@ class ModernDrawer extends StatelessWidget {
               ? Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTheme.spacingS,
-                  vertical: AppTheme.spacingXS,
+                  vertical: AppTheme.spacingS,
                 ),
                 decoration: BoxDecoration(
                   color: AppTheme.errorColor,

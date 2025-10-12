@@ -129,7 +129,7 @@ class DashboardSection extends StatelessWidget {
                   children: [
                     Text(title, style: AppTheme.headingSmall),
                     if (subtitle != null) ...[
-                      const SizedBox(height: AppTheme.spacingXS),
+                      const SizedBox(height: AppTheme.spacingS),
                       Text(
                         subtitle!,
                         style: AppTheme.bodyMedium.copyWith(
@@ -387,7 +387,7 @@ class ModernNotificationCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingXS),
+                const SizedBox(height: AppTheme.spacingS),
                 Text(
                   message,
                   style: AppTheme.bodySmall.copyWith(

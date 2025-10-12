@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:quranic_competition/models/round.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../models/competition_version.dart';
 
@@ -16,6 +14,73 @@ class CompetitionVersionService {
     return response
         .map<CompetitionVersion>((v) => CompetitionVersion.fromMap(v))
         .toList();
+  }
+
+  /// Récupère les compétitions actives avec inscription ouverte
+  Future<List<CompetitionVersion>>
+  fetchActiveVersionsWithOpenRegistration() async {
+    final response = await _supabase
+        .from('competition_versions')
+        .select()
+        .eq('is_active', true)
+        .eq('is_registration_open', true)
+        .order('created_at', ascending: false);
+
+    return response
+        .map<CompetitionVersion>((v) => CompetitionVersion.fromMap(v))
+        .toList();
+  }
+
+  /// Vérifie s'il y a au moins une compétition active avec inscription ouverte
+  Future<bool> hasActiveVersionWithOpenRegistration() async {
+    final activeVersions = await fetchActiveVersionsWithOpenRegistration();
+    return activeVersions.isNotEmpty;
+  }
+
+  /// Écoute les changements en temps réel pour une version spécifique
+  /// Utilise un Timer périodique car les streams Supabase peuvent ne pas fonctionner correctement
+  Stream<Map<String, dynamic>> listenToVersionChanges(String versionId) {
+    return Stream.periodic(
+      const Duration(seconds: 10),
+    ) // Intervalle plus court pour les tests
+    .asyncMap((_) async {
+      try {
+        final response =
+            await _supabase
+                .from('competition_versions')
+                .select()
+                .eq('id', versionId)
+                .single();
+        print(
+          '🔄 Vérification périodique - Version: $versionId, Registration Open: ${response['is_registration_open']}',
+        );
+        return response;
+      } catch (e) {
+        print('Erreur lors de la récupération de la version: $e');
+        return <String, dynamic>{};
+      }
+    });
+  }
+
+  /// Écoute les changements en temps réel pour toutes les versions actives avec inscription ouverte
+  /// Utilise un Timer périodique pour une vérification régulière
+  Stream<List<CompetitionVersion>>
+  listenToActiveVersionsWithOpenRegistration() {
+    return Stream.periodic(
+      const Duration(seconds: 10),
+    ) // Intervalle plus court pour les tests
+    .asyncMap((_) async {
+      try {
+        final versions = await fetchActiveVersionsWithOpenRegistration();
+        print(
+          '🏠 Vérification périodique - Versions actives: ${versions.length}',
+        );
+        return versions;
+      } catch (e) {
+        print('Erreur lors de la récupération des versions actives: $e');
+        return <CompetitionVersion>[];
+      }
+    });
   }
 
   Future<List<CompetitionVersion>> fetchMyVersions() async {

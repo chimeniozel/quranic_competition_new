@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/theme/app_theme.dart';
 
 class TajweedRuleDetailPage extends StatelessWidget {
   final TajweedRule rule;
@@ -76,8 +79,8 @@ class TajweedRuleDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('التفاصيل'),
+      appBar: ModernAppBar(
+        title: 'التفاصيل',
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -94,275 +97,267 @@ class TajweedRuleDetailPage extends StatelessWidget {
             // Image principale
             if (rule.imageUrl != null && rule.imageUrl!.isNotEmpty)
               Container(
+                margin: const EdgeInsets.all(AppTheme.spacingM),
                 width: double.infinity,
                 height: 250,
-                child: Image.network(
-                  rule.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 250,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported, size: 50),
-                      ),
-                    );
-                  },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  child: Image.network(
+                    rule.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 250,
+                        color: AppTheme.backgroundColor,
+                        child: const Center(
+                          child: Icon(Icons.image_not_supported, size: 50),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
 
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppTheme.spacingM),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Titre et type
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          rule.title,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                  ModernCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              rule.title,
+                              style: AppTheme.labelLarge.copyWith(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              rule.type == TajweedType.post
-                                  ? Colors.blue
-                                  : Colors.red,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          rule.type.displayName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.spacingM,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  rule.type == TajweedType.post
+                                      ? AppTheme.primaryColor
+                                      : AppTheme.errorColor,
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                            ),
+                            child: Text(
+                              rule.type.displayName,
+                              style: AppTheme.labelSmall.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppTheme.spacingM),
 
                   // Vidéo si c'est une vidéo
                   if (rule.type == TajweedType.video &&
                       rule.videoUrl != null) ...[
                     GestureDetector(
                       onTap: () => _launchVideo(rule.videoUrl!),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.red[200]!),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.red[600],
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              child: const Icon(
-                                Icons.play_circle_filled,
-                                color: Colors.white,
-                                size: 40,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'مشاهدة الفيديو التعليمي',
-                              style: TextStyle(
-                                color: Colors.red[600],
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'اضغط لمشاهدة الفيديو في تطبيق يوتيوب',
-                              style: TextStyle(
-                                color: Colors.red[600],
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.youtube_searched_for,
-                                  color: Colors.red[600],
-                                  size: 20,
+                      child: ModernCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(
+                                  AppTheme.spacingM,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'ID: ${_extractVideoId(rule.videoUrl!)}',
-                                  style: TextStyle(
-                                    color: Colors.red[400],
-                                    fontSize: 12,
-                                    fontFamily: 'monospace',
+                                decoration: BoxDecoration(
+                                  color: AppTheme.errorColor,
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: const Icon(
+                                  Icons.play_circle_filled,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                              ),
+                              const SizedBox(height: AppTheme.spacingM),
+                              Text(
+                                'مشاهدة الفيديو التعليمي',
+                                style: AppTheme.labelLarge.copyWith(
+                                  color: AppTheme.errorColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'اضغط لمشاهدة الفيديو في تطبيق يوتيوب',
+                                style: AppTheme.labelMedium.copyWith(
+                                  color: AppTheme.errorColor,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.youtube_searched_for,
+                                    color: AppTheme.errorColor,
+                                    size: 20,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Text(
+                                    'ID: ${_extractVideoId(rule.videoUrl!)}',
+                                    style: AppTheme.labelSmall.copyWith(
+                                      color: AppTheme.errorColor.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppTheme.spacingM),
                   ],
 
                   // Contenu principal
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.auto_stories,
-                              color: Colors.blue[600],
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'المحتوى',
-                              style: TextStyle(
-                                color: Colors.blue[600],
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          rule.content,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.8,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Informations sur la règle
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue[200]!),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.person,
-                              color: Colors.blue[600],
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'نشر بواسطة: الإدارة',
-                              style: TextStyle(
-                                color: Colors.blue[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: Colors.blue[600],
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'تاريخ النشر: ${_formatDate(rule.createdAt)}',
-                              style: TextStyle(
-                                color: Colors.blue[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (rule.updatedAt != rule.createdAt) ...[
-                          const SizedBox(height: 8),
+                  ModernCard(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(5),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Row(
                             children: [
                               Icon(
-                                Icons.update,
-                                color: Colors.blue[600],
+                                Icons.auto_stories,
+                                color: AppTheme.primaryColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppTheme.spacingS),
+                              Text(
+                                'المحتوى',
+                                style: AppTheme.labelLarge.copyWith(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.spacingM),
+                          Text(
+                            rule.content,
+                            style: AppTheme.labelMedium.copyWith(
+                              height: 1.8,
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingM),
+
+                  // Informations sur la règle
+                  ModernCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person,
+                                color: AppTheme.primaryColor,
                                 size: 16,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppTheme.spacingS),
                               Text(
-                                'آخر تحديث: ${_formatDate(rule.updatedAt)}',
-                                style: TextStyle(
-                                  color: Colors.blue[600],
+                                'نشر بواسطة: الإدارة',
+                                style: AppTheme.labelMedium.copyWith(
+                                  color: AppTheme.primaryColor,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: AppTheme.primaryColor,
+                                size: 16,
+                              ),
+                              const SizedBox(width: AppTheme.spacingS),
+                              Text(
+                                'تاريخ النشر: ${_formatDate(rule.createdAt)}',
+                                style: AppTheme.labelMedium.copyWith(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (rule.updatedAt != rule.createdAt) ...[
+                            const SizedBox(height: AppTheme.spacingS),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.update,
+                                  color: AppTheme.primaryColor,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: AppTheme.spacingS),
+                                Text(
+                                  'آخر تحديث: ${_formatDate(rule.updatedAt)}',
+                                  style: AppTheme.labelMedium.copyWith(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppTheme.spacingM),
 
                   // Boutons d'action
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: SecondaryButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back),
-                          label: const Text('العودة'),
+                          text: 'العودة',
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppTheme.spacingM),
                       if (rule.type == TajweedType.video &&
                           rule.videoUrl != null)
                         Expanded(
-                          child: ElevatedButton.icon(
+                          child: PrimaryButton(
                             onPressed: () => _launchVideo(rule.videoUrl!),
-                            icon: const Icon(Icons.play_arrow),
-                            label: const Text('مشاهدة الفيديو'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
+                            text: 'مشاهدة الفيديو',
                           ),
                         ),
                     ],

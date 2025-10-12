@@ -57,7 +57,7 @@ class ModernUserMenu extends StatelessWidget {
                       ),
                     ),
                     if (userEmail != null) ...[
-                      const SizedBox(height: AppTheme.spacingXS),
+                      const SizedBox(height: AppTheme.spacingS),
                       Text(
                         userEmail!,
                         style: AppTheme.bodyMedium.copyWith(
@@ -67,11 +67,11 @@ class ModernUserMenu extends StatelessWidget {
                       ),
                     ],
                     if (userRole != null) ...[
-                      const SizedBox(height: AppTheme.spacingXS),
+                      const SizedBox(height: AppTheme.spacingS),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppTheme.spacingS,
-                          vertical: AppTheme.spacingXS,
+                          vertical: AppTheme.spacingS,
                         ),
                         decoration: BoxDecoration(
                           color: _getRoleColor(userRole!).withOpacity(0.1),
@@ -287,7 +287,7 @@ class ModernContextMenu extends StatelessWidget {
           item.badge != null
               ? Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingXS,
+                  horizontal: AppTheme.spacingS,
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
@@ -345,7 +345,7 @@ class ModernContextMenu extends StatelessWidget {
                       if (item.badge != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.spacingXS,
+                            horizontal: AppTheme.spacingS,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
@@ -441,7 +441,7 @@ class UserProfileCompact extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (userEmail != null) ...[
-                    const SizedBox(height: AppTheme.spacingXS),
+                    const SizedBox(height: AppTheme.spacingS),
                     Text(
                       userEmail!,
                       style: AppTheme.bodySmall.copyWith(

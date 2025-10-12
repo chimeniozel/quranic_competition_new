@@ -15,6 +15,7 @@ class Participant {
   final DateTime createdAt;
   bool isEvaluated;
   bool isAccepted; // حالة قبول المشاركة
+  final String? rejectionReason; // سبب الرفض
 
   Participant({
     required this.id,
@@ -33,6 +34,7 @@ class Participant {
     required this.createdAt,
     this.isEvaluated = false,
     this.isAccepted = true,
+    this.rejectionReason,
   });
 
   factory Participant.fromMap(Map<String, dynamic> map) {
@@ -53,6 +55,7 @@ class Participant {
       createdAt: DateTime.parse(map['created_at'] as String),
       isEvaluated: map['is_evaluated'] as bool? ?? false,
       isAccepted: map['is_accepted'] as bool? ?? true,
+      rejectionReason: map['rejection_reason'] as String?,
     );
   }
 
@@ -74,6 +77,7 @@ class Participant {
       'created_at': createdAt.toIso8601String(),
       'is_evaluated': isEvaluated,
       'is_accepted': isAccepted,
+      'rejection_reason': rejectionReason,
     };
   }
 }

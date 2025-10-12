@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/theme/app_theme.dart';
 
 class QuizResultPage extends StatelessWidget {
   final QuizResult result;
@@ -48,8 +51,8 @@ class QuizResultPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('نتيجة المسابقة'),
+      appBar: ModernAppBar(
+        title: 'نتيجة المسابقة',
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -60,46 +63,50 @@ class QuizResultPage extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppTheme.spacingM),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // En-tête avec le niveau
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue[400]!, Colors.blue[600]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              ModernCard(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primaryColor.withValues(alpha: 0.8),
+                        AppTheme.primaryColor,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.quiz, size: 60, color: Colors.white),
-                    const SizedBox(height: 12),
-                    Text(
-                      result.levelName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                  child: Column(
+                    children: [
+                      Icon(Icons.quiz, size: 60, color: Colors.white),
+                      const SizedBox(height: AppTheme.spacingM),
+                      Text(
+                        result.levelName,
+                        style: AppTheme.labelLarge.copyWith(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'تم إكمال المسابقة بنجاح',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withOpacity(0.9),
+                      const SizedBox(height: AppTheme.spacingS),
+                      Text(
+                        'تم إكمال المسابقة بنجاح',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppTheme.spacingM),
 
               // Résultats principaux
               Row(
@@ -280,22 +287,16 @@ class QuizResultPage extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
+                    child: SecondaryButton(
                       onPressed: () => context.go('/participant/quiz'),
-                      icon: const Icon(Icons.quiz),
-                      label: const Text('مسابقات أخرى'),
+                      text: 'مسابقات أخرى',
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppTheme.spacingM),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: PrimaryButton(
                       onPressed: () => context.go('/participant'),
-                      icon: const Icon(Icons.home),
-                      label: const Text('الرئيسية'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                      ),
+                      text: 'الرئيسية',
                     ),
                   ),
                 ],

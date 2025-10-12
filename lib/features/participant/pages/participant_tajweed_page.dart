@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 
 class ParticipantTajweedPage extends StatefulWidget {
   const ParticipantTajweedPage({super.key});
@@ -17,12 +21,12 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  List<TajweedRule> _rules = [];
+  List<TajweedRule> _allRules = [];
+  List<TajweedRule> _filteredRules = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _currentPage = 0;
-  int _totalCount = 0;
   String _searchQuery = '';
   TajweedType? _selectedType;
   Timer? _debounceTimer;
@@ -47,10 +51,36 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
     _debounceTimer?.cancel();
     setState(() {
       _searchText = value;
+      _searchQuery = value;
+      _applyFilters();
     });
-    _searchQuery = value;
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      _loadRules(reset: true);
+      _applyFilters();
+    });
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredRules =
+          _allRules.where((rule) {
+            // Filtrage par recherche
+            if (_searchQuery.isNotEmpty) {
+              final searchLower = _searchQuery.toLowerCase();
+              if (!rule.title.toLowerCase().contains(searchLower) &&
+                  !rule.content.toLowerCase().contains(searchLower)) {
+                return false;
+              }
+            }
+
+            // Filtrage par type
+            if (_selectedType != null) {
+              if (rule.type != _selectedType) {
+                return false;
+              }
+            }
+
+            return true;
+          }).toList();
     });
   }
 
@@ -76,22 +106,24 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
 
     try {
       final result = await _ruleService.getActiveRulesWithPagination(
-        searchQuery: _searchQuery,
-        typeFilter: _selectedType,
+        searchQuery: '', // Toujours charger toutes les règles
+        typeFilter: null, // Pas de filtre côté serveur
         page: _currentPage,
         limit: 20,
       );
 
       setState(() {
         if (reset) {
-          _rules = result['rules'] as List<TajweedRule>;
+          _allRules = result['rules'] as List<TajweedRule>;
         } else {
-          _rules.addAll(result['rules'] as List<TajweedRule>);
+          _allRules.addAll(result['rules'] as List<TajweedRule>);
         }
-        _totalCount = result['totalCount'] as int;
         _hasMore = result['hasMore'] as bool;
         _isLoading = false;
         _isLoadingMore = false;
+
+        // Appliquer les filtres après le chargement
+        _applyFilters();
       });
     } catch (e) {
       setState(() {
@@ -195,313 +227,439 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
     return Column(
       children: [
         // Barre de recherche
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: 'البحث في قواعد التجويد...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon:
-                  _searchText.isNotEmpty
-                      ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                      : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+        ModernCard(
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child: Icon(
+                        Icons.search,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Text(
+                      'البحث في قواعد التجويد',
+                      style: AppTheme.labelLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.spacingM),
+                TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: 'ابحث في قواعد التجويد...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon:
+                        _searchText.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                            : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: BorderSide(color: AppTheme.dividerColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: BorderSide(color: AppTheme.dividerColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: BorderSide(color: AppTheme.primaryColor),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.backgroundColor,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
+        const SizedBox(height: AppTheme.spacingS),
         // Filtres de type
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilterChip(
-                  label: const Text('الكل'),
-                  selected: _selectedType == null,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedType = null;
-                    });
-                    _loadRules(reset: true);
-                  },
+        ModernCard(
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warningColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child: Icon(
+                        Icons.filter_list,
+                        color: AppTheme.warningColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Text(
+                      'تصفية المحتوى',
+                      style: AppTheme.labelLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilterChip(
-                  label: const Text('منشورات'),
-                  selected: _selectedType == TajweedType.post,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedType = selected ? TajweedType.post : null;
-                    });
-                    _loadRules(reset: true);
-                  },
+                const SizedBox(height: AppTheme.spacingM),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildFilterChip(
+                        'الكل',
+                        _selectedType == null,
+                        () {
+                          setState(() {
+                            _selectedType = null;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: _buildFilterChip(
+                        'منشورات',
+                        _selectedType == TajweedType.post,
+                        () {
+                          setState(() {
+                            _selectedType =
+                                _selectedType == TajweedType.post
+                                    ? null
+                                    : TajweedType.post;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: _buildFilterChip(
+                        'فيديوهات',
+                        _selectedType == TajweedType.video,
+                        () {
+                          setState(() {
+                            _selectedType =
+                                _selectedType == TajweedType.video
+                                    ? null
+                                    : TajweedType.video;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilterChip(
-                  label: const Text('فيديوهات'),
-                  selected: _selectedType == TajweedType.video,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedType = selected ? TajweedType.video : null;
-                    });
-                    _loadRules(reset: true);
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
+  Widget _buildFilterChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingM,
+          vertical: AppTheme.spacingS,
+        ),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                  : AppTheme.backgroundColor,
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          border: Border.all(
+            color: selected ? AppTheme.primaryColor : AppTheme.dividerColor,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: AppTheme.labelMedium.copyWith(
+              color:
+                  selected ? AppTheme.primaryColor : AppTheme.textPrimaryColor,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildRuleCard(TajweedRule rule) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      child: InkWell(
-        onTap: () {
-          context.push('/participant/tajweed/detail', extra: rule);
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      rule.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          rule.type == TajweedType.post
-                              ? Colors.blue
-                              : Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      rule.type.displayName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.grey[400],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              if (rule.imageUrl != null && rule.imageUrl!.isNotEmpty) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    rule.imageUrl!,
-                    width: double.infinity,
-                    height: 150,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 150,
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: Icon(Icons.image_not_supported, size: 50),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              if (rule.type == TajweedType.video && rule.videoUrl != null) ...[
-                GestureDetector(
-                  onTap: () => _launchVideo(rule.videoUrl!),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red[600],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.play_circle_filled,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.video_library,
-                                    color: Colors.red[600],
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'فيديو تعليمي على يوتيوب',
-                                    style: TextStyle(
-                                      color: Colors.red[600],
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'اضغط لمشاهدة الفيديو في تطبيق يوتيوب',
-                                style: TextStyle(
-                                  color: Colors.red[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _extractVideoId(rule.videoUrl!),
-                                style: TextStyle(
-                                  color: Colors.red[400],
-                                  fontSize: 10,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.open_in_new,
-                          color: Colors.red[600],
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              Text(
-                rule.content,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: Colors.black87,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-
-              // Message pour indiquer que c'est cliquable
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingS,
+        vertical: 4,
+      ),
+      child: ModernCard(
+        child: InkWell(
+          onTap: () {
+            context.push('/participant/tajweed/detail', extra: rule);
+          },
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Icon(Icons.touch_app, size: 14, color: Colors.blue[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      'اضغط للتفاصيل',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue[600],
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        rule.title,
+                        style: AppTheme.labelLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.person, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 8),
-                    Text(
-                      'نشر بواسطة: الإدارة',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingS,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            rule.type == TajweedType.post
+                                ? AppTheme.primaryColor
+                                : AppTheme.errorColor,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child: Text(
+                        rule.type.displayName,
+                        style: AppTheme.labelSmall.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: AppTheme.spacingS),
                     Icon(
-                      Icons.calendar_today,
+                      Icons.arrow_forward_ios,
                       size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(rule.createdAt),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      color: AppTheme.textSecondaryColor,
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: AppTheme.spacingM),
+
+                if (rule.imageUrl != null && rule.imageUrl!.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    child: Image.network(
+                      rule.imageUrl!,
+                      width: double.infinity,
+                      height: 150,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 150,
+                          color: AppTheme.backgroundColor,
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported, size: 50),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingM),
+                ],
+
+                if (rule.type == TajweedType.video &&
+                    rule.videoUrl != null) ...[
+                  GestureDetector(
+                    onTap: () => _launchVideo(rule.videoUrl!),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        border: Border.all(
+                          color: AppTheme.errorColor.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            decoration: BoxDecoration(
+                              color: AppTheme.errorColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.play_circle_filled,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingM),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.video_library,
+                                      color: AppTheme.errorColor,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'فيديو تعليمي على يوتيوب',
+                                      style: AppTheme.labelMedium.copyWith(
+                                        color: AppTheme.errorColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'اضغط لمشاهدة الفيديو في تطبيق يوتيوب',
+                                  style: AppTheme.labelSmall.copyWith(
+                                    color: AppTheme.errorColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _extractVideoId(rule.videoUrl!),
+                                  style: AppTheme.labelSmall.copyWith(
+                                    color: AppTheme.errorColor.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.open_in_new,
+                            color: AppTheme.errorColor,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingM),
+                ],
+
+                Text(
+                  rule.content,
+                  style: AppTheme.labelMedium.copyWith(
+                    height: 1.5,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppTheme.spacingM),
+
+                // Message pour indiquer que c'est cliquable
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingM,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.touch_app,
+                        size: 14,
+                        color: AppTheme.primaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'اضغط للتفاصيل',
+                        style: AppTheme.labelSmall.copyWith(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingM),
+
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  decoration: BoxDecoration(
+                    color: AppTheme.backgroundColor,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    border: Border.all(color: AppTheme.dividerColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.person,
+                        size: 16,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      const SizedBox(width: AppTheme.spacingS),
+                      Text(
+                        'نشر بواسطة: الإدارة',
+                        style: AppTheme.labelSmall.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(rule.createdAt),
+                        style: AppTheme.labelSmall.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -513,57 +671,24 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.auto_stories, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isNotEmpty
-                  ? 'لا توجد قواعد تجويد تطابق البحث'
-                  : 'لا توجد قواعد تجويد متاحة حالياً',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _searchQuery.isNotEmpty
-                  ? 'جرب البحث بكلمات مختلفة'
-                  : 'سيتم إضافة قواعد جديدة قريباً',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: Icons.auto_stories,
+      title:
+          _searchQuery.isNotEmpty || _selectedType != null
+              ? 'لا توجد قواعد تجويد تطابق البحث'
+              : 'لا توجد قواعد تجويد متاحة حالياً',
+      subtitle:
+          _searchQuery.isNotEmpty || _selectedType != null
+              ? 'جرب البحث بكلمات مختلفة أو غير الفلتر'
+              : 'سيتم إضافة قواعد جديدة قريباً',
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('أحكام التجويد'),
-            if (_totalCount > 0)
-              Text(
-                '$_totalCount أحكام متاحة',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
-          ],
-        ),
+      appBar: ModernAppBar(
+        title: 'أحكام التجويد',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -573,53 +698,67 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  _buildSearchAndFilters(),
-                  Expanded(
-                    child:
-                        _rules.isEmpty && !_isLoading
-                            ? _buildEmptyState()
-                            : RefreshIndicator(
-                              onRefresh: () => _loadRules(reset: true),
-                              child: ListView.builder(
-                                controller: _scrollController,
-                                itemCount: _rules.length + (_hasMore ? 1 : 0),
-                                itemBuilder: (context, index) {
-                                  if (index == _rules.length) {
-                                    return _isLoadingMore
-                                        ? const Padding(
-                                          padding: EdgeInsets.all(16),
-                                          child: Center(
-                                            child: CircularProgressIndicator(),
-                                          ),
-                                        )
-                                        : _hasMore
-                                        ? Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Center(
-                                            child: ElevatedButton.icon(
-                                              onPressed: _loadMoreRules,
-                                              icon: const Icon(
-                                                Icons.expand_more,
-                                              ),
-                                              label: const Text('تحميل المزيد'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.blue,
-                                                foregroundColor: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        : const SizedBox.shrink();
-                                  }
-                                  return _buildRuleCard(_rules[index]);
-                                },
-                              ),
-                            ),
-                  ),
-                ],
+              ? const LoadingOverlay(child: SizedBox())
+              : ModernPullToRefresh(
+                onRefresh: () => _loadRules(reset: true),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          _buildSearchAndFilters(),
+                        ]),
+                      ),
+                    ),
+                    if (_filteredRules.isEmpty && !_isLoading)
+                      SliverFillRemaining(child: _buildEmptyState())
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingS,
+                        ),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              if (index < _filteredRules.length) {
+                                return _buildRuleCard(_filteredRules[index]);
+                              }
+                              // Bouton "تحميل المزيد" pour les règles non filtrées
+                              if (_hasMore &&
+                                  _allRules.length < (_currentPage + 1) * 20) {
+                                return _isLoadingMore
+                                    ? const Padding(
+                                      padding: EdgeInsets.all(
+                                        AppTheme.spacingM,
+                                      ),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    )
+                                    : Padding(
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingM,
+                                      ),
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: SecondaryButton(
+                                          onPressed: _loadMoreRules,
+                                          text: 'تحميل المزيد',
+                                        ),
+                                      ),
+                                    );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                            childCount:
+                                _filteredRules.length + (_hasMore ? 1 : 0),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
     );
   }
