@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/theme/app_theme.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
 
 class QuizResultPage extends StatelessWidget {
   final QuizResult result;

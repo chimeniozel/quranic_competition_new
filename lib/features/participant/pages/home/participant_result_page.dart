@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/models/round_result.dart';
 import 'package:quranic_competition/models/round.dart';
-import '../../../core/services/round_results_service.dart';
-import '../../../core/services/competition_version_service.dart';
-import '../../../core/services/round_service.dart';
-import '../../../models/competition_version.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/widgets/loading_states.dart';
-import '../../../core/theme/app_theme.dart';
+
+import '../../../../core/services/competition_version_service.dart';
+import '../../../../core/services/round_results_service.dart';
+import '../../../../core/services/round_service.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/loading_states.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
+import '../../../../models/competition_version.dart';
 
 class ParticipantResultPage extends StatefulWidget {
   const ParticipantResultPage({super.key});
@@ -73,10 +74,29 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
 
     setState(() => _isLoading = true);
     try {
-      _rounds = await _roundService.getRoundsByVersion(_selectedVersion!.id);
+      final allRounds = await _roundService.getRoundsByVersion(
+        _selectedVersion!.id,
+      );
+      // Filtrer seulement les rounds avec des résultats publiés
+      _rounds = allRounds.where((round) => round.resultIsPublished).toList();
+
+      print('🔍 Rounds trouvés: ${allRounds.length}');
+      print('🔍 Rounds avec résultats publiés: ${_rounds.length}');
+      for (final round in _rounds) {
+        print(
+          '🔍 Round ${round.number}: ${round.name} - publié: ${round.resultIsPublished}',
+        );
+      }
+
       if (_rounds.isNotEmpty) {
         _selectedRound = _rounds.first;
         await _loadResults();
+      } else {
+        // Aucun round avec résultats publiés
+        setState(() {
+          _results = [];
+          _selectedRound = null;
+        });
       }
     } catch (e) {
       print('Erreur lors du chargement des tours: $e');
@@ -174,7 +194,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
   Widget _buildVersionSelector() {
     return ModernCard(
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -201,7 +221,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.backgroundColor,
@@ -213,7 +233,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                 isExpanded: true,
                 underline: const SizedBox(),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingM,
+                  horizontal: AppTheme.spacingS,
                   vertical: AppTheme.spacingS,
                 ),
                 items:
@@ -244,7 +264,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
   Widget _buildRoundSelector() {
     return ModernCard(
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -271,44 +291,97 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingM),
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.dividerColor),
-              ),
-              child: DropdownButton<Round>(
-                value: _selectedRound,
-                isExpanded: true,
-                underline: const SizedBox(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingM,
-                  vertical: AppTheme.spacingS,
+            const SizedBox(height: AppTheme.spacingS),
+
+            // Afficher le dropdown seulement s'il y a des rounds publiés
+            if (_rounds.isNotEmpty) ...[
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(color: AppTheme.dividerColor),
                 ),
-                items:
-                    _rounds.map((round) {
-                      return DropdownMenuItem(
-                        value: round,
-                        child: Text(
-                          'الجولة ${round.number} - ${round.name}',
-                          style: AppTheme.labelMedium,
-                        ),
-                      );
-                    }).toList(),
-                onChanged: (round) {
-                  if (round != null && round.id != _selectedRound?.id) {
-                    setState(() {
-                      _selectedRound = round;
-                      _currentPage = 0;
-                      _hasMore = true;
-                    });
-                    // Chargement sans rechargement de page
-                    _loadResults(reset: true, isFilterChange: true);
-                  }
-                },
+                child: DropdownButton<Round>(
+                  value: _selectedRound,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingS,
+                  ),
+                  items:
+                      _rounds.map((round) {
+                        return DropdownMenuItem(
+                          value: round,
+                          child: Text(
+                            'الجولة ${round.number} - ${round.name}',
+                            style: AppTheme.labelMedium,
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: (round) {
+                    if (round != null && round.id != _selectedRound?.id) {
+                      setState(() {
+                        _selectedRound = round;
+                        _currentPage = 0;
+                        _hasMore = true;
+                      });
+                      // Chargement sans rechargement de page
+                      _loadResults(reset: true, isFilterChange: true);
+                    }
+                  },
+                ),
               ),
-            ),
+            ] else ...[
+              // Message informatif si aucun round publié
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingM),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'لا توجد نتائج متاحة',
+                            style: AppTheme.labelLarge.copyWith(
+                              color: Colors.orange[700],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: AppTheme.spacingXS),
+                          Text(
+                            'لم يتم نشر نتائج أي جولة بعد في هذه النسخة',
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: Colors.orange[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -318,7 +391,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
   Widget _buildAgeGroupSelector() {
     return ModernCard(
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -345,7 +418,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
             Row(
               children: [
                 Expanded(
@@ -372,7 +445,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
   Widget _buildSearchBar() {
     return ModernCard(
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -399,7 +472,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
             TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
@@ -442,7 +515,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         decoration: BoxDecoration(
           color:
               isSelected
@@ -476,99 +549,23 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
     );
   }
 
-  Widget _buildResultsHeader() {
-    if (_isLoadingFilters) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(AppTheme.spacingM),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (_results.isEmpty) {
-      return EmptyState(
-        icon: Icons.emoji_events_outlined,
-        title: 'لا توجد نتائج',
-        subtitle:
-            _selectedRound != null
-                ? 'لا توجد نتائج متاحة للجولة ${_selectedRound!.name}'
-                : 'لا توجد نتائج متاحة',
-      );
-    }
-
-    // En-tête avec les informations de sélection
-    return ModernCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  child: Icon(
-                    Icons.emoji_events,
-                    color: AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: Text(
-                    'نتائج ${_selectedVersion?.name ?? ""}',
-                    style: AppTheme.labelLarge.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  child: Text(
-                    '${_results.length}',
-                    style: AppTheme.labelLarge.copyWith(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              'الجولة: ${_selectedRound?.name ?? ""} - الفئة: $_selectedAgeGroup',
-              style: AppTheme.labelMedium.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildResultsSliver() {
     if (_isLoadingFilters) {
       return const SliverToBoxAdapter(
         child: Center(
           child: Padding(
-            padding: EdgeInsets.all(AppTheme.spacingM),
+            padding: EdgeInsets.all(AppTheme.spacingS),
             child: CircularProgressIndicator(),
           ),
         ),
+      );
+    }
+
+    // Si aucun round publié, afficher un message approprié
+    if (_rounds.isEmpty) {
+      return const SliverToBoxAdapter(
+        child:
+            SizedBox(), // Le message est déjà affiché dans _buildRoundSelector
       );
     }
 
@@ -583,7 +580,11 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                   title: 'لا توجد نتائج',
                   subtitle: 'لم يتم العثور على نتائج تطابق البحث',
                 )
-                : const SizedBox(),
+                : EmptyState(
+                  icon: Icons.emoji_events_outlined,
+                  title: 'لا توجد نتائج لهذه الجولة',
+                  subtitle: 'لم يتم العثور على نتائج للجولة المحددة',
+                ),
       );
     }
 
@@ -760,13 +761,8 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                           _buildVersionSelector(),
                           const SizedBox(height: AppTheme.spacingS),
                           _buildRoundSelector(),
-                          const SizedBox(height: AppTheme.spacingS),
                           _buildAgeGroupSelector(),
-                          const SizedBox(height: AppTheme.spacingS),
                           _buildSearchBar(),
-                          const SizedBox(height: AppTheme.spacingS),
-                          _buildResultsHeader(),
-                          const SizedBox(height: AppTheme.spacingS),
                         ]),
                       ),
                     ),
@@ -776,14 +772,14 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                         child:
                             _isLoadingMore
                                 ? const Padding(
-                                  padding: EdgeInsets.all(AppTheme.spacingM),
+                                  padding: EdgeInsets.all(AppTheme.spacingS),
                                   child: Center(
                                     child: CircularProgressIndicator(),
                                   ),
                                 )
                                 : Padding(
                                   padding: const EdgeInsets.all(
-                                    AppTheme.spacingM,
+                                    AppTheme.spacingS,
                                   ),
                                   child: SizedBox(
                                     width: double.infinity,

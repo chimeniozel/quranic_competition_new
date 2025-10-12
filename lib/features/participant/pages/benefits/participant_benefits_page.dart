@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/widgets/loading_states.dart';
-import '../../../core/theme/app_theme.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/loading_states.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
 
 class ParticipantBenefitsPage extends StatefulWidget {
   const ParticipantBenefitsPage({super.key});

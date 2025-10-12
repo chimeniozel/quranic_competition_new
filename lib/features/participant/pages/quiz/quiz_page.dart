@@ -5,9 +5,10 @@ import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/models/quiz_question.dart';
 import 'package:quranic_competition/models/quiz_option.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/theme/app_theme.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
 
 class QuizPage extends StatefulWidget {
   final String levelId;

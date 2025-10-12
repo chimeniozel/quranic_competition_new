@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/widgets/loading_states.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/services/competition_version_service.dart';
-import '../../../models/competition_version.dart';
+
+import '../../../../core/services/competition_version_service.dart';
+import '../../../../core/services/round_service.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/loading_states.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
+import '../../../../models/competition_version.dart';
 
 class ParticipantHomePage extends StatefulWidget {
   const ParticipantHomePage({super.key});
@@ -19,7 +21,9 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   bool _isLoading = false;
   bool _hasActiveCompetition = false;
   CompetitionVersion? _activeVersion;
+  bool _hasResultsAvailable = false;
   final _competitionService = CompetitionVersionService();
+  final _roundService = RoundService();
   StreamSubscription<List<CompetitionVersion>>? _competitionSubscription;
 
   @override
@@ -43,17 +47,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
         .listen(
           (activeVersions) {
             print('🏠 Compétitions reçues: ${activeVersions.length}');
-            if (mounted) {
-              setState(() {
-                _hasActiveCompetition = activeVersions.isNotEmpty;
-                _activeVersion =
-                    activeVersions.isNotEmpty ? activeVersions.first : null;
-                _isLoading = false;
-              });
-              print(
-                '🏠 État mis à jour: hasActiveCompetition=$_hasActiveCompetition',
-              );
-            }
+            _updateCompetitionData(activeVersions);
           },
           onError: (error) {
             print('❌ Erreur dans l\'écoute des compétitions: $error');
@@ -61,11 +55,76 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
               setState(() {
                 _hasActiveCompetition = false;
                 _activeVersion = null;
+                _hasResultsAvailable = false;
                 _isLoading = false;
               });
             }
           },
         );
+  }
+
+  Future<void> _updateCompetitionData(
+    List<CompetitionVersion> activeVersions,
+  ) async {
+    try {
+      bool hasActiveCompetition = activeVersions.isNotEmpty;
+      CompetitionVersion? activeVersion =
+          activeVersions.isNotEmpty ? activeVersions.first : null;
+      CompetitionVersion? lastVersion;
+      bool hasResultsAvailable = false;
+
+      // Si pas de compétition active, récupérer la dernière compétition
+      if (!hasActiveCompetition) {
+        final allVersions = await _competitionService.fetchVersions();
+        lastVersion = allVersions.isNotEmpty ? allVersions.first : null;
+      }
+
+      // Déterminer quelle version utiliser pour vérifier les résultats
+      final versionToCheck = activeVersion ?? lastVersion;
+
+      if (versionToCheck != null) {
+        // Vérifier si au moins un round est publié pour cette version
+        try {
+          final rounds = await _roundService.getRoundsByVersion(
+            versionToCheck.id,
+          );
+          hasResultsAvailable = rounds.any((round) => round.resultIsPublished);
+          print('🏆 Vérification des résultats pour: ${versionToCheck.name}');
+          print('🏆 Nombre de rounds: ${rounds.length}');
+          for (final round in rounds) {
+            print(
+              '🏆 Round ${round.number}: publié = ${round.resultIsPublished}',
+            );
+          }
+          print('🏆 Résultats disponibles: $hasResultsAvailable');
+        } catch (e) {
+          print('❌ Erreur lors de la vérification des rounds: $e');
+          hasResultsAvailable = false;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _hasActiveCompetition = hasActiveCompetition;
+          _activeVersion = activeVersion;
+          _hasResultsAvailable = hasResultsAvailable;
+          _isLoading = false;
+        });
+        print(
+          '🏠 État mis à jour: hasActiveCompetition=$_hasActiveCompetition, hasResults=$_hasResultsAvailable',
+        );
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la mise à jour des données: $e');
+      if (mounted) {
+        setState(() {
+          _hasActiveCompetition = false;
+          _activeVersion = null;
+          _hasResultsAvailable = false;
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkActiveCompetition() async {
@@ -75,16 +134,12 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
     try {
       final activeVersions =
           await _competitionService.fetchActiveVersionsWithOpenRegistration();
-      setState(() {
-        _hasActiveCompetition = activeVersions.isNotEmpty;
-        _activeVersion =
-            activeVersions.isNotEmpty ? activeVersions.first : null;
-        _isLoading = false;
-      });
+      await _updateCompetitionData(activeVersions);
     } catch (e) {
       setState(() {
         _hasActiveCompetition = false;
         _activeVersion = null;
+        _hasResultsAvailable = false;
         _isLoading = false;
       });
       print('Erreur lors de la vérification des compétitions: $e');
@@ -113,7 +168,10 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
 
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
+              ? const ModernLoadingIndicator(
+                message: 'جاري تحميل البيانات...',
+                size: 50,
+              )
               : ModernPullToRefresh(
                 onRefresh: _loadVersions,
                 child: SingleChildScrollView(
@@ -256,56 +314,134 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                         ),
                       ),
 
-                      // Section des résultats
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      AppTheme.spacingS,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.successColor.withValues(
-                                        alpha: 0.1,
+                      // Section des résultats (seulement si disponibles)
+                      if (_hasResultsAvailable) ...[
+                        ModernCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingS,
                                       ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.successColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusM,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.emoji_events,
+                                        color: AppTheme.successColor,
+                                        size: 16,
                                       ),
                                     ),
-                                    child: Icon(
-                                      Icons.emoji_events,
-                                      color: AppTheme.successColor,
-                                      size: 16,
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Text(
+                                      'نتائج المسابقة',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Text(
-                                    'نتائج المسابقة',
-                                    style: AppTheme.labelLarge.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              SizedBox(
-                                width: double.infinity,
-                                child: SecondaryButton(
-                                  onPressed: () {
-                                    context.push('/participant_result_page');
-                                  },
-                                  text: 'عرض النتائج',
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: AppTheme.spacingS),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: SecondaryButton(
+                                    onPressed: () {
+                                      context.push('/participant_result_page');
+                                    },
+                                    text: 'عرض النتائج',
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ] else ...[
+                        // Message informatif si pas de résultats
+                        ModernCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingS,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusM,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.emoji_events_outlined,
+                                        color: Colors.grey,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Text(
+                                      'نتائج المسابقة',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(
+                                    AppTheme.spacingS,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.grey.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        color: Colors.grey,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: AppTheme.spacingS),
+                                      Expanded(
+                                        child: Text(
+                                          'النتائج غير متاحة حالياً. ستظهر هنا عند نشر النتائج.',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
 
                       // Section des services
                       ModernCard(
@@ -381,11 +517,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   ),
                                   const SizedBox(height: AppTheme.spacingS),
 
-                                  // Ligne 3: قائمة المشاركين (toujours visible)
-                                  _buildServiceCard(
-                                    title: 'قائمة المشاركين',
-                                    icon: Icons.people,
-                                    color: Colors.blue,
+                                  // Ligne 3: قائمة المشاركين (toujours visible) - Pleine largeur
+                                  GestureDetector(
                                     onTap: () {
                                       // Utiliser une version par défaut ou la version active
                                       final versionId =
@@ -407,6 +540,61 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                         print('❌ Erreur de navigation: $e');
                                       }
                                     },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingM,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusM,
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.blue.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(
+                                              AppTheme.spacingS,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.2,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.people,
+                                              color: Colors.blue,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: AppTheme.spacingM,
+                                          ),
+                                          Text(
+                                            'قائمة المشاركين',
+                                            style: AppTheme.labelLarge.copyWith(
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
 
                                   // Ligne 4: Message informatif (si compétition active)
@@ -453,46 +641,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       ),
                                     ),
                                   ] else ...[
-                                    const SizedBox(height: AppTheme.spacingS),
-                                    Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: AppTheme.spacingS,
-                                        vertical: AppTheme.spacingXS,
-                                      ),
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusS,
-                                        ),
-                                        border: Border.all(
-                                          color: Colors.grey.withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.info_outline,
-                                            color: Colors.grey,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(
-                                            width: AppTheme.spacingS,
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              'قائمة المشاركين من المسابقات السابقة',
-                                              style: AppTheme.bodySmall
-                                                  .copyWith(
-                                                    color: Colors.grey[700],
-                                                  ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                    Container(),
                                   ],
                                 ],
                               ),

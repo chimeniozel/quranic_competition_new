@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../models/participant.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../models/participant.dart';
 
 class ParticipantDetailPage extends StatelessWidget {
   final Participant participant;

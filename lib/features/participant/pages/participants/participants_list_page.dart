@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/widgets/loading_states.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/services/participant_service.dart';
-import '../../../models/participant.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
+import '../../../../core/widgets/loading_states.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/participant_service.dart';
+import '../../../../core/services/competition_version_service.dart';
+import '../../../../models/participant.dart';
+import '../../../../models/competition_version.dart';
 
 class ParticipantsListPage extends StatefulWidget {
   final String versionId;
@@ -26,6 +28,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _participantService = ParticipantService();
+  final _competitionService = CompetitionVersionService();
   Timer? _debounceTimer;
 
   List<Participant> _allParticipants = [];
@@ -37,6 +40,11 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
   int _currentPage = 0;
   static const int _pageSize = 20;
 
+  // Variables pour la gestion des compétitions
+  CompetitionVersion? _activeCompetition;
+  CompetitionVersion? _lastCompetition;
+  String? _displayedVersionId;
+
   @override
   void initState() {
     super.initState();
@@ -44,7 +52,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
       '📱 ParticipantsListPage initState - versionId: ${widget.versionId}, ageGroup: ${widget.ageGroup}',
     );
     _selectedAgeGroup = widget.ageGroup;
-    _loadParticipants();
+    _initializeCompetitionData();
     _searchController.addListener(_onSearchChanged);
     _scrollController.addListener(_onScroll);
   }
@@ -76,6 +84,51 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
         !_isLoading &&
         _hasMoreData) {
       print('🔄 Déclenchement de la pagination automatique');
+      _loadParticipants();
+    }
+  }
+
+  Future<void> _initializeCompetitionData() async {
+    try {
+      // Si versionId est 'default', déterminer automatiquement quelle version afficher
+      if (widget.versionId == 'default') {
+        // Récupérer les compétitions actives
+        final activeVersions =
+            await _competitionService.fetchActiveVersionsWithOpenRegistration();
+        _activeCompetition =
+            activeVersions.isNotEmpty ? activeVersions.first : null;
+
+        // Récupérer toutes les versions pour trouver la dernière
+        final allVersions = await _competitionService.fetchVersions();
+        _lastCompetition = allVersions.isNotEmpty ? allVersions.first : null;
+
+        // Déterminer quelle version afficher
+        if (_activeCompetition != null) {
+          _displayedVersionId = _activeCompetition!.id;
+          print(
+            '🏆 Affichage de la compétition active: ${_activeCompetition!.name}',
+          );
+        } else if (_lastCompetition != null) {
+          _displayedVersionId = _lastCompetition!.id;
+          print(
+            '📅 Affichage de la dernière compétition: ${_lastCompetition!.name}',
+          );
+        } else {
+          _displayedVersionId = null;
+          print('❌ Aucune compétition trouvée');
+        }
+      } else {
+        // Utiliser la version spécifiée
+        _displayedVersionId = widget.versionId;
+      }
+
+      // Charger les participants avec la version déterminée
+      _loadParticipants();
+    } catch (e) {
+      print(
+        '❌ Erreur lors de l\'initialisation des données de compétition: $e',
+      );
+      _displayedVersionId = null;
       _loadParticipants();
     }
   }
@@ -130,16 +183,16 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     try {
       List<Participant> participants;
 
-      // Si versionId = 'default', récupérer tous les participants
-      if (widget.versionId == 'default') {
+      // Si _displayedVersionId est null, récupérer tous les participants
+      if (_displayedVersionId == null) {
         participants =
             await _participantService.getAllParticipantsFromAllVersions();
-        // Pour 'default', on charge tout d'un coup (pas de pagination)
+        // Pour 'all', on charge tout d'un coup (pas de pagination)
         _hasMoreData = false;
       } else {
-        // Sinon, utiliser la pagination normale
+        // Sinon, utiliser la pagination normale avec la version déterminée
         participants = await _participantService.getParticipantsByVersion(
-          widget.versionId,
+          _displayedVersionId!,
           page: _currentPage,
           pageSize: _pageSize,
         );
@@ -147,7 +200,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
       }
 
       setState(() {
-        if (reset || widget.versionId == 'default') {
+        if (reset || _displayedVersionId == null) {
           _allParticipants = participants;
         } else {
           _allParticipants.addAll(participants);
@@ -581,16 +634,149 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     );
   }
 
+  Widget _buildCompetitionIndicator() {
+    if (_activeCompetition != null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingM,
+          vertical: AppTheme.spacingS,
+        ),
+        child: ModernCard(
+          child: Container(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.green.withOpacity(0.1),
+                  Colors.green.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: Colors.green.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.emoji_events,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacingM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'مسابقة نشطة',
+                        style: AppTheme.labelLarge.copyWith(
+                          color: Colors.green[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingXS),
+                      Text(
+                        _activeCompetition!.name,
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: Colors.green[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else if (_lastCompetition != null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingM,
+          vertical: AppTheme.spacingS,
+        ),
+        child: ModernCard(
+          child: Container(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.orange.withOpacity(0.1),
+                  Colors.orange.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.history,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacingM),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'آخر مسابقة',
+                        style: AppTheme.labelLarge.copyWith(
+                          color: Colors.orange[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingXS),
+                      Text(
+                        _lastCompetition!.name,
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: Colors.orange[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'قائمة المشاركين',
+        title:
+            _activeCompetition?.name ??
+            _lastCompetition?.name ??
+            'قائمة المشاركين',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'تحديث',
-            onPressed: () => _loadParticipants(reset: true),
+            onPressed: () => _initializeCompetitionData(),
           ),
         ],
       ),
@@ -603,6 +789,9 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                 slivers: [
                   // Header des statistiques
                   SliverToBoxAdapter(child: _buildStatsHeader()),
+
+                  // Indicateur de compétition
+                  SliverToBoxAdapter(child: _buildCompetitionIndicator()),
 
                   // Sélecteur de groupe d'âge
                   SliverToBoxAdapter(child: _buildAgeGroupSelector()),

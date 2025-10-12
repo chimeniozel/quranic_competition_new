@@ -5,10 +5,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/core/services/archive_media_service.dart';
 import 'package:quranic_competition/models/archive_media.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/widgets/loading_states.dart';
-import '../../../core/theme/app_theme.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/loading_states.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
 
 class ParticipantCompetitionArchivesPage extends StatefulWidget {
   final String versionId;

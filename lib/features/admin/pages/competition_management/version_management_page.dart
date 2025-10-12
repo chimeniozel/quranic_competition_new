@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../models/competition_version.dart';
 import 'package:go_router/go_router.dart';
@@ -186,194 +185,250 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   }
 
   Widget _buildVersionCard(CompetitionVersion version) {
+    final isActive = version.isActive;
+    final statusColor = isActive ? Colors.green : Colors.red;
+    final statusText = isActive ? 'نشطة' : 'منتهية';
+    final statusIcon = isActive ? Icons.check_circle : Icons.cancel;
+
     return ModernCard(
       margin: const EdgeInsets.symmetric(
         horizontal: AppTheme.spacingM,
         vertical: AppTheme.spacingS,
       ),
-      padding: const EdgeInsets.all(AppTheme.spacingM),
-      onTap: () {
-        context.push('/admin/version_detail', extra: version);
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: InkWell(
+        onTap: () {
+          context.push('/admin/version_detail', extra: version);
+        },
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.spacingM),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Version Icon
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color:
-                      version.isActive
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                ),
-                child: Icon(
-                  Icons.emoji_events,
-                  color:
-                      version.isActive
-                          ? AppTheme.successColor
-                          : AppTheme.errorColor,
-                  size: 24,
-                ),
+              // En-tête avec nom et statut
+              Row(
+                children: [
+                  // Avatar
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: statusColor.withOpacity(0.1),
+                    child: Icon(
+                      Icons.emoji_events,
+                      color: statusColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacingM),
+                  // Informations principales
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          version.name,
+                          style: AppTheme.labelLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingXS),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 16,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(width: AppTheme.spacingXS),
+                            Text(
+                              'السنة: ${version.year}',
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Statut avec icône
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      border: Border.all(color: statusColor, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, color: statusColor, size: 16),
+                        const SizedBox(width: AppTheme.spacingXS),
+                        Text(
+                          statusText,
+                          style: AppTheme.bodySmall.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingM),
 
-              // Version Info
-              Expanded(
+              // Informations détaillées
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppTheme.spacingS),
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  border: Border.all(color: AppTheme.dividerColor),
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      version.name,
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    // Limites de participants
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.people,
+                          size: 18,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Text(
+                          'الحد الأقصى: ',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          'كبار ${version.maxAdults}',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(' - '),
+                        Text(
+                          'صغار ${version.maxChildren}',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: Colors.purple,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'السنة: ${version.year}',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'الحد الأقصى: كبار ${version.maxAdults} - صغار ${version.maxChildren}',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
+                    const SizedBox(height: AppTheme.spacingXS),
+                    // Statut d'inscription
+                    Row(
+                      children: [
+                        Icon(
+                          version.isRegistrationOpen
+                              ? Icons.lock_open
+                              : Icons.lock,
+                          size: 18,
+                          color:
+                              version.isRegistrationOpen
+                                  ? Colors.green
+                                  : Colors.red,
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Text(
+                          'التسجيل: ',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          version.isRegistrationOpen ? 'مفتوح' : 'مغلق',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color:
+                                version.isRegistrationOpen
+                                    ? Colors.green
+                                    : Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: AppTheme.spacingM),
 
-              // Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      version.isActive
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        version.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.errorColor,
-                  ),
-                ),
-                child: Text(
-                  version.isActive ? 'نشطة' : 'منتهية',
-                  style: TextStyle(
-                    color:
-                        version.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.errorColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacingM),
-
-          // Registration Status
-          Row(
-            children: [
-              Icon(
-                version.isRegistrationOpen ? Icons.lock_open : Icons.lock,
-                color:
-                    version.isRegistrationOpen
-                        ? AppTheme.successColor
-                        : AppTheme.errorColor,
-                size: 16,
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-              Text(
-                'التسجيل: ${version.isRegistrationOpen ? 'مفتوح' : 'مغلق'}',
-                style: AppTheme.bodySmall.copyWith(
-                  color:
-                      version.isRegistrationOpen
-                          ? AppTheme.successColor
-                          : AppTheme.errorColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-
-              // Action Buttons
+              // Boutons d'action
               Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedEdit03,
-                      color: AppTheme.primaryColor,
-                      size: 20.0,
-                    ),
-                    onPressed: () async {
-                      final result = await context.push<bool>(
-                        '/admin/version_update',
-                        extra: version,
-                      );
+                  Expanded(
+                    child: SecondaryButton(
+                      onPressed: () async {
+                        final result = await context.push<bool>(
+                          '/admin/version_update',
+                          extra: version,
+                        );
 
-                      if (result == true) {
-                        await _loadVersions();
-                        setState(() {});
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedDelete01,
-                      color: AppTheme.errorColor,
-                      size: 20.0,
-                    ),
-                    onPressed: () async {
-                      final confirmed =
-                          await ConfirmationService.showDeleteConfirmation(
-                            context,
-                            title: 'تأكيد الحذف',
-                            message: 'هل تريد حذف النسخة "${version.name}"؟',
-                            confirmText: 'حذف',
-                            cancelText: 'إلغاء',
-                          );
-
-                      if (confirmed) {
-                        try {
-                          await _service.deleteVersion(version.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('تم حذف النسخة "${version.name}"'),
-                              backgroundColor: AppTheme.successColor,
-                            ),
-                          );
+                        if (result == true) {
                           await _loadVersions();
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('فشل الحذف: $e'),
-                              backgroundColor: AppTheme.errorColor,
-                            ),
-                          );
+                          setState(() {});
                         }
-                      }
-                    },
+                      },
+                      text: 'تعديل',
+                      icon: Icons.edit,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Expanded(
+                    child: SecondaryButton(
+                      onPressed: () async {
+                        final confirmed =
+                            await ConfirmationService.showDeleteConfirmation(
+                              context,
+                              title: 'تأكيد الحذف',
+                              message: 'هل تريد حذف النسخة "${version.name}"؟',
+                              confirmText: 'حذف',
+                              cancelText: 'إلغاء',
+                            );
+
+                        if (confirmed) {
+                          try {
+                            await _service.deleteVersion(version.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'تم حذف النسخة "${version.name}"',
+                                ),
+                                backgroundColor: AppTheme.successColor,
+                              ),
+                            );
+                            await _loadVersions();
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('فشل الحذف: $e'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      text: 'حذف',
+                      icon: Icons.delete,
+                      borderColor: AppTheme.errorColor,
+                      textColor: AppTheme.errorColor,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

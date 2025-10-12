@@ -41,7 +41,7 @@ class CompetitionVersionService {
   /// Utilise un Timer périodique car les streams Supabase peuvent ne pas fonctionner correctement
   Stream<Map<String, dynamic>> listenToVersionChanges(String versionId) {
     return Stream.periodic(
-      const Duration(seconds: 10),
+      const Duration(seconds: 5),
     ) // Intervalle plus court pour les tests
     .asyncMap((_) async {
       try {
@@ -67,7 +67,7 @@ class CompetitionVersionService {
   Stream<List<CompetitionVersion>>
   listenToActiveVersionsWithOpenRegistration() {
     return Stream.periodic(
-      const Duration(seconds: 10),
+      const Duration(seconds: 5),
     ) // Intervalle plus court pour les tests
     .asyncMap((_) async {
       try {

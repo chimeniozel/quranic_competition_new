@@ -4,10 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
-import '../../../core/widgets/modern_navigation.dart';
-import '../../../core/widgets/ui_components.dart';
-import '../../../core/widgets/loading_states.dart';
-import '../../../core/theme/app_theme.dart';
+
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/loading_states.dart';
+import '../../../../core/widgets/modern_navigation.dart';
+import '../../../../core/widgets/ui_components.dart';
 
 class ParticipantTajweedPage extends StatefulWidget {
   const ParticipantTajweedPage({super.key});
