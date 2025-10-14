@@ -235,6 +235,15 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: AppTheme.spacingM),
+
+                // Bouton pour accéder à la page d'accueil
+                SecondaryButton(
+                  text: 'العودة إلى الصفحة الرئيسية',
+                  icon: Icons.home,
+                  onPressed: () => context.go('/participant_home_page'),
+                  fullWidth: true,
+                ),
                 const SizedBox(height: AppTheme.spacingL),
 
                 // Informations supplémentaires

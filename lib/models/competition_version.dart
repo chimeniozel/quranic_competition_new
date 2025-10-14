@@ -6,6 +6,7 @@ class CompetitionVersion {
   final int maxAdults;
   final int maxChildren;
   final bool isRegistrationOpen;
+  final bool juryEvaluationEnabled; // Autorisation pour les jurys d'évaluer
 
   CompetitionVersion({
     required this.id,
@@ -15,6 +16,7 @@ class CompetitionVersion {
     required this.maxAdults,
     required this.maxChildren,
     required this.isRegistrationOpen,
+    this.juryEvaluationEnabled = false, // Par défaut : désactivé
   });
 
   factory CompetitionVersion.fromMap(Map<String, dynamic> map) {
@@ -26,6 +28,7 @@ class CompetitionVersion {
       maxAdults: map['max_adults'] ?? 0,
       maxChildren: map['max_children'] ?? 0,
       isRegistrationOpen: map['is_registration_open'] ?? true,
+      juryEvaluationEnabled: map['jury_evaluation_enabled'] ?? false,
     );
   }
 
@@ -38,6 +41,7 @@ class CompetitionVersion {
       'max_adults': maxAdults,
       'max_children': maxChildren,
       'is_registration_open': isRegistrationOpen,
+      'jury_evaluation_enabled': juryEvaluationEnabled,
     };
   }
 }

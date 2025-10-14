@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/services/competition_version_service.dart';
 import '../../../models/competition_version.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 
 class JuryVersionPage extends StatefulWidget {
@@ -31,46 +35,235 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('النسخ المحكمة من طرفي')),
+      appBar: const ModernAppBar(title: 'النسخ المحكمة من طرفي'),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const ModernLoadingIndicator()
               : _versions.isEmpty
-              ? const Center(child: Text('لا توجد نسخ حالياً'))
-              : ListView.builder(
-                itemCount: _versions.length,
-                itemBuilder: (context, index) {
-                  final version = _versions[index];
-                  return ListTile(
-                    onTap: () {
-                      context.push('/jury/version_detail_page', extra: version);
-                    },
-                    title: Text(version.name),
-                    subtitle: Text(
-                      'السنة: ${version.year}\n'
-                      'الحد الأقصى للكبار: ${version.maxAdults} - للصغار: ${version.maxChildren}\n'
-                      'التسجيل: ${version.isRegistrationOpen ? 'مفتوح' : 'مغلق'}',
-                    ),
-                    isThreeLine: true,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+              ? const EmptyState(
+                icon: Icons.event_available,
+                title: 'لا توجد نسخ حالياً',
+                subtitle: 'لم يتم تعيين أي نسخ للتحكيم بعد',
+              )
+              : ModernPullToRefresh(
+                onRefresh: _loadVersions,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  itemCount: _versions.length,
+                  itemBuilder: (context, index) {
+                    final version = _versions[index];
+                    return _buildVersionCard(version);
+                  },
+                ),
+              ),
+    );
+  }
+
+  Widget _buildVersionCard(CompetitionVersion version) {
+    return ModernCard(
+      child: InkWell(
+        onTap: () {
+          context.push('/jury/version_detail_page', extra: version);
+        },
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTheme.spacingM),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // En-tête avec icône et statut
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor:
                         version.isActive
-                            ? const Chip(
-                              label: Text('نشطة'),
-                              backgroundColor: Colors.green,
-                              labelStyle: TextStyle(color: Colors.white),
-                            )
-                            : const Chip(
-                              label: Text('منتهية'),
-                              backgroundColor: Colors.red,
-                              labelStyle: TextStyle(color: Colors.white),
-                            ),
+                            ? AppTheme.successColor.withOpacity(0.1)
+                            : AppTheme.textSecondaryColor.withOpacity(0.1),
+                    child: Icon(
+                      Icons.emoji_events,
+                      color:
+                          version.isActive
+                              ? AppTheme.successColor
+                              : AppTheme.textSecondaryColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacingM),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          version.name,
+                          style: AppTheme.labelLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingXS),
+                        Text(
+                          'السنة: ${version.year}',
+                          style: AppTheme.bodyMedium,
+                        ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                  // Badge de statut
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingM,
+                      vertical: AppTheme.spacingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          version.isActive
+                              ? AppTheme.successColor.withOpacity(0.1)
+                              : AppTheme.errorColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      border: Border.all(
+                        color:
+                            version.isActive
+                                ? AppTheme.successColor
+                                : AppTheme.errorColor,
+                      ),
+                    ),
+                    child: Text(
+                      version.isActive ? 'نشطة' : 'منتهية',
+                      style: AppTheme.bodySmall.copyWith(
+                        color:
+                            version.isActive
+                                ? AppTheme.successColor
+                                : AppTheme.errorColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: AppTheme.spacingM),
+              // Informations détaillées
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInfoChip(
+                      icon: Icons.people,
+                      label: 'كبار',
+                      value: version.maxAdults.toString(),
+                      color: AppTheme.infoColor,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Expanded(
+                    child: _buildInfoChip(
+                      icon: Icons.child_care,
+                      label: 'صغار',
+                      value: version.maxChildren.toString(),
+                      color: AppTheme.secondaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spacingS),
+              // Statut d'inscription et d'évaluation
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatusIndicator(
+                      icon: Icons.app_registration,
+                      label: 'التسجيل',
+                      isActive: version.isRegistrationOpen,
+                      activeText: 'مفتوح',
+                      inactiveText: 'مغلق',
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Expanded(
+                    child: _buildStatusIndicator(
+                      icon: Icons.rate_review,
+                      label: 'التقييم',
+                      isActive: version.juryEvaluationEnabled,
+                      activeText: 'مفعل',
+                      inactiveText: 'معطل',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusS),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: AppTheme.spacingXS),
+          Text(label, style: AppTheme.bodySmall.copyWith(color: color)),
+          const SizedBox(width: AppTheme.spacingXS),
+          Text(
+            value,
+            style: AppTheme.labelMedium.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusIndicator({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required String activeText,
+    required String inactiveText,
+  }) {
+    final statusColor =
+        isActive ? AppTheme.successColor : AppTheme.textSecondaryColor;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusS),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: statusColor, size: 14),
+          const SizedBox(width: AppTheme.spacingXS),
+          Text(
+            '$label: ',
+            style: AppTheme.bodySmall.copyWith(
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          Text(
+            isActive ? activeText : inactiveText,
+            style: AppTheme.bodySmall.copyWith(
+              color: statusColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

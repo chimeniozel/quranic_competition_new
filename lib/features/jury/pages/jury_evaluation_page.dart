@@ -4,6 +4,10 @@ import 'package:quranic_competition/models/evaluation.dart';
 import 'package:quranic_competition/models/round.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/core/services/evaluation_service.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 
 class JuryEvaluationPage extends StatefulWidget {
   final JuryEvaluationArgs args;
@@ -112,6 +116,29 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   }
 
   Future<void> _submit() async {
+    // Vérifier si l'évaluation est autorisée
+    if (!widget.args.version.juryEvaluationEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.block, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'التقييم غير مسموح به - يرجى انتظار إذن المسؤول',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     if (_isReadOnly) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم نشر النتائج - لا يمكن تعديل التقييم')),
@@ -171,25 +198,75 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
     double max,
     void Function(double) onChanged,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label (الحد الأقصى: $max)'),
-        Slider(
-          min: 0,
-          max: max,
-          divisions: max.toInt(),
-          label: _getValueForLabel(label).toStringAsFixed(1),
-          value: _getValueForLabel(label),
-          onChanged:
-              _isReadOnly
-                  ? null
-                  : (value) {
-                    onChanged(value);
-                    _recalculateTotal();
-                  },
-        ),
-      ],
+    // Désactiver si l'évaluation n'est pas autorisée OU en mode lecture seule
+    final isDisabled =
+        !widget.args.version.juryEvaluationEnabled || _isReadOnly;
+    final currentValue = _getValueForLabel(label);
+
+    return ModernCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: AppTheme.labelLarge.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingS,
+                  vertical: AppTheme.spacingXS,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                ),
+                child: Text(
+                  '${currentValue.toStringAsFixed(1)} / $max',
+                  style: AppTheme.labelMedium.copyWith(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.spacingXS),
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor:
+                  isDisabled
+                      ? AppTheme.textDisabledColor
+                      : AppTheme.primaryColor,
+              inactiveTrackColor: AppTheme.dividerColor,
+              thumbColor:
+                  isDisabled
+                      ? AppTheme.textDisabledColor
+                      : AppTheme.primaryColor,
+              overlayColor: AppTheme.primaryColor.withOpacity(0.2),
+              valueIndicatorColor: AppTheme.primaryColor,
+            ),
+            child: Slider(
+              min: 0,
+              max: max,
+              divisions: max.toInt(),
+              label: currentValue.toStringAsFixed(1),
+              value: currentValue,
+              onChanged:
+                  isDisabled
+                      ? null
+                      : (value) {
+                        onChanged(value);
+                        _recalculateTotal();
+                      },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -213,69 +290,81 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   @override
   Widget build(BuildContext context) {
     final isAdult = widget.args.participant.ageGroup == 'كبار';
-    final roundStatus =
-        _isReadOnly
-            ? ' (تم نشر النتائج - قراءة فقط)'
-            : ' (نشطة - يمكن التقييم)';
-    final statusColor = _isReadOnly ? Colors.blue : Colors.green;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('المتسابق رقم : ${widget.args.participant.registrationNumber}'),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: statusColor),
-            ),
-            child: Text(
-              _activeRound?.name ?? 'غير محدد' + roundStatus,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+      appBar: ModernAppBar(
+        title:
+            'تقييم المشارك رقم ${widget.args.participant.registrationNumber}',
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const ModernLoadingIndicator()
               : _activeRound == null
-              ? const Center(child: Text('لا يوجد جولة محددة'))
-              : Padding(
-                padding: const EdgeInsets.all(16),
+              ? const EmptyState(
+                icon: Icons.event_busy,
+                title: 'لا يوجد جولة محددة',
+                subtitle: 'تأكد من وجود جولة نشطة للتقييم',
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
                 child: Form(
                   key: _formKey,
-                  child: ListView(
+                  child: Column(
                     children: [
-                      // Message d'information pour le mode lecture seule
-                      if (_isReadOnly)
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
-                            ),
-                          ),
+                      // Message d'avertissement si l'évaluation n'est pas autorisée
+                      if (!widget.args.version.juryEvaluationEnabled)
+                        ModernCard(
+                          backgroundColor: AppTheme.errorColor.withOpacity(0.1),
                           child: Row(
                             children: [
-                              Icon(Icons.info, color: Colors.blue, size: 20),
-                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.block,
+                                color: AppTheme.errorColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: AppTheme.spacingM),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'التقييم غير مسموح به',
+                                      style: AppTheme.headingSmall.copyWith(
+                                        color: AppTheme.errorColor,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppTheme.spacingXS),
+                                    Text(
+                                      'لا يمكنك إرسال أو تعديل التقييم حالياً',
+                                      style: AppTheme.bodyMedium.copyWith(
+                                        color: AppTheme.errorColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Message d'information pour le mode lecture seule
+                      if (_isReadOnly &&
+                          widget.args.version.juryEvaluationEnabled)
+                        ModernCard(
+                          backgroundColor: AppTheme.infoColor.withOpacity(0.1),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info,
+                                color: AppTheme.infoColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppTheme.spacingM),
                               Expanded(
                                 child: Text(
                                   'تم نشر النتائج - يمكنك عرض التقييم فقط',
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    fontSize: 14,
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.infoColor,
                                   ),
                                 ),
                               ),
@@ -309,56 +398,152 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                           2,
                           (v) => _noteModel.noteIltizamRiwaya = v,
                         ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'النتيجة النهائية: ${_totalScore.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _notesController,
-                        enabled: !_isReadOnly,
-                        decoration: InputDecoration(
-                          labelText: 'ملاحظات (اختياري)',
-                          border: const OutlineInputBorder(),
-                          filled: _isReadOnly,
-                          fillColor: _isReadOnly ? Colors.grey.shade100 : null,
-                        ),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
-                      if (!_isReadOnly) ...[
-                        _isSubmitting
-                            ? const Center(child: CircularProgressIndicator())
-                            : ElevatedButton(
-                              onPressed: _submit,
-                              child: Text(
-                                _existingEvaluation == null
-                                    ? 'إرسال التقييم'
-                                    : 'تحديث التقييم',
+                      const SizedBox(height: AppTheme.spacingM),
+
+                      // Carte de résultat total
+                      ModernCard(
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.star,
+                              color: AppTheme.primaryColor,
+                              size: 28,
+                            ),
+                            const SizedBox(width: AppTheme.spacingM),
+                            Text(
+                              'النتيجة النهائية:',
+                              style: AppTheme.headingSmall.copyWith(
+                                color: AppTheme.primaryColor,
                               ),
                             ),
-                      ] else ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
+                            const SizedBox(width: AppTheme.spacingS),
+                            Text(
+                              _totalScore.toStringAsFixed(2),
+                              style: AppTheme.headingMedium.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+
+                      // Champ de notes
+                      ModernCard(
+                        child: TextFormField(
+                          controller: _notesController,
+                          enabled:
+                              !_isReadOnly &&
+                              widget.args.version.juryEvaluationEnabled,
+                          decoration: InputDecoration(
+                            labelText: 'ملاحظات (اختياري)',
+                            hintText: 'أضف ملاحظاتك هنا...',
+                            border: InputBorder.none,
+                            filled: false,
+                            prefixIcon: Icon(
+                              Icons.note_alt,
+                              color: AppTheme.primaryColor,
+                            ),
                           ),
+                          style: AppTheme.bodyMedium,
+                          maxLines: 3,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+
+                      // Bouton de soumission (seulement si autorisé et pas en lecture seule)
+                      if (!_isReadOnly &&
+                          widget.args.version.juryEvaluationEnabled) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child:
+                              _isSubmitting
+                                  ? ModernCard(
+                                    backgroundColor: AppTheme.primaryColor
+                                        .withOpacity(0.1),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(
+                                        AppTheme.spacingM,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                          SizedBox(width: AppTheme.spacingM),
+                                          Text('جاري الإرسال...'),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                  : PrimaryButton(
+                                    text:
+                                        _existingEvaluation == null
+                                            ? 'إرسال التقييم'
+                                            : 'تحديث التقييم',
+                                    icon:
+                                        _existingEvaluation == null
+                                            ? Icons.send
+                                            : Icons.update,
+                                    onPressed: _submit,
+                                  ),
+                        ),
+                      ] else if (!widget
+                          .args
+                          .version
+                          .juryEvaluationEnabled) ...[
+                        // Message de blocage si l'évaluation n'est pas autorisée
+                        ModernCard(
+                          backgroundColor: AppTheme.errorColor.withOpacity(0.1),
                           child: Row(
                             children: [
-                              Icon(Icons.lock, color: Colors.grey.shade600),
-                              const SizedBox(width: 8),
-                              Text(
-                                'تم نشر النتائج - لا يمكن تعديل التقييم',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
+                              Icon(
+                                Icons.block,
+                                color: AppTheme.errorColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppTheme.spacingM),
+                              Expanded(
+                                child: Text(
+                                  'التقييم غير مسموح به - انتظر إذن المسؤول',
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.errorColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (_isReadOnly) ...[
+                        // Message de lecture seule
+                        ModernCard(
+                          backgroundColor: AppTheme.textSecondaryColor
+                              .withOpacity(0.1),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.lock,
+                                color: AppTheme.textSecondaryColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppTheme.spacingM),
+                              Expanded(
+                                child: Text(
+                                  'تم نشر النتائج - لا يمكن تعديل التقييم',
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],

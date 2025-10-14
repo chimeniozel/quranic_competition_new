@@ -9,6 +9,10 @@ import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/round.dart';
 import '../../../models/competition_version.dart';
 import '../../../models/participant.dart';
+import '../../../core/widgets/modern_navigation.dart';
+import '../../../core/widgets/ui_components.dart';
+import '../../../core/widgets/loading_states.dart';
+import '../../../core/theme/app_theme.dart';
 
 class JuryVersionDetailPage extends StatefulWidget {
   final CompetitionVersion version;
@@ -32,7 +36,6 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   AppUser? appUser;
   Round? activeRound;
   Round? _selectedRound;
-  bool _allParticipantsEvaluated = false;
   List<Round> _allRounds = [];
 
   @override
@@ -51,35 +54,35 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   Future<void> _loadParticipantsWithEvaluationStatus() async {
     setState(() => _isLoading = true);
 
-    // Récupérer tous les rounds pour cette version
+    // Récupérer tous les rounds pour cette version de compétition
     try {
       _allRounds = await RoundService().getRoundsByVersion(widget.version.id);
-      print('🔍 Rounds trouvés: ${_allRounds.length}');
+      print(
+        '🔍 Rounds trouvés pour la version ${widget.version.name}: ${_allRounds.length}',
+      );
     } catch (e) {
       print('❌ Erreur lors du chargement des rounds: $e');
       _allRounds = [];
     }
 
-    // Déterminer le round actif pour l'évaluation
-    var activeRound = await RoundService().getActiveRound(widget.version.id);
-
-    // Initialiser le round sélectionné avec le round actif, ou le premier round disponible
-    Round? initialSelectedRound = activeRound;
-    if (initialSelectedRound == null && _allRounds.isNotEmpty) {
+    // Initialiser le round sélectionné avec le premier round disponible de cette version
+    Round? initialSelectedRound;
+    if (_allRounds.isNotEmpty) {
+      // Trier les rounds par numéro pour avoir Round 1 en premier
+      _allRounds.sort((a, b) => a.number.compareTo(b.number));
       initialSelectedRound = _allRounds.first;
+      print(
+        '🔍 Round initial sélectionné: ${initialSelectedRound.name} (numéro: ${initialSelectedRound.number})',
+      );
     }
 
-    // S'assurer que le round sélectionné existe dans la liste
-    if (initialSelectedRound != null) {
-      final foundRound = _allRounds.firstWhere(
-        (r) => r.id == initialSelectedRound!.id,
-        orElse:
-            () =>
-                _allRounds.isNotEmpty
-                    ? _allRounds.first
-                    : initialSelectedRound!,
-      );
-      initialSelectedRound = foundRound;
+    // Déterminer le round actif pour affichage (optionnel)
+    Round? activeRound;
+    try {
+      activeRound = await RoundService().getActiveRound(widget.version.id);
+      print('🔍 Round actif détecté: ${activeRound?.name}');
+    } catch (e) {
+      print('⚠️ Pas de round actif détecté');
     }
 
     setState(() {
@@ -111,11 +114,28 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
             versionId,
             activeRound: _selectedRound,
           );
+
+      // Filtrer selon le numéro du round
+      if (_selectedRound!.number == 1) {
+        // Round 1 : Afficher seulement les participants acceptés
+        participants = participants.where((p) => p.isAccepted == true).toList();
+        print('🔍 Round 1 - Participants acceptés: ${participants.length}');
+      } else if (_selectedRound!.number >= 2) {
+        // Round 2+ : Afficher les participants acceptés ET qui ont passé le round précédent
+        // Le service fetchParticipantsByVersionAndRounds s'occupe déjà de récupérer
+        // les participants qui ont passé le round précédent
+        participants = participants.where((p) => p.isAccepted == true).toList();
+        print(
+          '🔍 Round ${_selectedRound!.number} - Participants acceptés et qualifiés: ${participants.length}',
+        );
+      }
     } else {
       // Si pas de round sélectionné, récupérer tous les participants de la version
       try {
         participants = await _participantService
             .fetchParticipantsByVersionAndRounds(versionId);
+        // Filtrer seulement les participants acceptés
+        participants = participants.where((p) => p.isAccepted == true).toList();
       } catch (e) {
         print('❌ Erreur lors du chargement des participants: $e');
         participants = [];
@@ -159,19 +179,14 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
           return p;
         }).toList();
 
-    // Vérifier si tous les participants sont évalués
-    final allEvaluated = participantsWithStatus.every((p) => p.isEvaluated);
-
     print('📊 Participants chargés: ${participantsWithStatus.length}');
     print(
       '📊 Participants évalués: ${participantsWithStatus.where((p) => p.isEvaluated).length}',
     );
-    print('📊 Tous évalués: $allEvaluated');
 
     setState(() {
       appUser = user;
       _allParticipants = participantsWithStatus;
-      _allParticipantsEvaluated = allEvaluated;
       _applyFilter();
       _isLoading = false;
     });
@@ -187,11 +202,26 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       final juryId = appUser?.id ?? '';
 
       // Récupérer participants pour le round sélectionné
-      final participants = await _participantService
+      var participants = await _participantService
           .fetchParticipantsByVersionAndRounds(
             versionId,
             activeRound: _selectedRound,
           );
+
+      // Filtrer selon le numéro du round
+      if (_selectedRound!.number == 1) {
+        // Round 1 : Afficher seulement les participants acceptés
+        participants = participants.where((p) => p.isAccepted == true).toList();
+        print(
+          '🔍 Round 1 - Participants acceptés rechargés: ${participants.length}',
+        );
+      } else if (_selectedRound!.number >= 2) {
+        // Round 2+ : Afficher les participants acceptés ET qui ont passé le round précédent
+        participants = participants.where((p) => p.isAccepted == true).toList();
+        print(
+          '🔍 Round ${_selectedRound!.number} - Participants acceptés et qualifiés rechargés: ${participants.length}',
+        );
+      }
 
       // Récupérer évaluations du jury pour cette version
       final evaluationsResponse = await _evaluationService
@@ -217,12 +247,8 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
             return p;
           }).toList();
 
-      // Vérifier si tous les participants sont évalués
-      final allEvaluated = participantsWithStatus.every((p) => p.isEvaluated);
-
       setState(() {
         _allParticipants = participantsWithStatus;
-        _allParticipantsEvaluated = allEvaluated;
         _applyFilter();
         _isLoading = false;
       });
@@ -252,9 +278,17 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     if (_searchController.text.isNotEmpty) {
       final query = _searchController.text.toLowerCase();
       filtered =
-          filtered
-              .where((p) => p.registrationNumber.toString().contains(query))
-              .toList();
+          filtered.where((p) {
+            // Recherche par nom
+            final nameMatch = p.fullName.toLowerCase().contains(query);
+            // Recherche par numéro d'enregistrement
+            final numberMatch =
+                p.registrationNumber?.toString().contains(query) ?? false;
+            // Recherche par téléphone
+            final phoneMatch = p.phone.toLowerCase().contains(query);
+
+            return nameMatch || numberMatch || phoneMatch;
+          }).toList();
     }
 
     print(
@@ -266,64 +300,115 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     });
   }
 
+  /// Vérifier si tous les participants du groupe d'âge sélectionné ont été évalués
+  bool _areAllGroupParticipantsEvaluated() {
+    // Récupérer tous les participants du groupe d'âge sélectionné (sans filtre de recherche)
+    final groupParticipants =
+        _allParticipants.where((p) => p.ageGroup == _selectedAgeGroup).toList();
+
+    if (groupParticipants.isEmpty) return false;
+
+    // Vérifier si tous sont évalués
+    final allEvaluated = groupParticipants.every((p) => p.isEvaluated);
+
+    print(
+      '🔍 Vérification évaluation groupe $_selectedAgeGroup: ${groupParticipants.where((p) => p.isEvaluated).length}/${groupParticipants.length} évalués',
+    );
+
+    return allEvaluated;
+  }
+
+  Widget _buildParticipantStatusIcon(Participant participant) {
+    // Si l'évaluation n'est pas autorisée
+    if (!widget.version.juryEvaluationEnabled) {
+      return Icon(Icons.block, color: AppTheme.errorColor, size: 28);
+    }
+
+    // Déterminer l'icône et la couleur selon le statut
+    final isReadOnly =
+        _selectedRound != null &&
+        (!_selectedRound!.isActive || _selectedRound!.resultIsPublished);
+
+    IconData icon;
+    Color color;
+
+    if (participant.isEvaluated) {
+      icon = Icons.check_circle;
+      color = AppTheme.successColor;
+    } else if (isReadOnly) {
+      icon = Icons.visibility;
+      color = AppTheme.infoColor;
+    } else {
+      icon = Icons.edit;
+      color = AppTheme.warningColor;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 28),
+        if (isReadOnly) ...[
+          const SizedBox(width: AppTheme.spacingS),
+          Icon(
+            Icons.lock_outline,
+            color: AppTheme.textSecondaryColor,
+            size: 16,
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Text(widget.version.name),
-            activeRound != null ? Text(" : ${activeRound?.name}") : Text(""),
-            if (_allParticipantsEvaluated) ...[
-              const SizedBox(width: 8),
-              Chip(
-                label: const Text(
-                  'مكتمل',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                backgroundColor: Colors.green,
-              ),
-            ],
-          ],
-        ),
+      appBar: ModernAppBar(
+        title:
+            activeRound != null
+                ? '${widget.version.name} - ${activeRound!.name}'
+                : widget.version.name,
       ),
       floatingActionButton:
-          _filteredParticipants.isEmpty
-              ? Container()
+          // Afficher le bouton seulement si :
+          // 1. L'évaluation est autorisée (jury_evaluation_enabled == true)
+          // 2. Il y a des participants
+          // 3. Tous les participants du groupe sont évalués
+          _filteredParticipants.isEmpty ||
+                  !widget.version.juryEvaluationEnabled ||
+                  !_areAllGroupParticipantsEvaluated()
+              ? null
               : Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
+                  horizontal: AppTheme.spacingM,
+                  vertical: AppTheme.spacingS,
                 ),
-                margin: const EdgeInsets.only(right: 30.0),
+                margin: const EdgeInsets.only(right: AppTheme.spacingL),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                  child: PrimaryButton(
+                    text: 'إرسال التصحيح',
+                    icon: Icons.send,
+                    backgroundColor: AppTheme.successColor,
                     onPressed: () async {
                       if (appUser == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("❌ لم يتم العثور على حساب المستخدم"),
+                          SnackBar(
+                            content: const Text(
+                              "لم يتم العثور على حساب المستخدم",
+                            ),
+                            backgroundColor: AppTheme.errorColor,
                           ),
                         );
                         return;
                       }
 
-                      final EvaluationService _evaluationService =
+                      final EvaluationService evaluationService =
                           EvaluationService();
 
                       final juryId = appUser?.id ?? '';
 
-                      // 1. Récupérer toutes les évaluations faites par ce jury dans cette version
-                      final evaluations = await _evaluationService
+                      // Récupérer toutes les évaluations faites par ce jury dans cette version
+                      final evaluations = await evaluationService
                           .getEvaluationsByJuryInVersion(
                             juryId: juryId,
                             versionId: widget.version.id,
@@ -336,18 +421,9 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                         version: widget.version,
                         roundName: _selectedRound?.name ?? 'Round',
                         juryName: appUser!.fullName,
-
                         ageGroup: _selectedAgeGroup,
                       );
                     },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("إرسال التصحيح"),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.send, size: 25, color: Colors.white),
-                      ],
-                    ),
                   ),
                 ),
               ),
@@ -372,49 +448,123 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
           );
         },
       ),*/
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        padding: const EdgeInsets.symmetric(horizontal: 10.0),
-        child:
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
+      body:
+          _isLoading
+              ? const ModernLoadingIndicator()
+              : ModernPullToRefresh(
+                onRefresh: _loadParticipantsWithEvaluationStatus,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
                   child: Column(
                     children: [
-                      // Message de completion si tous sont évalués
-                      if (_allParticipantsEvaluated)
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.shade200),
-                          ),
+                      // Message d'autorisation d'évaluation
+                      if (!widget.version.juryEvaluationEnabled)
+                        ModernCard(
+                          backgroundColor: AppTheme.errorColor.withOpacity(0.1),
                           child: Row(
                             children: [
                               Icon(
-                                Icons.check_circle,
-                                color: Colors.green.shade600,
+                                Icons.block,
+                                color: AppTheme.errorColor,
+                                size: 28,
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppTheme.spacingM),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'تم تقييم جميع المشاركين',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green.shade700,
+                                      'التقييم غير مسموح به',
+                                      style: AppTheme.headingSmall.copyWith(
+                                        color: AppTheme.errorColor,
                                       ),
                                     ),
+                                    const SizedBox(height: AppTheme.spacingXS),
                                     Text(
-                                      'يمكن تصفح النتائج باستخدام الفلاتر أدناه',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.green.shade600,
+                                      'يرجى انتظار إذن المسؤول لبدء التقييم',
+                                      style: AppTheme.bodyMedium.copyWith(
+                                        color: AppTheme.errorColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Message de completion si tous les participants du groupe sont évalués
+                      if (_areAllGroupParticipantsEvaluated() &&
+                          widget.version.juryEvaluationEnabled)
+                        ModernCard(
+                          backgroundColor: AppTheme.successColor.withOpacity(
+                            0.1,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                color: AppTheme.successColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: AppTheme.spacingM),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'تم تقييم جميع المشاركين في فئة $_selectedAgeGroup',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        color: AppTheme.successColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppTheme.spacingXS),
+                                    Text(
+                                      'يمكنك الآن إرسال التصحيح باستخدام الزر أسفل الصفحة',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.successColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Message d'avertissement si le groupe n'est pas complètement évalué
+                      if (!_areAllGroupParticipantsEvaluated() &&
+                          widget.version.juryEvaluationEnabled &&
+                          _allParticipants.isNotEmpty)
+                        ModernCard(
+                          backgroundColor: AppTheme.warningColor.withOpacity(
+                            0.1,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.pending_actions,
+                                color: AppTheme.warningColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: AppTheme.spacingM),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'التقييم غير مكتمل',
+                                      style: AppTheme.labelLarge.copyWith(
+                                        color: AppTheme.warningColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppTheme.spacingXS),
+                                    Text(
+                                      'يجب تقييم جميع المشاركين في فئة $_selectedAgeGroup قبل إرسال التصحيح',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.warningColor,
                                       ),
                                     ),
                                   ],
@@ -431,191 +581,278 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                       _buildRoundSelector(),
 
                       // Champ de recherche
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                      ModernCard(
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'البحث عن المشاركين...',
-                            prefixIcon: const Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                            hintText: 'البحث بالاسم، رقم التسجيل أو الهاتف...',
+                            hintStyle: AppTheme.bodyMedium.copyWith(
+                              color: AppTheme.textDisabledColor,
                             ),
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: AppTheme.primaryColor,
+                            ),
+                            border: InputBorder.none,
+                            filled: false,
                           ),
+                          style: AppTheme.bodyMedium,
                         ),
                       ),
 
-                      // Dropdown pour groupe d'âge
+                      // Filtres : Groupe d'âge et Statut d'évaluation
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.all(8.0),
-                              child: DropdownButton<String>(
-                                value: _selectedAgeGroup,
-                                items:
-                                    ['كبار', 'صغار'].map((group) {
-                                      return DropdownMenuItem(
-                                        value: group,
-                                        child: Text(group),
-                                      );
-                                    }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedAgeGroup = value;
-                                      _applyFilter();
-                                    });
-                                  }
-                                },
+                            child: ModernCard(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.people,
+                                    color: AppTheme.primaryColor,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _selectedAgeGroup,
+                                        isExpanded: true,
+                                        items:
+                                            ['كبار', 'صغار'].map((group) {
+                                              return DropdownMenuItem(
+                                                value: group,
+                                                child: Text(
+                                                  group,
+                                                  style: AppTheme.bodyMedium,
+                                                ),
+                                              );
+                                            }).toList(),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setState(() {
+                                              _selectedAgeGroup = value;
+                                              _applyFilter();
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-
-                          // Dropdown pour statut évaluation
+                          const SizedBox(width: AppTheme.spacingS),
                           Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.all(8.0),
-                              child: DropdownButton<String>(
-                                value: _selectedEvaluationStatus,
-                                items: [
-                                  DropdownMenuItem(
-                                    value: 'all',
-                                    child: Text('الكل'),
+                            child: ModernCard(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.filter_list,
+                                    color: AppTheme.primaryColor,
+                                    size: 20,
                                   ),
-                                  DropdownMenuItem(
-                                    value: 'evaluated',
-                                    child: Text('مقيم'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'notEvaluated',
-                                    child: Text('غير مقيم'),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _selectedEvaluationStatus,
+                                        isExpanded: true,
+                                        items: [
+                                          DropdownMenuItem(
+                                            value: 'all',
+                                            child: Text(
+                                              'الكل',
+                                              style: AppTheme.bodyMedium,
+                                            ),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'evaluated',
+                                            child: Text(
+                                              'مقيم',
+                                              style: AppTheme.bodyMedium,
+                                            ),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'notEvaluated',
+                                            child: Text(
+                                              'غير مقيم',
+                                              style: AppTheme.bodyMedium,
+                                            ),
+                                          ),
+                                        ],
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            setState(() {
+                                              _selectedEvaluationStatus = value;
+                                              _applyFilter();
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ),
                                   ),
                                 ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedEvaluationStatus = value;
-                                      _applyFilter();
-                                    });
-                                  }
-                                },
                               ),
                             ),
                           ),
                         ],
                       ),
                       // Liste des participants filtrés
-                      Container(
-                        height: MediaQuery.of(context).size.height * 0.6,
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.5,
                         child:
                             _filteredParticipants.isEmpty
-                                ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.people_outline,
-                                        size: 64,
-                                        color: Colors.grey[400],
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        _allParticipants.isEmpty
-                                            ? 'لا يوجد مشاركون في هذه النسخة'
-                                            : 'لا يوجد مشاركون في هذه الفئة',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      if (_allParticipants.isEmpty) ...[
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'تأكد من وجود مشاركين مسجلين في هذه النسخة',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[500],
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
+                                ? EmptyState(
+                                  icon: Icons.people_outline,
+                                  title:
+                                      _allParticipants.isEmpty
+                                          ? 'لا يوجد مشاركون'
+                                          : 'لا يوجد مشاركون في هذه الفئة',
+                                  subtitle:
+                                      _allParticipants.isEmpty
+                                          ? 'لا توجد مشاركون مسجلون في هذه النسخة'
+                                          : 'جرب تغيير الفلاتر',
                                 )
                                 : ListView.builder(
                                   itemCount: _filteredParticipants.length,
                                   itemBuilder: (context, index) {
                                     final participant =
                                         _filteredParticipants[index];
-                                    return ListTile(
-                                      onTap: () {
-                                        if (appUser != null &&
-                                            _selectedRound != null) {
-                                          // Déterminer si on est en mode lecture seule
-                                          // Lecture seule si le round n'est pas actif OU s'il est publié
-                                          final isReadOnly =
-                                              !_selectedRound!.isActive ||
-                                              _selectedRound!.resultIsPublished;
-
-                                          context.push(
-                                            '/jury/participant',
-                                            extra: JuryEvaluationArgs(
-                                              participant: participant,
-                                              appUser: appUser!,
-                                              version: widget.version,
-                                              isReadOnly: isReadOnly,
-                                              round: _selectedRound!,
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      title: Text(participant.fullName),
-                                      subtitle: Text(
-                                        'الفئة: ${participant.ageGroup}',
+                                    return Container(
+                                      margin: const EdgeInsets.only(
+                                        bottom: AppTheme.spacingS,
                                       ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            participant.isEvaluated
-                                                ? Icons.check_circle
-                                                : (_selectedRound != null &&
-                                                    (!_selectedRound!
-                                                            .isActive ||
-                                                        _selectedRound!
-                                                            .resultIsPublished))
-                                                ? Icons.visibility
-                                                : Icons.edit,
-                                            color:
-                                                participant.isEvaluated
-                                                    ? Colors.green
-                                                    : (_selectedRound != null &&
-                                                        (!_selectedRound!
-                                                                .isActive ||
-                                                            _selectedRound!
-                                                                .resultIsPublished))
-                                                    ? Colors.blue
-                                                    : Colors.orange,
+                                      child: ModernCard(
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusM,
                                           ),
-                                          if (_selectedRound != null &&
-                                              (!_selectedRound!.isActive ||
+                                          onTap: () {
+                                            // Vérifier si l'évaluation est autorisée
+                                            if (!widget
+                                                .version
+                                                .juryEvaluationEnabled) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.block,
+                                                        color: Colors.white,
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Expanded(
+                                                        child: Text(
+                                                          'التقييم غير مسموح به حالياً - يرجى انتظار إذن المسؤول',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.red.shade600,
+                                                  duration: Duration(
+                                                    seconds: 3,
+                                                  ),
+                                                ),
+                                              );
+                                              return;
+                                            }
+
+                                            if (appUser != null &&
+                                                _selectedRound != null) {
+                                              // Déterminer si on est en mode lecture seule
+                                              // Lecture seule si le round n'est pas actif OU s'il est publié
+                                              final isReadOnly =
+                                                  !_selectedRound!.isActive ||
                                                   _selectedRound!
-                                                      .resultIsPublished)) ...[
-                                            const SizedBox(width: 8),
-                                            Icon(
-                                              Icons.lock_outline,
-                                              color: Colors.grey.shade400,
-                                              size: 16,
+                                                      .resultIsPublished;
+
+                                              context.push(
+                                                '/jury/participant',
+                                                extra: JuryEvaluationArgs(
+                                                  participant: participant,
+                                                  appUser: appUser!,
+                                                  version: widget.version,
+                                                  isReadOnly: isReadOnly,
+                                                  round: _selectedRound!,
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(
+                                              AppTheme.spacingM,
                                             ),
-                                          ],
-                                        ],
+                                            child: Row(
+                                              children: [
+                                                // Avatar
+                                                CircleAvatar(
+                                                  radius: 24,
+                                                  backgroundColor: AppTheme
+                                                      .primaryColor
+                                                      .withOpacity(0.1),
+                                                  child: Text(
+                                                    participant
+                                                            .registrationNumber
+                                                            ?.toString() ??
+                                                        '?',
+                                                    style: AppTheme.labelLarge
+                                                        .copyWith(
+                                                          color:
+                                                              AppTheme
+                                                                  .primaryColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  width: AppTheme.spacingM,
+                                                ),
+                                                // Informations
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        participant.fullName,
+                                                        style: AppTheme
+                                                            .labelLarge
+                                                            .copyWith(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height:
+                                                            AppTheme.spacingXS,
+                                                      ),
+                                                      Text(
+                                                        'الفئة: ${participant.ageGroup}',
+                                                        style:
+                                                            AppTheme.bodyMedium,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                // Icône de statut
+                                                _buildParticipantStatusIcon(
+                                                  participant,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     );
                                   },
@@ -624,27 +861,25 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                     ],
                   ),
                 ),
-      ),
+              ),
     );
   }
 
   Widget _buildRoundSelector() {
     if (_allRounds.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)),
-        ),
+      return ModernCard(
+        backgroundColor: AppTheme.textSecondaryColor.withOpacity(0.1),
         child: Row(
           children: [
-            Icon(Icons.info, color: Colors.grey, size: 24),
-            const SizedBox(width: 12),
-            Text(
-              'لا توجد جولات متاحة',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            Icon(Icons.info, color: AppTheme.textSecondaryColor, size: 24),
+            const SizedBox(width: AppTheme.spacingM),
+            Expanded(
+              child: Text(
+                'لا توجد جولات متاحة',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
             ),
           ],
         ),
@@ -668,60 +903,63 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       });
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-      ),
+    return ModernCard(
       child: Row(
         children: [
-          Icon(Icons.event, color: Colors.blue, size: 24),
-          const SizedBox(width: 12),
+          Icon(Icons.event, color: AppTheme.primaryColor, size: 24),
+          const SizedBox(width: AppTheme.spacingM),
           Expanded(
-            child: DropdownButton<Round>(
-              value: validSelectedRound,
-              isExpanded: true,
-              hint: const Text('اختر الجولة'),
-              items:
-                  _allRounds.map((round) {
-                    final isActive = round.isActive;
-                    final isPublished = round.resultIsPublished;
-                    Color statusColor = Colors.black;
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Round>(
+                value: validSelectedRound,
+                isExpanded: true,
+                hint: Text('اختر الجولة', style: AppTheme.bodyMedium),
+                items:
+                    _allRounds.map((round) {
+                      final isActive = round.isActive;
+                      final isPublished = round.resultIsPublished;
+                      Color statusColor =
+                          isActive
+                              ? AppTheme.warningColor
+                              : isPublished
+                              ? AppTheme.infoColor
+                              : AppTheme.textSecondaryColor;
 
-                    return DropdownMenuItem<Round>(
-                      value: round,
-                      child: Row(
-                        children: [
-                          Icon(
-                            isActive
-                                ? Icons.play_circle
-                                : isPublished
-                                ? Icons.visibility
-                                : Icons.pause_circle,
-                            color: statusColor,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              round.name.toString(),
-                              style: TextStyle(color: statusColor),
+                      return DropdownMenuItem<Round>(
+                        value: round,
+                        child: Row(
+                          children: [
+                            Icon(
+                              isActive
+                                  ? Icons.play_circle
+                                  : isPublished
+                                  ? Icons.visibility
+                                  : Icons.pause_circle,
+                              color: statusColor,
+                              size: 16,
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-              onChanged: (Round? newRound) {
-                if (newRound != null && newRound.id != _selectedRound?.id) {
-                  setState(() {
-                    _selectedRound = newRound;
-                  });
-                  _loadParticipantsForSelectedRound();
-                }
-              },
+                            const SizedBox(width: AppTheme.spacingS),
+                            Expanded(
+                              child: Text(
+                                round.name.toString(),
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: statusColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                onChanged: (Round? newRound) {
+                  if (newRound != null && newRound.id != _selectedRound?.id) {
+                    setState(() {
+                      _selectedRound = newRound;
+                    });
+                    _loadParticipantsForSelectedRound();
+                  }
+                },
+              ),
             ),
           ),
         ],
@@ -732,7 +970,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   Widget _buildDisplayModeIndicator() {
     String title = '';
     String subtitle = '';
-    Color color = Colors.blue;
+    Color color = AppTheme.infoColor;
     IconData icon = Icons.info;
 
     // Déterminer le mode basé sur le round sélectionné
@@ -743,55 +981,48 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     if (_selectedRound != null) {
       title = '${_selectedRound!.name}';
       if (isActive && !isPublished) {
-        title += ' ( لم تتم نشر النتائج )';
+        title += ' (نشطة)';
         subtitle = 'يمكن تقييم المشاركين في هذه الجولة';
-        color = Colors.orange;
+        color = AppTheme.warningColor;
         icon = Icons.edit;
       } else if (isPublished) {
-        title += ' ( تم نشر النتائج )';
+        title += ' (تم نشر النتائج)';
         subtitle = 'عرض النتائج - وضع القراءة فقط';
-        color = Colors.blue;
+        color = AppTheme.infoColor;
         icon = Icons.visibility;
       } else {
-        title += '';
         subtitle = 'عرض النتائج - لا يمكن التعديل';
-        // color = Colors.grey;
+        color = AppTheme.textSecondaryColor;
         icon = Icons.pause_circle;
       }
     } else {
       title = 'لا توجد جولة محددة';
       subtitle = 'اختر جولة لعرض المشاركين';
-      // color = Colors.grey;
+      color = AppTheme.textSecondaryColor;
       icon = Icons.info;
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
+    return ModernCard(
+      backgroundColor: color.withOpacity(0.1),
       child: Row(
         children: [
           Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppTheme.spacingM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                  style: AppTheme.labelLarge.copyWith(
                     color: color,
-                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: AppTheme.spacingXS),
                 Text(
                   subtitle,
-                  style: TextStyle(color: color.withOpacity(0.8), fontSize: 12),
+                  style: AppTheme.bodySmall.copyWith(color: color),
                 ),
               ],
             ),

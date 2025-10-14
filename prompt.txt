@@ -1,0 +1,1 @@
+au lieu d'utiliser les rounds actives on va utiliser les rounds de la competition qu'on utilse parceque nous cliquons sur une competition version pour acceder au la page @jury_version_detail_page.dart donc on va utiliser les rouds de cette competition version 

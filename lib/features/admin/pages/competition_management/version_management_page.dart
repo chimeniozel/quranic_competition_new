@@ -110,7 +110,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingM),
+                        const SizedBox(height: AppTheme.spacingS),
                         TextField(
                           controller: _maxAdultsController,
                           keyboardType: TextInputType.number,
@@ -124,7 +124,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingM),
+                        const SizedBox(height: AppTheme.spacingS),
                         TextField(
                           controller: _maxChildrenController,
                           keyboardType: TextInputType.number,
@@ -138,7 +138,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingM),
+                        const SizedBox(height: AppTheme.spacingS),
                         Row(
                           children: [
                             Icon(
@@ -192,7 +192,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
 
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
       child: InkWell(
@@ -201,7 +201,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
         },
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -218,7 +218,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   // Informations principales
                   Expanded(
                     child: Column(
@@ -280,7 +280,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Informations détaillées
               Container(
@@ -361,7 +361,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Boutons d'action
               Row(
@@ -459,7 +459,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
               : ModernPullToRefresh(
                 onRefresh: _loadVersions,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -477,7 +477,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                 color: AppTheme.primaryColor,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Expanded(
                               child: StatCard(
                                 title: 'النسخ النشطة',
@@ -535,7 +535,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                     ..._versions.map(
                                       (version) => _buildVersionCard(version),
                                     ),
-                                    const SizedBox(height: AppTheme.spacingM),
+                                    const SizedBox(height: AppTheme.spacingS),
                                   ],
                                 ),
                       ),
