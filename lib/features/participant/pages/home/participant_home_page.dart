@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/competition_version_service.dart';
-import '../../../../core/services/round_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
@@ -21,9 +20,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   bool _isLoading = false;
   bool _hasActiveCompetition = false;
   CompetitionVersion? _activeVersion;
-  bool _hasResultsAvailable = false;
   final _competitionService = CompetitionVersionService();
-  final _roundService = RoundService();
   StreamSubscription<List<CompetitionVersion>>? _competitionSubscription;
 
   @override
@@ -55,7 +52,6 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
               setState(() {
                 _hasActiveCompetition = false;
                 _activeVersion = null;
-                _hasResultsAvailable = false;
                 _isLoading = false;
               });
             }
@@ -70,48 +66,15 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
       bool hasActiveCompetition = activeVersions.isNotEmpty;
       CompetitionVersion? activeVersion =
           activeVersions.isNotEmpty ? activeVersions.first : null;
-      CompetitionVersion? lastVersion;
-      bool hasResultsAvailable = false;
-
-      // Si pas de compétition active, récupérer la dernière compétition
-      if (!hasActiveCompetition) {
-        final allVersions = await _competitionService.fetchVersions();
-        lastVersion = allVersions.isNotEmpty ? allVersions.first : null;
-      }
-
-      // Déterminer quelle version utiliser pour vérifier les résultats
-      final versionToCheck = activeVersion ?? lastVersion;
-
-      if (versionToCheck != null) {
-        // Vérifier si au moins un round est publié pour cette version
-        try {
-          final rounds = await _roundService.getRoundsByVersion(
-            versionToCheck.id,
-          );
-          hasResultsAvailable = rounds.any((round) => round.resultIsPublished);
-          print('🏆 Vérification des résultats pour: ${versionToCheck.name}');
-          print('🏆 Nombre de rounds: ${rounds.length}');
-          for (final round in rounds) {
-            print(
-              '🏆 Round ${round.number}: publié = ${round.resultIsPublished}',
-            );
-          }
-          print('🏆 Résultats disponibles: $hasResultsAvailable');
-        } catch (e) {
-          print('❌ Erreur lors de la vérification des rounds: $e');
-          hasResultsAvailable = false;
-        }
-      }
 
       if (mounted) {
         setState(() {
           _hasActiveCompetition = hasActiveCompetition;
           _activeVersion = activeVersion;
-          _hasResultsAvailable = hasResultsAvailable;
           _isLoading = false;
         });
         print(
-          '🏠 État mis à jour: hasActiveCompetition=$_hasActiveCompetition, hasResults=$_hasResultsAvailable',
+          '🏠 État mis à jour: hasActiveCompetition=$_hasActiveCompetition',
         );
       }
     } catch (e) {
@@ -120,7 +83,6 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
         setState(() {
           _hasActiveCompetition = false;
           _activeVersion = null;
-          _hasResultsAvailable = false;
           _isLoading = false;
         });
       }
@@ -139,7 +101,6 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
       setState(() {
         _hasActiveCompetition = false;
         _activeVersion = null;
-        _hasResultsAvailable = false;
         _isLoading = false;
       });
       print('Erreur lors de la vérification des compétitions: $e');
@@ -314,134 +275,56 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                         ),
                       ),
 
-                      // Section des résultats (seulement si disponibles)
-                      if (_hasResultsAvailable) ...[
-                        ModernCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
+                      // Section des résultats (toujours visible)
+                      ModernCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(
+                                      AppTheme.spacingS,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.successColor.withValues(
+                                        alpha: 0.1,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.successColor.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.emoji_events,
-                                        color: AppTheme.successColor,
-                                        size: 16,
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
                                       ),
                                     ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Text(
-                                      'نتائج المسابقة',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    child: Icon(
+                                      Icons.emoji_events,
+                                      color: AppTheme.successColor,
+                                      size: 16,
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: SecondaryButton(
-                                    onPressed: () {
-                                      context.push('/participant_result_page');
-                                    },
-                                    text: 'عرض النتائج',
                                   ),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Text(
+                                    'نتائج المسابقة',
+                                    style: AppTheme.labelLarge.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+                              SizedBox(
+                                width: double.infinity,
+                                child: SecondaryButton(
+                                  onPressed: () {
+                                    context.push('/participant_result_page');
+                                  },
+                                  text: 'عرض النتائج',
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ] else ...[
-                        // Message informatif si pas de résultats
-                        ModernCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.emoji_events_outlined,
-                                        color: Colors.grey,
-                                        size: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Text(
-                                      'نتائج المسابقة',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(
-                                    AppTheme.spacingS,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                    border: Border.all(
-                                      color: Colors.grey.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: Colors.grey,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Expanded(
-                                        child: Text(
-                                          'النتائج غير متاحة حالياً. ستظهر هنا عند نشر النتائج.',
-                                          style: AppTheme.bodyMedium.copyWith(
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
 
                       // Section des services
                       ModernCard(

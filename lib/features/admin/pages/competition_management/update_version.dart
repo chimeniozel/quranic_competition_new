@@ -282,7 +282,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                         labelText: 'الحد الأقصى للصغار',
                                         hintText: 'عدد الصغار',
                                         prefixIcon: Icon(
-                                          Icons.child_care,
+                                          Icons.person,
                                           color: AppTheme.secondaryColor,
                                         ),
                                         border: OutlineInputBorder(

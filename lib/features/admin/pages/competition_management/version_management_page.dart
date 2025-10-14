@@ -130,7 +130,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
                             labelText: 'الحد الأقصى للصغار',
-                            prefixIcon: const Icon(Icons.child_care),
+                            prefixIcon: const Icon(Icons.person),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
                                 AppTheme.radiusM,

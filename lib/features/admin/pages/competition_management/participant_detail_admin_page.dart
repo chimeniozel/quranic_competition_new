@@ -655,7 +655,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                 icon:
                                     widget.participant.ageGroup == 'كبار'
                                         ? Icons.person
-                                        : Icons.child_care,
+                                        : Icons.person,
                                 label: 'الفئة العمرية',
                                 value: widget.participant.ageGroup,
                               ),

@@ -156,7 +156,7 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
                   const SizedBox(width: AppTheme.spacingS),
                   Expanded(
                     child: _buildInfoChip(
-                      icon: Icons.child_care,
+                      icon: Icons.people,
                       label: 'صغار',
                       value: version.maxChildren.toString(),
                       color: AppTheme.secondaryColor,

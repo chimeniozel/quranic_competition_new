@@ -175,7 +175,9 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     final participantsWithStatus =
         participants.map((p) {
           p.isEvaluated = evaluatedParticipantIds.contains(p.id);
-          print('Participant ${p.fullName} isEvaluated: ${p.isEvaluated}');
+          print(
+            'Participant #${p.registrationNumber} isEvaluated: ${p.isEvaluated}',
+          );
           return p;
         }).toList();
 
@@ -386,7 +388,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                 child: SizedBox(
                   width: double.infinity,
                   child: PrimaryButton(
-                    text: 'إرسال التصحيح',
+                    text: 'حفظ التصحيح',
                     icon: Icons.send,
                     backgroundColor: AppTheme.successColor,
                     onPressed: () async {
@@ -493,46 +495,6 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                           ),
                         ),
 
-                      // Message de completion si tous les participants du groupe sont évalués
-                      if (_areAllGroupParticipantsEvaluated() &&
-                          widget.version.juryEvaluationEnabled)
-                        ModernCard(
-                          backgroundColor: AppTheme.successColor.withOpacity(
-                            0.1,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                color: AppTheme.successColor,
-                                size: 24,
-                              ),
-                              const SizedBox(width: AppTheme.spacingM),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'تم تقييم جميع المشاركين في فئة $_selectedAgeGroup',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        color: AppTheme.successColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppTheme.spacingXS),
-                                    Text(
-                                      'يمكنك الآن إرسال التصحيح باستخدام الزر أسفل الصفحة',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: AppTheme.successColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
                       // Message d'avertissement si le groupe n'est pas complètement évalué
                       if (!_areAllGroupParticipantsEvaluated() &&
                           widget.version.juryEvaluationEnabled &&
@@ -585,7 +547,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'البحث بالاسم، رقم التسجيل أو الهاتف...',
+                            hintText: 'البحث برقم التسجيل أو الهاتف...',
                             hintStyle: AppTheme.bodyMedium.copyWith(
                               color: AppTheme.textDisabledColor,
                             ),
@@ -824,7 +786,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                                             .start,
                                                     children: [
                                                       Text(
-                                                        participant.fullName,
+                                                        'المشارك رقم ${participant.registrationNumber}',
                                                         style: AppTheme
                                                             .labelLarge
                                                             .copyWith(

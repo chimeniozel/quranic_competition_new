@@ -11,8 +11,11 @@ import 'package:quranic_competition/features/admin/pages/competition_management/
 import 'package:quranic_competition/features/auth/pages/sign_up_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_detail_page.dart';
+import 'package:quranic_competition/features/jury/pages/jury_result_page.dart';
+import 'package:quranic_competition/features/jury/pages/jury_results_versions_page.dart';
 import 'package:quranic_competition/features/participant/pages/home/participant_home_page.dart';
 import 'package:quranic_competition/features/participant/pages/home/participant_result_page.dart';
+import 'package:quranic_competition/features/participant/pages/home/participant_results_versions_page.dart';
 import 'package:quranic_competition/features/participant/pages/benefits/participant_benefits_page.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
@@ -80,7 +83,8 @@ final GoRouter appRouter = GoRouter(
         path.startsWith('/participant/quiz/level/') ||
         path.startsWith('/participant/archives/competition/') ||
         path.startsWith('/participant/list/') ||
-        path.startsWith('/participant/detail/');
+        path.startsWith('/participant/detail/') ||
+        path.startsWith('/participant/results/');
 
     if (user == null && !isPublicRoute) {
       return '/participant_home_page'; // redirige les utilisateurs non connectés
@@ -147,7 +151,14 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/participant_result_page',
-      builder: (context, state) => ParticipantResultPage(),
+      builder: (context, state) => const ParticipantResultsVersionsPage(),
+    ),
+    GoRoute(
+      path: '/participant/results/:versionId',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId'];
+        return ParticipantResultPage(versionId: versionId);
+      },
     ),
     GoRoute(
       path: '/participant/benefits',
@@ -278,6 +289,17 @@ final GoRouter appRouter = GoRouter(
     // Jury
     GoRoute(path: '/jury/home', builder: (_, __) => JuryHomePage()),
     GoRoute(path: '/jury/version_page', builder: (_, __) => JuryVersionPage()),
+    GoRoute(
+      path: '/jury/results',
+      builder: (_, __) => JuryResultsVersionsPage(),
+    ),
+    GoRoute(
+      path: '/jury/results/:versionId',
+      builder: (context, state) {
+        final versionId = state.pathParameters['versionId'];
+        return JuryResultPage(versionId: versionId);
+      },
+    ),
     GoRoute(
       path: '/jury/version_detail_page',
       builder: (context, state) {

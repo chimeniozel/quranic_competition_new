@@ -12,7 +12,9 @@ import '../../../../core/widgets/ui_components.dart';
 import '../../../../models/competition_version.dart';
 
 class ParticipantResultPage extends StatefulWidget {
-  const ParticipantResultPage({super.key});
+  final String? versionId;
+
+  const ParticipantResultPage({super.key, this.versionId});
 
   @override
   State<ParticipantResultPage> createState() => _ParticipantResultPageState();
@@ -58,7 +60,16 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
     try {
       _versions = await _versionService.fetchVersions();
       if (_versions.isNotEmpty) {
-        _selectedVersion = _versions.first;
+        // Si un versionId est fourni, le pré-sélectionner
+        if (widget.versionId != null) {
+          _selectedVersion = _versions.firstWhere(
+            (v) => v.id == widget.versionId,
+            orElse: () => _versions.first,
+          );
+          print('🔍 Version pré-sélectionnée: ${_selectedVersion?.name}');
+        } else {
+          _selectedVersion = _versions.first;
+        }
         await _loadRounds();
       }
     } catch (e) {
@@ -193,66 +204,65 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
 
   Widget _buildVersionSelector() {
     return ModernCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacingM),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppTheme.primaryColor.withOpacity(0.05),
+              Colors.transparent,
+            ],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        ),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  child: Icon(
-                    Icons.event,
-                    color: AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Text(
-                  'اختر النسخة',
-                  style: AppTheme.labelLarge.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingS),
             Container(
+              padding: const EdgeInsets.all(AppTheme.spacingS),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.dividerColor),
-              ),
-              child: DropdownButton<CompetitionVersion>(
-                value: _selectedVersion,
-                isExpanded: true,
-                underline: const SizedBox(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingS,
-                  vertical: AppTheme.spacingS,
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryColor,
+                    AppTheme.primaryColor.withOpacity(0.7),
+                  ],
                 ),
-                items:
-                    _versions.map((version) {
-                      return DropdownMenuItem(
-                        value: version,
-                        child: Text(version.name, style: AppTheme.labelMedium),
-                      );
-                    }).toList(),
-                onChanged: (version) {
-                  if (version != null && version.id != _selectedVersion?.id) {
-                    setState(() {
-                      _selectedVersion = version;
-                      _currentPage = 0;
-                      _hasMore = true;
-                    });
-                    _loadRounds();
-                  }
-                },
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.emoji_events,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppTheme.spacingM),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedVersion?.name ?? 'جاري التحميل...',
+                    style: AppTheme.headingSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'السنة: ${_selectedVersion?.year ?? '...'}',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -749,6 +759,69 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
       body:
           _isLoading
               ? const LoadingOverlay(child: SizedBox())
+              : _rounds.isEmpty
+              ? ModernPullToRefresh(
+                onRefresh: _loadVersions,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppTheme.spacingL),
+                    child: Column(
+                      children: [
+                        _buildVersionSelector(),
+                        const SizedBox(height: AppTheme.spacingXL),
+                        ModernCard(
+                          child: Container(
+                            padding: const EdgeInsets.all(AppTheme.spacingXL),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(
+                                    AppTheme.spacingL,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.emoji_events_outlined,
+                                    size: 64,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                                const SizedBox(height: AppTheme.spacingL),
+                                Text(
+                                  'لا توجد نتائج متاحة',
+                                  style: AppTheme.headingMedium.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+                                Text(
+                                  'لم يتم نشر نتائج أي جولة بعد في هذه النسخة',
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: AppTheme.spacingXS),
+                                Text(
+                                  'يرجى الانتظار حتى يتم نشر النتائج',
+                                  style: AppTheme.bodySmall.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
               : ModernPullToRefresh(
                 onRefresh: () => _loadResults(reset: true),
                 child: CustomScrollView(
