@@ -4,11 +4,8 @@ import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/core/services/confirmation_service.dart';
 import 'package:quranic_competition/models/user_role.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:quranic_competition/core/widgets/modern_navigation.dart';
-import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
-import 'package:quranic_competition/core/widgets/modern_dashboard.dart';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -21,7 +18,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
   final UserManagementService _userService = UserManagementService();
 
   List<Map<String, dynamic>> _users = [];
-  Map<String, dynamic> _statistics = {};
   bool _isLoading = true;
   String _searchQuery = '';
   String _selectedRoleFilter = 'all';
@@ -41,11 +37,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
     try {
       final users = await _userService.getAllUsers();
-      final stats = await _userService.getUserStatistics();
 
       setState(() {
         _users = users;
-        _statistics = stats;
         _isLoading = false;
       });
     } catch (e) {
@@ -111,7 +105,15 @@ class _UserManagementPageState extends State<UserManagementPage> {
     if (confirmed) {
       try {
         await _userService.updateUserRole(user['id'], newRole);
-        await _loadUsers(); // Rafraîchir la liste
+
+        // Mettre à jour localement sans recharger la page
+        setState(() {
+          final userIndex = _users.indexWhere((u) => u['id'] == user['id']);
+          if (userIndex != -1) {
+            _users[userIndex]['role'] = newRole.code;
+            _users[userIndex]['role_display_name'] = newRole.displayName;
+          }
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -135,167 +137,402 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 
+  Future<void> _toggleVerificationStatus(Map<String, dynamic> user) async {
+    final currentStatus = user['is_validated'] == true;
+    final newStatus = !currentStatus;
+
+    final confirmed = await ConfirmationService.showCriticalActionConfirmation(
+      context,
+      title: 'تغيير حالة التحقق',
+      message:
+          'هل أنت متأكد من ${newStatus ? 'تحقق' : 'إلغاء تحقق'} المستخدم ${user['email']}؟',
+      actionType: 'تغيير حالة التحقق',
+    );
+
+    if (confirmed) {
+      try {
+        await _userService.updateUserVerificationStatus(user['id'], newStatus);
+
+        // Mettre à jour localement sans recharger la page
+        setState(() {
+          final userIndex = _users.indexWhere((u) => u['id'] == user['id']);
+          if (userIndex != -1) {
+            _users[userIndex]['is_validated'] = newStatus;
+          }
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'تم ${newStatus ? 'تحقق' : 'إلغاء تحقق'} المستخدم بنجاح',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          debugPrint('خطأ في تغيير حالة التحقق: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('خطأ في تغيير حالة التحقق: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildUserCard(Map<String, dynamic> user) {
     final role = UserRole.fromString(user['role']);
 
-    return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
-        vertical: AppTheme.spacingS,
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: AppTheme.spacingS),
+      elevation: AppTheme.elevationS,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
       ),
-      padding: const EdgeInsets.all(AppTheme.spacingM),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // Avatar
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: _getRoleColor(role).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacingS),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          gradient: LinearGradient(
+            colors: [AppTheme.cardColor, AppTheme.cardColor.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Avatar avec gradient
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _getRoleColor(role),
+                        _getRoleColor(role).withOpacity(0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _getRoleColor(role).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _getRoleIcon(role),
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                child: Icon(
-                  _getRoleIcon(role),
-                  color: _getRoleColor(role),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
 
-              // User Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user['full_name'] ?? user['email'],
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
+                // User Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user['full_name'] ?? user['email'],
+                        style: AppTheme.bodyLarge.copyWith(
+                          color: AppTheme.textPrimaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user['email'],
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
+                      const SizedBox(height: AppTheme.spacingXS),
+                      Text(
+                        user['email'],
+                        style: AppTheme.bodySmall.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'تم الإنشاء: ${_formatDate(user['created_at'])}',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
+                      const SizedBox(height: AppTheme.spacingXS),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingXS,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.backgroundColor,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                          border: Border.all(
+                            color: AppTheme.dividerColor,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          'تم الإنشاء: ${_formatDate(user['created_at'])}',
+                          style: AppTheme.labelSmall.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                            fontSize: 10,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+
+                // Statut de vérification Badge moderne
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingXS,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors:
+                          user['is_validated'] == true
+                              ? [
+                                AppTheme.successColor.withOpacity(0.1),
+                                AppTheme.successColor.withOpacity(0.05),
+                              ]
+                              : [
+                                AppTheme.warningColor.withOpacity(0.1),
+                                AppTheme.warningColor.withOpacity(0.05),
+                              ],
                     ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    border: Border.all(
+                      color:
+                          user['is_validated'] == true
+                              ? AppTheme.successColor.withOpacity(0.3)
+                              : AppTheme.warningColor.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        user['is_validated'] == true
+                            ? Icons.verified
+                            : Icons.pending,
+                        color:
+                            user['is_validated'] == true
+                                ? AppTheme.successColor
+                                : AppTheme.warningColor,
+                        size: 14,
+                      ),
+                      const SizedBox(width: AppTheme.spacingXS),
+                      Text(
+                        user['is_validated'] == true ? 'محقق' : 'غير محقق',
+                        style: AppTheme.labelSmall.copyWith(
+                          color:
+                              user['is_validated'] == true
+                                  ? AppTheme.successColor
+                                  : AppTheme.warningColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTheme.spacingS),
+
+            // Séparateur
+            Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.dividerColor,
+                    AppTheme.dividerColor.withOpacity(0.5),
+                    AppTheme.dividerColor,
                   ],
                 ),
               ),
-
-              // Role Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getRoleColor(role).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _getRoleColor(role)),
-                ),
-                child: Text(
-                  role.displayName,
-                  style: TextStyle(
-                    color: _getRoleColor(role),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.spacingM),
-
-          // Role Change Dropdown
-          CanAssignRolesGuard(
-            child: DropdownButtonFormField<UserRole>(
-              value: role,
-              decoration: const InputDecoration(
-                labelText: 'تغيير الدور',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-              items:
-                  UserRole.values.map((role) {
-                    return DropdownMenuItem<UserRole>(
-                      value: role,
-                      child: Text(role.displayName),
-                    );
-                  }).toList(),
-              onChanged: (newRole) {
-                if (newRole != null && newRole != role) {
-                  _updateUserRole(user, newRole);
-                }
-              },
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(height: AppTheme.spacingS),
 
-  Widget _buildStatisticsCard() {
-    final stats = _statistics;
+            // Role Change Dropdown moderne
+            CanAssignRolesGuard(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(color: AppTheme.dividerColor, width: 1),
+                ),
+                child: DropdownButtonFormField<UserRole>(
+                  value: role,
+                  decoration: InputDecoration(
+                    labelText: 'تغيير الدور',
+                    labelStyle: AppTheme.labelSmall.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 11,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingXS,
+                    ),
+                  ),
+                  items:
+                      UserRole.values.map((role) {
+                        return DropdownMenuItem<UserRole>(
+                          value: role,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _getRoleIcon(role),
+                                color: _getRoleColor(role),
+                                size: 16,
+                              ),
+                              const SizedBox(width: AppTheme.spacingXS),
+                              Text(
+                                role.displayName,
+                                style: AppTheme.bodySmall.copyWith(
+                                  color: AppTheme.textPrimaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: (newRole) {
+                    if (newRole != null && newRole != role) {
+                      _updateUserRole(user, newRole);
+                    }
+                  },
+                ),
+              ),
+            ),
 
-    return DashboardSection(
-      title: 'إحصائيات المستخدمين',
-      subtitle: 'نظرة عامة على المستخدمين والأدوار',
-      child: StatsGrid(
-        stats: [
-          StatCard(
-            title: 'إجمالي المستخدمين',
-            value: '${stats['total_users'] ?? 0}',
-            icon: Icons.people,
-            color: AppTheme.primaryColor,
-          ),
-          StatCard(
-            title: 'مستخدمون معتمدون',
-            value: '${stats['validated_users'] ?? 0}',
-            icon: Icons.verified,
-            color: AppTheme.successColor,
-          ),
-          StatCard(
-            title: 'مدير عام',
-            value: '${(stats['role_counts'] as Map?)?['super_admin'] ?? 0}',
-            icon: Icons.admin_panel_settings,
-            color: AppTheme.warningColor,
-          ),
-          StatCard(
-            title: 'مدير',
-            value: '${(stats['role_counts'] as Map?)?['admin'] ?? 0}',
-            icon: Icons.settings,
-            color: AppTheme.primaryColor,
-          ),
-          StatCard(
-            title: 'عضو لجنة التحكيم',
-            value: '${(stats['role_counts'] as Map?)?['jury'] ?? 0}',
-            icon: Icons.gavel,
-            color: AppTheme.infoColor,
-          ),
-          StatCard(
-            title: 'عضو عادي',
-            value: '${(stats['role_counts'] as Map?)?['member'] ?? 0}',
-            icon: Icons.person,
-            color: AppTheme.textSecondaryColor,
-          ),
-        ],
-        crossAxisCount: 2,
+            const SizedBox(height: AppTheme.spacingS),
+
+            // Statut de vérification
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundColor,
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                border: Border.all(color: AppTheme.dividerColor, width: 1),
+              ),
+              child: Row(
+                children: [
+                  // Icône du statut
+                  Container(
+                    margin: const EdgeInsets.all(AppTheme.spacingXS),
+                    padding: const EdgeInsets.all(AppTheme.spacingXS),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors:
+                            user['is_validated'] == true
+                                ? [
+                                  AppTheme.successColor,
+                                  AppTheme.successColor.withOpacity(0.7),
+                                ]
+                                : [
+                                  AppTheme.warningColor,
+                                  AppTheme.warningColor.withOpacity(0.7),
+                                ],
+                      ),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      boxShadow: AppTheme.shadowS,
+                    ),
+                    child: Icon(
+                      user['is_validated'] == true
+                          ? Icons.verified
+                          : Icons.pending,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+
+                  // Texte du statut
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingS,
+                        vertical: AppTheme.spacingXS,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'حالة التحقق',
+                            style: AppTheme.labelSmall.copyWith(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user['is_validated'] == true ? 'محقق' : 'غير محقق',
+                            style: AppTheme.bodySmall.copyWith(
+                              color:
+                                  user['is_validated'] == true
+                                      ? AppTheme.successColor
+                                      : AppTheme.warningColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Bouton de changement de statut
+                  Container(
+                    margin: const EdgeInsets.all(AppTheme.spacingXS),
+                    child: ElevatedButton(
+                      onPressed: () => _toggleVerificationStatus(user),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            user['is_validated'] == true
+                                ? AppTheme.warningColor.withOpacity(0.1)
+                                : AppTheme.successColor.withOpacity(0.1),
+                        foregroundColor:
+                            user['is_validated'] == true
+                                ? AppTheme.warningColor
+                                : AppTheme.successColor,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingS,
+                          vertical: AppTheme.spacingXS,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                          side: BorderSide(
+                            color:
+                                user['is_validated'] == true
+                                    ? AppTheme.warningColor.withOpacity(0.3)
+                                    : AppTheme.successColor.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        user['is_validated'] == true ? 'إلغاء التحقق' : 'تحقق',
+                        style: AppTheme.labelSmall.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -335,11 +572,146 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 
+  Widget _buildLoadingState() {
+    return Center(
+      child: Card(
+        margin: const EdgeInsets.all(AppTheme.spacingXL),
+        elevation: AppTheme.elevationL,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusL),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(AppTheme.spacingXL),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+            gradient: AppTheme.primaryGradient,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                strokeWidth: 3,
+              ),
+              const SizedBox(height: AppTheme.spacingL),
+              Text(
+                'جاري تحميل المستخدمين...',
+                style: AppTheme.bodyLarge.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppTheme.spacingS),
+              Text(
+                'يرجى الانتظار قليلاً',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: Colors.white.withOpacity(0.8),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingXL),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingL),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.textSecondaryColor.withOpacity(0.1),
+                  AppTheme.textSecondaryColor.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+              border: Border.all(
+                color: AppTheme.textSecondaryColor.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              _searchQuery.isEmpty ? Icons.people_outline : Icons.search_off,
+              size: 80,
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: AppTheme.spacingL),
+          Text(
+            _searchQuery.isEmpty ? 'لا يوجد مستخدمون' : 'لا توجد نتائج للبحث',
+            style: AppTheme.headingMedium.copyWith(
+              color: AppTheme.textPrimaryColor,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppTheme.spacingS),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingL,
+              vertical: AppTheme.spacingS,
+            ),
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: AppTheme.dividerColor, width: 1),
+            ),
+            child: Text(
+              _searchQuery.isEmpty
+                  ? 'لم يتم إضافة أي مستخدمين بعد'
+                  : 'جرب تغيير معايير البحث أو إزالة المرشحات',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.textSecondaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          if (_searchQuery.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.spacingL),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _selectedRoleFilter = 'all';
+                });
+              },
+              icon: const Icon(Icons.clear),
+              label: const Text('مسح المرشحات'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingL,
+                  vertical: AppTheme.spacingM,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ModernAppBar(
-        title: 'إدارة المستخدمين والأدوار',
+      appBar: AppBar(
+        title: const Text('إدارة المستخدمين والأدوار'),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
         actions: [
           IconButton(
             onPressed: _loadUsers,
@@ -350,125 +722,789 @@ class _UserManagementPageState extends State<UserManagementPage> {
       ),
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
+              ? _buildLoadingState()
               : ModernPullToRefresh(
                 onRefresh: _loadUsers,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Statistiques
-                      _buildStatisticsCard(),
-
-                      const SizedBox(height: AppTheme.spacingL),
-
                       // Barre de recherche et filtres
-                      DashboardSection(
-                        title: 'البحث والتصفية',
-                        subtitle: 'البحث عن المستخدمين وتصفيتهم حسب الدور',
-                        child: Row(
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingL),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                          gradient: LinearGradient(
+                            colors: [AppTheme.cardColor, AppTheme.surfaceColor],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: TextField(
-                                decoration: InputDecoration(
-                                  hintText:
-                                      'البحث بالاسم أو البريد الإلكتروني...',
-                                  prefixIcon: const Icon(Icons.search),
-                                  border: OutlineInputBorder(
+                            // Titre avec icône
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(
+                                    AppTheme.spacingS,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppTheme.infoColor,
+                                        AppTheme.infoColor.withOpacity(0.7),
+                                      ],
+                                    ),
                                     borderRadius: BorderRadius.circular(
                                       AppTheme.radiusM,
                                     ),
+                                    boxShadow: AppTheme.shadowS,
                                   ),
-                                  filled: true,
-                                  fillColor: AppTheme.backgroundColor,
+                                  child: const Icon(
+                                    Icons.search,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _searchQuery = value;
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: AppTheme.spacingM),
-                            DropdownButton<String>(
-                              value: _selectedRoleFilter,
-                              items: [
-                                const DropdownMenuItem(
-                                  value: 'all',
-                                  child: Text('جميع الأدوار'),
+                                const SizedBox(width: AppTheme.spacingS),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'البحث والتصفية',
+                                        style: AppTheme.bodyLarge.copyWith(
+                                          color: AppTheme.textPrimaryColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: AppTheme.spacingXS,
+                                      ),
+                                      Text(
+                                        'البحث عن المستخدمين وتصفيتهم حسب الدور',
+                                        style: AppTheme.bodySmall.copyWith(
+                                          color: AppTheme.textSecondaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                ...UserRole.values.map((role) {
-                                  return DropdownMenuItem<String>(
-                                    value: role.code,
-                                    child: Text(role.displayName),
-                                  );
-                                }),
                               ],
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedRoleFilter = value ?? 'all';
-                                });
+                            ),
+                            const SizedBox(height: AppTheme.spacingXL),
+
+                            // Champs de recherche et filtre
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                // Si l'écran est petit, utiliser un layout vertical
+                                if (constraints.maxWidth < 600) {
+                                  return Column(
+                                    children: [
+                                      // Champ de recherche
+                                      Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppTheme.backgroundColor,
+                                              AppTheme.backgroundColor
+                                                  .withOpacity(0.8),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusL,
+                                          ),
+                                          border: Border.all(
+                                            color: AppTheme.primaryColor
+                                                .withOpacity(0.3),
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.primaryColor
+                                                  .withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: TextField(
+                                          decoration: InputDecoration(
+                                            hintText:
+                                                'البحث بالاسم أو البريد الإلكتروني...',
+                                            hintStyle: AppTheme.bodyMedium
+                                                .copyWith(
+                                                  color:
+                                                      AppTheme
+                                                          .textDisabledColor,
+                                                ),
+                                            prefixIcon: Container(
+                                              margin: const EdgeInsets.all(
+                                                AppTheme.spacingXS,
+                                              ),
+                                              padding: const EdgeInsets.all(
+                                                AppTheme.spacingXS,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient:
+                                                    AppTheme.primaryGradient,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppTheme.radiusM,
+                                                    ),
+                                                boxShadow: AppTheme.shadowS,
+                                              ),
+                                              child: const Icon(
+                                                Icons.search,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
+                                            ),
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: AppTheme.spacingM,
+                                                  vertical: AppTheme.spacingM,
+                                                ),
+                                            filled: false,
+                                          ),
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: AppTheme.textPrimaryColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _searchQuery = value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: AppTheme.spacingS),
+
+                                      // Dropdown filtre
+                                      Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppTheme.backgroundColor,
+                                              AppTheme.backgroundColor
+                                                  .withOpacity(0.8),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusL,
+                                          ),
+                                          border: Border.all(
+                                            color: AppTheme.successColor
+                                                .withOpacity(0.3),
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.successColor
+                                                  .withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: _selectedRoleFilter,
+                                            isExpanded: true,
+                                            icon: Container(
+                                              margin: const EdgeInsets.all(
+                                                AppTheme.spacingXS,
+                                              ),
+                                              padding: const EdgeInsets.all(
+                                                AppTheme.spacingXS,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    AppTheme.successColor,
+                                                    AppTheme.successColor
+                                                        .withOpacity(0.7),
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppTheme.radiusM,
+                                                    ),
+                                                boxShadow: AppTheme.shadowS,
+                                              ),
+                                              child: const Icon(
+                                                Icons.filter_list,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              color: AppTheme.textPrimaryColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            items: [
+                                              DropdownMenuItem(
+                                                value: 'all',
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            AppTheme.spacingS,
+                                                        vertical:
+                                                            AppTheme.spacingXS,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.primaryColor
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          AppTheme.radiusS,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppTheme
+                                                          .primaryColor
+                                                          .withOpacity(0.3),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.all_inclusive,
+                                                        size: 16,
+                                                        color:
+                                                            AppTheme
+                                                                .primaryColor,
+                                                      ),
+                                                      const SizedBox(
+                                                        width:
+                                                            AppTheme.spacingS,
+                                                      ),
+                                                      Text(
+                                                        'جميع الأدوار',
+                                                        style: AppTheme
+                                                            .bodySmall
+                                                            .copyWith(
+                                                              color:
+                                                                  AppTheme
+                                                                      .primaryColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              ...UserRole.values.map((role) {
+                                                return DropdownMenuItem<String>(
+                                                  value: role.code,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal:
+                                                              AppTheme.spacingS,
+                                                          vertical:
+                                                              AppTheme
+                                                                  .spacingXS,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: _getRoleColor(
+                                                        role,
+                                                      ).withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppTheme.radiusS,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: _getRoleColor(
+                                                          role,
+                                                        ).withOpacity(0.3),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          _getRoleIcon(role),
+                                                          size: 16,
+                                                          color: _getRoleColor(
+                                                            role,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width:
+                                                              AppTheme.spacingS,
+                                                        ),
+                                                        Text(
+                                                          role.displayName,
+                                                          style: AppTheme
+                                                              .bodySmall
+                                                              .copyWith(
+                                                                color:
+                                                                    _getRoleColor(
+                                                                      role,
+                                                                    ),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              }),
+                                            ],
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _selectedRoleFilter =
+                                                    value ?? 'all';
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                } else {
+                                  // Pour les écrans larges, utiliser un layout horizontal
+                                  return Row(
+                                    children: [
+                                      // Champ de recherche avec design moderne
+                                      Expanded(
+                                        flex: 2,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                AppTheme.backgroundColor,
+                                                AppTheme.backgroundColor
+                                                    .withOpacity(0.8),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusL,
+                                            ),
+                                            border: Border.all(
+                                              color: AppTheme.primaryColor
+                                                  .withOpacity(0.3),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppTheme.primaryColor
+                                                    .withOpacity(0.1),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: TextField(
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  'البحث بالاسم أو البريد الإلكتروني...',
+                                              hintStyle: AppTheme.bodyMedium
+                                                  .copyWith(
+                                                    color:
+                                                        AppTheme
+                                                            .textDisabledColor,
+                                                  ),
+                                              prefixIcon: Container(
+                                                margin: const EdgeInsets.all(
+                                                  AppTheme.spacingXS,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  AppTheme.spacingXS,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  gradient:
+                                                      AppTheme.primaryGradient,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        AppTheme.radiusM,
+                                                      ),
+                                                  boxShadow: AppTheme.shadowS,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.search,
+                                                  color: Colors.white,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                              border: InputBorder.none,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal:
+                                                        AppTheme.spacingM,
+                                                    vertical: AppTheme.spacingM,
+                                                  ),
+                                              filled: false,
+                                            ),
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              color: AppTheme.textPrimaryColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _searchQuery = value;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppTheme.spacingM),
+
+                                      // Dropdown filtre avec design moderne
+                                      Expanded(
+                                        flex: 1,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                AppTheme.backgroundColor,
+                                                AppTheme.backgroundColor
+                                                    .withOpacity(0.8),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusL,
+                                            ),
+                                            border: Border.all(
+                                              color: AppTheme.successColor
+                                                  .withOpacity(0.3),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppTheme.successColor
+                                                    .withOpacity(0.1),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              value: _selectedRoleFilter,
+                                              isExpanded: true,
+                                              icon: Container(
+                                                margin: const EdgeInsets.all(
+                                                  AppTheme.spacingXS,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  AppTheme.spacingXS,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      AppTheme.successColor,
+                                                      AppTheme.successColor
+                                                          .withOpacity(0.7),
+                                                    ],
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        AppTheme.radiusM,
+                                                      ),
+                                                  boxShadow: AppTheme.shadowS,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.filter_list,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                              style: AppTheme.bodyMedium
+                                                  .copyWith(
+                                                    color:
+                                                        AppTheme
+                                                            .textPrimaryColor,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                              items: [
+                                                DropdownMenuItem(
+                                                  value: 'all',
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal:
+                                                              AppTheme.spacingS,
+                                                          vertical:
+                                                              AppTheme
+                                                                  .spacingXS,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme
+                                                          .primaryColor
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppTheme.radiusS,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: AppTheme
+                                                            .primaryColor
+                                                            .withOpacity(0.3),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.all_inclusive,
+                                                          size: 16,
+                                                          color:
+                                                              AppTheme
+                                                                  .primaryColor,
+                                                        ),
+                                                        const SizedBox(
+                                                          width:
+                                                              AppTheme.spacingS,
+                                                        ),
+                                                        Text(
+                                                          'جميع الأدوار',
+                                                          style: AppTheme
+                                                              .bodySmall
+                                                              .copyWith(
+                                                                color:
+                                                                    AppTheme
+                                                                        .primaryColor,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                ...UserRole.values.map((role) {
+                                                  return DropdownMenuItem<
+                                                    String
+                                                  >(
+                                                    value: role.code,
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal:
+                                                                AppTheme
+                                                                    .spacingS,
+                                                            vertical:
+                                                                AppTheme
+                                                                    .spacingXS,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: _getRoleColor(
+                                                          role,
+                                                        ).withOpacity(0.1),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              AppTheme.radiusS,
+                                                            ),
+                                                        border: Border.all(
+                                                          color: _getRoleColor(
+                                                            role,
+                                                          ).withOpacity(0.3),
+                                                          width: 1,
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            _getRoleIcon(role),
+                                                            size: 16,
+                                                            color:
+                                                                _getRoleColor(
+                                                                  role,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width:
+                                                                AppTheme
+                                                                    .spacingS,
+                                                          ),
+                                                          Text(
+                                                            role.displayName,
+                                                            style: AppTheme
+                                                                .bodySmall
+                                                                .copyWith(
+                                                                  color:
+                                                                      _getRoleColor(
+                                                                        role,
+                                                                      ),
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                }),
+                                              ],
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _selectedRoleFilter =
+                                                      value ?? 'all';
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
                               },
                             ),
+
+                            const SizedBox(height: AppTheme.spacingM),
+
+                            // Liste des utilisateurs
+                            Container(
+                              // padding: const EdgeInsets.all(
+                              //   AppTheme.spacingM,
+                              // ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusL,
+                                ),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.cardColor,
+                                    AppTheme.surfaceColor,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Titre avec compteur
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(
+                                          AppTheme.spacingS,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppTheme.successColor,
+                                              AppTheme.successColor.withOpacity(
+                                                0.7,
+                                              ),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusM,
+                                          ),
+                                          boxShadow: AppTheme.shadowS,
+                                        ),
+                                        child: const Icon(
+                                          Icons.people,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppTheme.spacingS),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'قائمة المستخدمين',
+                                              style: AppTheme.bodyLarge
+                                                  .copyWith(
+                                                    color:
+                                                        AppTheme
+                                                            .textPrimaryColor,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                            ),
+                                            const SizedBox(
+                                              height: AppTheme.spacingXS,
+                                            ),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal:
+                                                        AppTheme.spacingS,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.successColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppTheme.radiusS,
+                                                    ),
+                                                border: Border.all(
+                                                  color: AppTheme.successColor
+                                                      .withOpacity(0.3),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                '${_filteredUsers.length} مستخدم',
+                                                style: AppTheme.labelSmall
+                                                    .copyWith(
+                                                      color:
+                                                          AppTheme.successColor,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 11,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppTheme.spacingM),
+
+                                  // Contenu de la liste
+                                  _filteredUsers.isEmpty
+                                      ? _buildEmptyState()
+                                      : Column(
+                                        children: [
+                                          ..._filteredUsers.map(
+                                            (user) => _buildUserCard(user),
+                                          ),
+                                          const SizedBox(
+                                            height: AppTheme.spacingM,
+                                          ),
+                                        ],
+                                      ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: AppTheme.spacingXL),
                           ],
                         ),
                       ),
-
-                      const SizedBox(height: AppTheme.spacingL),
-
-                      // Liste des utilisateurs
-                      DashboardSection(
-                        title: 'قائمة المستخدمين',
-                        subtitle: '${_filteredUsers.length} مستخدم',
-                        child:
-                            _filteredUsers.isEmpty
-                                ? Container(
-                                  height: 300,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.people_outline,
-                                          size: 64,
-                                          color: AppTheme.textSecondaryColor,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          _searchQuery.isEmpty
-                                              ? 'لا يوجد مستخدمون'
-                                              : 'لا توجد نتائج للبحث',
-                                          style: AppTheme.bodyLarge.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          _searchQuery.isEmpty
-                                              ? 'لم يتم إضافة أي مستخدمين بعد'
-                                              : 'جرب تغيير معايير البحث',
-                                          style: AppTheme.bodyMedium.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                : Column(
-                                  children: [
-                                    ..._filteredUsers.map(
-                                      (user) => _buildUserCard(user),
-                                    ),
-                                    const SizedBox(height: AppTheme.spacingM),
-                                  ],
-                                ),
-                      ),
-
-                      const SizedBox(height: AppTheme.spacingXL),
                     ],
                   ),
                 ),

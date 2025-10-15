@@ -222,6 +222,14 @@ class UserManagementService {
     }
   }
 
+  // Mettre à jour le statut de vérification d'un utilisateur (alias pour validateUserAccount)
+  Future<void> updateUserVerificationStatus(
+    String userId,
+    bool isVerified,
+  ) async {
+    return await validateUserAccount(userId, isVerified);
+  }
+
   // Obtenir les statistiques des utilisateurs
   Future<Map<String, dynamic>> getUserStatistics() async {
     try {

@@ -45,19 +45,20 @@ class _LoginPageState extends State<LoginPage> {
       if (error != null) {
         _showErrorDialog(error);
       } else {
-        // Connexion réussie
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_errorService.getSuccessMessage('login_success')),
-              backgroundColor: AppTheme.successColor,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+        // Connexion réussie - Vérifier si l'utilisateur est vérifié
+        final user = await _authService.getUserProfile();
 
-          // Navigation vers la page appropriée selon le rôle
-          final user = await _authService.getUserProfile();
-          if (user != null) {
+        if (user != null && user.isVerified) {
+          // Utilisateur vérifié - Navigation vers la page appropriée
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(_errorService.getSuccessMessage('login_success')),
+                backgroundColor: AppTheme.successColor,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+
             switch (user.role) {
               case 'admin':
               case 'super_admin':
@@ -72,6 +73,12 @@ class _LoginPageState extends State<LoginPage> {
               default:
                 context.go('/');
             }
+          }
+        } else {
+          // Utilisateur non vérifié - Déconnexion et affichage d'erreur
+          await _authService.signOut();
+          if (mounted) {
+            _showVerificationRequiredDialog();
           }
         }
       }
@@ -97,6 +104,48 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
           content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('موافق'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showVerificationRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.verified_user_outlined, color: AppTheme.warningColor),
+              const SizedBox(width: AppTheme.spacingS),
+              const Text('حساب غير محقق'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'حسابك غير محقق حالياً. يجب أن يتم التحقق من حسابك من قبل الإدارة للوصول إلى المنصة.',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: AppTheme.spacingM),
+              Text(
+                'يرجى التواصل مع الإدارة أو المحاولة لاحقاً.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -249,22 +298,47 @@ class _LoginPageState extends State<LoginPage> {
                 // Informations supplémentaires
                 ModernCard(
                   backgroundColor: AppTheme.infoColor.withOpacity(0.1),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: AppTheme.infoColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: AppTheme.spacingM),
-                      Expanded(
-                        child: Text(
-                          'تأكد من استخدام بيانات الدخول الصحيحة للوصول إلى حسابك',
-                          style: TextStyle(
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
                             color: AppTheme.infoColor,
-                            fontSize: 14,
+                            size: 20,
                           ),
-                        ),
+                          const SizedBox(width: AppTheme.spacingM),
+                          Expanded(
+                            child: Text(
+                              'تأكد من استخدام بيانات الدخول الصحيحة للوصول إلى حسابك',
+                              style: TextStyle(
+                                color: AppTheme.infoColor,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spacingS),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.verified_user_outlined,
+                            color: AppTheme.warningColor,
+                            size: 20,
+                          ),
+                          const SizedBox(width: AppTheme.spacingM),
+                          Expanded(
+                            child: Text(
+                              'يجب أن يكون حسابك محققاً من قبل الإدارة للوصول',
+                              style: TextStyle(
+                                color: AppTheme.warningColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
