@@ -196,6 +196,7 @@ class CompetitionVersionService {
     required int maxChildren,
     required bool isActive,
     required bool isRegistrationOpen,
+    required bool juryEvaluationEnabled,
   }) async {
     final response =
         await _supabase
@@ -207,6 +208,7 @@ class CompetitionVersionService {
               'max_children': maxChildren,
               'is_active': isActive,
               'is_registration_open': isRegistrationOpen,
+              'jury_evaluation_enabled': juryEvaluationEnabled,
             })
             .eq('id', id)
             .select();

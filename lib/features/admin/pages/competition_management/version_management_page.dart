@@ -379,8 +379,8 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           setState(() {});
                         }
                       },
-                      text: 'تعديل',
-                      icon: Icons.edit,
+                      text: 'الإعدادات',
+                      icon: Icons.settings,
                     ),
                   ),
                   const SizedBox(width: AppTheme.spacingS),

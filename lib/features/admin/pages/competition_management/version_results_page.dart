@@ -32,10 +32,14 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
   int _totalCount = 0;
   Round? _selectedRound;
   String _selectedGroup = 'كبار';
+  String _searchQuery = '';
 
   List<Round> _rounds = [];
   List<Participant> _participants = [];
+  List<Participant> _allParticipants =
+      []; // Pour stocker tous les participants non filtrés
   Map<String, double> _participantScores = {};
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -47,6 +51,7 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -97,13 +102,6 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
         _loadMoreResults();
       }
     }
-  }
-
-  Future<void> _loadMoreResults() async {
-    if (!_hasMore || _isLoadingMore) return;
-
-    setState(() => _currentPage++);
-    await loadVersionResults(reset: false);
   }
 
   Future<void> _saveRoundResults(
@@ -165,7 +163,7 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
     if (_selectedRound == null) return;
 
     try {
-      // Charger les résultats depuis la table round_results avec pagination
+      // Charger les résultats depuis la table round_results
       final resultsData = await _supabase
           .from('round_results')
           .select('*, participants(*)')
@@ -175,46 +173,29 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
           .order('score', ascending: false);
 
       if (resultsData.isNotEmpty) {
-        final List<Participant> participants = [];
-        final Map<String, double> scores = {};
+        final List<Participant> allParticipants = [];
+        final Map<String, double> allScores = {};
 
         for (final row in resultsData) {
           final participantData = row['participants'];
           final participant = Participant.fromMap(participantData);
-          participants.add(participant);
-          scores[participant.id] = (row['score'] as num).toDouble();
-        }
-
-        // Appliquer la pagination côté client
-        final totalCount = participants.length;
-        final startIndex = _currentPage * 20;
-        final endIndex = (startIndex + 20).clamp(0, totalCount);
-
-        final paginatedParticipants = participants.sublist(
-          startIndex,
-          endIndex,
-        );
-        final paginatedScores = <String, double>{};
-
-        for (final participant in paginatedParticipants) {
-          paginatedScores[participant.id] = scores[participant.id]!;
+          allParticipants.add(participant);
+          allScores[participant.id] = (row['score'] as num).toDouble();
         }
 
         setState(() {
-          if (reset) {
-            _participants = paginatedParticipants;
-            _participantScores = paginatedScores;
-            _currentPage = 0;
-          } else {
-            _participants.addAll(paginatedParticipants);
-            _participantScores.addAll(paginatedScores);
-          }
-          _totalCount = totalCount;
-          _hasMore = endIndex < totalCount;
+          _allParticipants = allParticipants;
+          _participantScores = allScores;
+          _totalCount = allParticipants.length;
+          _currentPage = 0;
+          _hasMore = true;
         });
 
+        // Appliquer le filtrage et la pagination
+        _applyFiltersAndPagination();
+
         print(
-          '✅ Résultats chargés depuis round_results: ${paginatedParticipants.length} participants (page ${_currentPage + 1})',
+          '✅ Résultats chargés depuis round_results: ${allParticipants.length} participants',
         );
         return;
       }
@@ -337,9 +318,15 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
 
       // 7. Mise à jour de l'état
       setState(() {
-        _participants = participants;
+        _allParticipants = participants;
         _participantScores = scores;
+        _totalCount = participants.length;
+        _currentPage = 0;
+        _hasMore = true;
       });
+
+      // Appliquer le filtrage et la pagination
+      _applyFiltersAndPagination();
     } catch (e) {
       print("Erreur lors du calcul des résultats: $e");
       ScaffoldMessenger.of(
@@ -348,33 +335,77 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
     }
   }
 
-  Widget _buildParticipantList() {
-    // Crée une map pour stocker participants uniques (par id)
-    final Map<String, Participant> uniqueParticipants = {};
+  void _applyFiltersAndPagination({bool reset = true}) {
+    // 1. Filtrer les participants selon la recherche
+    List<Participant> filteredParticipants =
+        _allParticipants.where((participant) {
+          if (_searchQuery.isEmpty) return true;
 
-    // Ajoute uniquement les participants qui ont un score et correspondent au filtre
-    for (final p in _participants) {
-      if (_participantScores.containsKey(p.id) &&
-          (p.ageGroup == _selectedGroup)) {
-        uniqueParticipants[p.id] = p;
-      }
-    }
+          final query = _searchQuery.toLowerCase();
+          return participant.fullName.toLowerCase().contains(query) ||
+              (participant.registrationNumber?.toString().contains(query) ??
+                  false) ||
+              participant.phone.toLowerCase().contains(query);
+        }).toList();
 
-    // Transforme la map en liste
-    final filtered = uniqueParticipants.values.toList();
-
-    // Trie par score décroissant
-    filtered.sort(
+    // 2. Trier par score décroissant
+    filteredParticipants.sort(
       (a, b) => (_participantScores[b.id] ?? 0).compareTo(
         _participantScores[a.id] ?? 0,
       ),
     );
 
-    if (filtered.isEmpty) {
+    // 3. Appliquer la pagination
+    final itemsPerPage = 20;
+    final startIndex = reset ? 0 : _currentPage * itemsPerPage;
+    final endIndex = (startIndex + itemsPerPage).clamp(
+      0,
+      filteredParticipants.length,
+    );
+
+    final paginatedParticipants = filteredParticipants.sublist(
+      startIndex,
+      endIndex,
+    );
+
+    setState(() {
+      if (reset) {
+        _participants = paginatedParticipants;
+        _currentPage = 0;
+      } else {
+        _participants.addAll(paginatedParticipants);
+      }
+      _hasMore = endIndex < filteredParticipants.length;
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    _applyFiltersAndPagination(reset: true);
+  }
+
+  Future<void> _loadMoreResults() async {
+    if (!_hasMore || _isLoadingMore) return;
+
+    setState(() => _isLoadingMore = true);
+    setState(() => _currentPage++);
+
+    _applyFiltersAndPagination(reset: false);
+
+    setState(() => _isLoadingMore = false);
+  }
+
+  Widget _buildParticipantList() {
+    if (_participants.isEmpty) {
       return EmptyState(
         icon: Icons.emoji_events_outlined,
         title: 'لا توجد نتائج',
-        subtitle: 'لا توجد نتائج لهذه الفئة أو الجولة',
+        subtitle:
+            _searchQuery.isNotEmpty
+                ? 'لا توجد نتائج مطابقة للبحث'
+                : 'لا توجد نتائج لهذه الفئة أو الجولة',
       );
     }
 
@@ -382,9 +413,9 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
       controller: _scrollController,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: filtered.length + (_hasMore ? 1 : 0),
+      itemCount: _participants.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index == filtered.length) {
+        if (index == _participants.length) {
           // Indicateur de chargement en bas
           return _isLoadingMore
               ? const Padding(
@@ -404,7 +435,7 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
               )
               : const SizedBox.shrink();
         }
-        final p = filtered[index];
+        final p = _participants[index];
         final score = _participantScores[p.id] ?? 0;
 
         Widget? medalIcon;
@@ -627,7 +658,9 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
                                                   _selectedRound = round;
                                                   _currentPage = 0;
                                                   _hasMore = true;
+                                                  _searchQuery = '';
                                                 });
+                                                _searchController.clear();
                                                 _loadResultsFromTable(
                                                   reset: true,
                                                 );
@@ -688,7 +721,9 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
                                                   _selectedGroup = group;
                                                   _currentPage = 0;
                                                   _hasMore = true;
+                                                  _searchQuery = '';
                                                 });
+                                                _searchController.clear();
                                                 _loadResultsFromTable(
                                                   reset: true,
                                                 );
@@ -701,6 +736,117 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
                                   ),
                                 ],
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingS),
+
+                      // Section de recherche moderne
+                      ModernCard(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.search,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Text(
+                                    'البحث في النتائج',
+                                    style: AppTheme.labelLarge.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.backgroundColor,
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusM,
+                                  ),
+                                  border: Border.all(
+                                    color: AppTheme.dividerColor,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: _onSearchChanged,
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'البحث بالاسم، رقم التسجيل أو الهاتف...',
+                                    hintStyle: AppTheme.labelMedium.copyWith(
+                                      color: AppTheme.textDisabledColor,
+                                    ),
+                                    prefixIcon: Container(
+                                      margin: const EdgeInsets.all(
+                                        AppTheme.spacingXS,
+                                      ),
+                                      padding: const EdgeInsets.all(
+                                        AppTheme.spacingXS,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: AppTheme.primaryGradient,
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusS,
+                                        ),
+                                        boxShadow: AppTheme.shadowS,
+                                      ),
+                                      child: const Icon(
+                                        Icons.search,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    suffixIcon:
+                                        _searchQuery.isNotEmpty
+                                            ? IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                _onSearchChanged('');
+                                              },
+                                            )
+                                            : null,
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: AppTheme.spacingM,
+                                      vertical: AppTheme.spacingM,
+                                    ),
+                                  ),
+                                  style: AppTheme.labelMedium,
+                                ),
+                              ),
+                              if (_searchQuery.isNotEmpty) ...[
+                                const SizedBox(height: AppTheme.spacingS),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppTheme.spacingS,
+                                    vertical: AppTheme.spacingXS,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withOpacity(
+                                      0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusS,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'نتائج البحث عن: "$_searchQuery"',
+                                    style: AppTheme.labelSmall.copyWith(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -786,82 +932,715 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
                   ),
                 ),
               ),
-      bottomNavigationBar:
-          _selectedRound == null
-              ? null
-              : _selectedRound!.resultIsPublished
-              ? null
-              : _participants.isEmpty
-              ? null
-              : Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.textPrimaryColor.withValues(alpha: 0.1),
-                      spreadRadius: 1,
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
+      bottomNavigationBar: _buildBottomActionBar(),
+    );
+  }
+
+  Widget? _buildBottomActionBar() {
+    if (_selectedRound == null) return null;
+
+    // Si les résultats sont déjà publiés
+    if (_selectedRound!.resultIsPublished) {
+      return Container(
+        padding: const EdgeInsets.all(AppTheme.spacingM),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.textPrimaryColor.withValues(alpha: 0.1),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(AppTheme.spacingS),
+            decoration: BoxDecoration(
+              color: AppTheme.successColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: AppTheme.successColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: AppTheme.successColor,
+                  size: 24,
                 ),
-                child: SafeArea(
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: PrimaryButton(
-                      onPressed: () {
-                        _shareResults(_selectedRound!, widget.version.id);
-                      },
-                      text: 'مشاركة النتائج',
+                const SizedBox(width: AppTheme.spacingS),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'النتائج منشورة',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: AppTheme.successColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'النتائج متاحة للجميع',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: AppTheme.successColor.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingXS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.successColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  ),
+                  child: Text(
+                    'منشور',
+                    style: AppTheme.labelSmall.copyWith(
+                      color: AppTheme.successColor,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Si pas de participants
+    if (_participants.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(AppTheme.spacingM),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.textPrimaryColor.withValues(alpha: 0.1),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(AppTheme.spacingS),
+            decoration: BoxDecoration(
+              color: AppTheme.warningColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: AppTheme.warningColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_outlined,
+                  color: AppTheme.warningColor,
+                  size: 24,
+                ),
+                const SizedBox(width: AppTheme.spacingS),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'لا يمكن النشر',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: AppTheme.warningColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'لا توجد نتائج للنشر',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: AppTheme.warningColor.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Bouton de publication normal
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingM),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimaryColor.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Informations sur la publication
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppTheme.spacingS),
+              margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                ),
               ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.emoji_events,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Expanded(
+                    child: Text(
+                      'جاهز للنشر: ${_participants.length} مشارك',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingXS,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                    ),
+                    child: Text(
+                      '${_participants.length}',
+                      style: AppTheme.labelSmall.copyWith(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Bouton de publication
+            SizedBox(
+              width: double.infinity,
+              child: PrimaryButton(
+                onPressed: () {
+                  _shareResults(_selectedRound!, widget.version.id);
+                },
+                text: 'نشر النتائج',
+                icon: Icons.publish,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Future<void> _shareResults(Round round, String versionId) async {
+    // 1. Vérifications préliminaires
+    if (!_validateResultsBeforePublishing(round)) {
+      return;
+    }
+
+    // 2. Confirmation de publication
+    final confirmed = await _showPublishConfirmationDialog(round);
+    if (!confirmed) return;
+
+    // 3. Affichage du loading
+    _showPublishingDialog();
+
     try {
-      if (round.name == 'الجولة الأولى') {
-        final response = await Supabase.instance.client
-            .from('rounds')
-            .update({'result_is_published': true, 'is_active': false})
-            .eq('id', round.id)
-            .whenComplete(() async {
-              await Supabase.instance.client
-                  .from('rounds')
-                  .update({'is_active': true})
-                  .eq('number', 2)
-                  .eq('version_id', versionId);
-            });
-        if (response.error != null) {
-          throw response.error!;
-        }
-      } else {
-        final response = await Supabase.instance.client
-            .from('rounds')
-            .update({'result_is_published': true, 'is_active': false})
-            .eq('id', round.id)
-            .eq('version_id', versionId);
+      // 4. Publication des résultats
+      await _publishResults(round, versionId);
 
-        if (response.error != null) {
-          throw response.error!;
-        }
-      }
+      // 5. Mise à jour de l'état local
+      _updateLocalStateAfterPublishing(round);
 
-      // Optionnel : message de succès
+      // 6. Fermeture du dialog et message de succès
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ النتائج تم نشرها بنجاح")),
-        );
+        Navigator.of(context).pop(); // Fermer le dialog de loading
+        _showSuccessDialog(round);
       }
     } catch (e) {
+      // 7. Gestion des erreurs
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("⚠️ خطأ أثناء نشر النتائج: $e")));
+        Navigator.of(context).pop(); // Fermer le dialog de loading
+        _showErrorDialog(e.toString());
       }
     }
+  }
+
+  bool _validateResultsBeforePublishing(Round round) {
+    // Vérifier qu'il y a des participants
+    if (_participants.isEmpty) {
+      _showValidationErrorDialog('لا يمكن نشر النتائج بدون مشاركين');
+      return false;
+    }
+
+    // Vérifier que tous les participants ont des scores
+    final participantsWithoutScores =
+        _participants
+            .where(
+              (p) =>
+                  !_participantScores.containsKey(p.id) ||
+                  _participantScores[p.id] == 0,
+            )
+            .length;
+
+    if (participantsWithoutScores > 0) {
+      _showValidationErrorDialog(
+        'يوجد $participantsWithoutScores مشارك بدون نقاط. يرجى التأكد من إكمال جميع التقييمات.',
+      );
+      return false;
+    }
+
+    // Vérifier que les résultats ne sont pas déjà publiés
+    if (round.resultIsPublished) {
+      _showValidationErrorDialog('النتائج منشورة بالفعل');
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool> _showPublishConfirmationDialog(Round round) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.publish, color: AppTheme.warningColor, size: 28),
+                  const SizedBox(width: AppTheme.spacingS),
+                  const Text('تأكيد نشر النتائج'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'هل أنت متأكد من نشر نتائج ${round.name}؟',
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingM),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacingS),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warningColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      border: Border.all(
+                        color: AppTheme.warningColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: AppTheme.warningColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: AppTheme.spacingS),
+                            Text(
+                              'تنبيه مهم',
+                              style: AppTheme.labelMedium.copyWith(
+                                color: AppTheme.warningColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppTheme.spacingS),
+                        Text(
+                          'بعد النشر، سيتم إغلاق هذه الجولة وستصبح النتائج مرئية للجميع. لا يمكن التراجع عن هذا الإجراء.',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingM),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.emoji_events,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppTheme.spacingS),
+                      Text(
+                        'عدد المشاركين: ${_participants.length}',
+                        style: AppTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    'إلغاء',
+                    style: AppTheme.labelMedium.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.warningColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                    ),
+                  ),
+                  child: Text(
+                    'نشر النتائج',
+                    style: AppTheme.labelMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  void _showPublishingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: AppTheme.primaryColor),
+              const SizedBox(height: AppTheme.spacingM),
+              Text(
+                'جاري نشر النتائج...',
+                style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppTheme.spacingS),
+              Text(
+                'يرجى الانتظار',
+                style: AppTheme.bodySmall.copyWith(
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _publishResults(Round round, String versionId) async {
+    // Utiliser une transaction pour garantir la cohérence des données
+    final client = Supabase.instance.client;
+
+    if (round.number == 1) {
+      // Pour la première ronde : publier + activer la ronde suivante
+      await client.rpc(
+        'publish_round_1_results',
+        params: {'round_id': round.id, 'version_id': versionId},
+      );
+    } else {
+      // Pour les autres rondes : publier seulement
+      final response = await client
+          .from('rounds')
+          .update({
+            'result_is_published': true,
+            'is_active': false,
+            'published_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', round.id)
+          .eq('version_id', versionId);
+
+      if (response.error != null) {
+        throw Exception('خطأ في قاعدة البيانات: ${response.error!.message}');
+      }
+    }
+
+    // Log de l'activité
+    await _logPublishingActivity(round, versionId);
+  }
+
+  Future<void> _logPublishingActivity(Round round, String versionId) async {
+    try {
+      await Supabase.instance.client.from('admin_activities').insert({
+        'action': 'publish_results',
+        'details': {
+          'round_name': round.name,
+          'round_number': round.number,
+          'version_id': versionId,
+          'participants_count': _participants.length,
+          'published_at': DateTime.now().toIso8601String(),
+        },
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('⚠️ Erreur lors de l\'enregistrement de l\'activité: $e');
+      // Ne pas faire échouer la publication pour cette erreur
+    }
+  }
+
+  void _updateLocalStateAfterPublishing(Round round) {
+    setState(() {
+      // Mettre à jour l'état local du round
+      final roundIndex = _rounds.indexWhere((r) => r.id == round.id);
+      if (roundIndex != -1) {
+        _rounds[roundIndex] = Round(
+          id: round.id,
+          name: round.name,
+          number: round.number,
+          versionId: round.versionId,
+          startDate: round.startDate,
+          endDate: round.endDate,
+          isActive: false,
+          resultIsPublished: true,
+        );
+        _selectedRound = _rounds[roundIndex];
+      }
+    });
+  }
+
+  void _showSuccessDialog(Round round) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: AppTheme.successColor, size: 28),
+              const SizedBox(width: AppTheme.spacingS),
+              const Text('تم النشر بنجاح'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                decoration: BoxDecoration(
+                  color: AppTheme.successColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(
+                    color: AppTheme.successColor.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.emoji_events,
+                      color: AppTheme.successColor,
+                      size: 48,
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      'تم نشر نتائج ${round.name} بنجاح',
+                      style: AppTheme.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.successColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      'النتائج الآن متاحة للجميع',
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              if (round.number == 1) ...[
+                const SizedBox(height: AppTheme.spacingM),
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.arrow_forward,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppTheme.spacingS),
+                      Expanded(
+                        child: Text(
+                          'تم تفعيل الجولة الثانية تلقائياً',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Rafraîchir la page pour voir les changements
+                loadVersionResults(reset: true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.successColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                ),
+              ),
+              child: Text(
+                'موافق',
+                style: AppTheme.labelMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showValidationErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.error_outline, color: AppTheme.errorColor, size: 28),
+              const SizedBox(width: AppTheme.spacingS),
+              const Text('خطأ في التحقق'),
+            ],
+          ),
+          content: Text(message, style: AppTheme.bodyMedium),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'موافق',
+                style: AppTheme.labelMedium.copyWith(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.error, color: AppTheme.errorColor, size: 28),
+              const SizedBox(width: AppTheme.spacingS),
+              const Text('خطأ في النشر'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'حدث خطأ أثناء نشر النتائج:',
+                style: AppTheme.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacingS),
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingS),
+                decoration: BoxDecoration(
+                  color: AppTheme.errorColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  border: Border.all(
+                    color: AppTheme.errorColor.withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  error,
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.errorColor,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacingS),
+              Text(
+                'يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.',
+                style: AppTheme.bodySmall.copyWith(
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'موافق',
+                style: AppTheme.labelMedium.copyWith(
+                  color: AppTheme.errorColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
