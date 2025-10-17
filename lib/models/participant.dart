@@ -16,6 +16,7 @@ class Participant {
   bool isEvaluated;
   bool isAccepted; // حالة قبول المشاركة
   final String? rejectionReason; // سبب الرفض
+  final String? competitionId;
 
   Participant({
     required this.id,
@@ -35,6 +36,7 @@ class Participant {
     this.isEvaluated = false,
     this.isAccepted = true,
     this.rejectionReason,
+    this.competitionId,
   });
 
   factory Participant.fromMap(Map<String, dynamic> map) {
@@ -56,6 +58,7 @@ class Participant {
       isEvaluated: map['is_evaluated'] as bool? ?? false,
       isAccepted: map['is_accepted'] as bool? ?? true,
       rejectionReason: map['rejection_reason'] as String?,
+      competitionId: map['competition_id'] as String?,
     );
   }
 
@@ -78,6 +81,7 @@ class Participant {
       'is_evaluated': isEvaluated,
       'is_accepted': isAccepted,
       'rejection_reason': rejectionReason,
+      'competition_id': competitionId,
     };
   }
 }

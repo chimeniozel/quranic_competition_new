@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/participant.dart';
 import 'package:share_plus/share_plus.dart';
@@ -100,6 +99,29 @@ class EvaluationService {
       final ageGroup = e['participants']['age_group'];
       return Evaluation.fromMap(e, ageGroup);
     }).toList();
+  }
+
+  /// Supprime toutes les évaluations d'un jury pour une version donnée
+  Future<void> deleteEvaluationsByJuryInVersion({
+    required String juryId,
+    required String versionId,
+  }) async {
+    try {
+      print(
+        '🗑️ Suppression des évaluations du jury $juryId pour la version $versionId',
+      );
+
+      await _supabase
+          .from('evaluations')
+          .delete()
+          .eq('jury_id', juryId)
+          .eq('version_id', versionId);
+
+      print('✅ Évaluations supprimées avec succès');
+    } catch (e) {
+      print('❌ Erreur lors de la suppression des évaluations: $e');
+      throw Exception('Erreur lors de la suppression des évaluations: $e');
+    }
   }
 
   Future<EvaluationResult> getEvaluationsByRoundId(String roundId) async {

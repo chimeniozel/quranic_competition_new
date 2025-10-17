@@ -16,17 +16,62 @@ class UserService {
 
   /// Récupère tous les jurys liés à une version
   Future<List<AppUser>> getJurysByVersion(String versionId) async {
-    final response = await _supabase
-        .from('jury_assignments')
-        .select(
-          'profiles(*)',
-        ) // récupère les données de l'utilisateur via la relation avec profiles
-        .eq('version_id', versionId);
+    try {
+      print('🔍 Récupération des jurys pour la version: $versionId');
 
-    // Assure-toi que response est bien une List
-    return response
-        .map<AppUser>((item) => AppUser.fromMap(item['profiles']))
-        .toList();
+      // Essayer d'abord avec la jointure profiles(*)
+      try {
+        final response = await _supabase
+            .from('jury_assignments')
+            .select('profiles(*)')
+            .eq('version_id', versionId);
+
+        print('✅ Jointure réussie: ${response.length} jurys trouvés');
+
+        return response
+            .map<AppUser>((item) => AppUser.fromMap(item['profiles']))
+            .toList();
+      } catch (joinError) {
+        print('⚠️ Jointure échouée: $joinError');
+        print('🔄 Utilisation de la méthode alternative...');
+      }
+
+      // Méthode alternative: récupérer les IDs puis les profils
+      final assignmentsResponse = await _supabase
+          .from('jury_assignments')
+          .select('user_id')
+          .eq('version_id', versionId);
+
+      print('📋 ${assignmentsResponse.length} assignments trouvés');
+
+      if (assignmentsResponse.isEmpty) {
+        print('⚠️ Aucun jury assigné à cette version');
+        return [];
+      }
+
+      final userIds =
+          assignmentsResponse
+              .map<String>((assignment) => assignment['user_id'] as String)
+              .toList();
+
+      print('👥 IDs des jurys: $userIds');
+
+      // Récupérer les profils des utilisateurs
+      final profilesResponse = await _supabase
+          .from('profiles')
+          .select()
+          .inFilter('id', userIds)
+          .eq('role', 'jury');
+
+      print('✅ ${profilesResponse.length} profils de jurys récupérés');
+
+      return profilesResponse
+          .map<AppUser>((profile) => AppUser.fromMap(profile))
+          .toList();
+    } catch (e) {
+      print('❌ Erreur dans getJurysByVersion: $e');
+      rethrow;
+    }
   }
 
   /// (Optionnel) Récupère l'utilisateur connecté
