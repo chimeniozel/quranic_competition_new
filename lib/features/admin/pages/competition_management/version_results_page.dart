@@ -8,7 +8,6 @@ import 'package:quranic_competition/models/round.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
-import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class VersionResultsPage extends StatefulWidget {
@@ -55,6 +54,10 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
   }
 
   Future<void> loadVersionResults({bool reset = true}) async {
+    print(
+      '🚀 loadVersionResults appelée - reset: $reset, round sélectionnée: ${_selectedRound?.number}',
+    );
+
     if (reset) {
       setState(() => _isLoading = true);
     } else {
@@ -86,6 +89,29 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
 
       // 2. Si un round est sélectionné, charger les résultats
       if (_selectedRound != null) {
+        print(
+          '🎯 Round sélectionné: ${_selectedRound!.number} (ID: ${_selectedRound!.id})',
+        );
+
+        // Vérifier si le round sélectionné a des résultats
+        final hasResults = await _checkIfRoundHasResults(_selectedRound!);
+
+        print(
+          '🔍 Round ${_selectedRound!.number} a des résultats: $hasResults',
+        );
+
+        if (!hasResults) {
+          print(
+            '⚠️ Pas de résultats pour le round ${_selectedRound!.number}, affichage du message',
+          );
+          // Afficher un message informatif si pas de résultats
+          _showNoResultsMessage(_selectedRound!);
+          return;
+        }
+
+        print(
+          '✅ Round ${_selectedRound!.number} a des résultats, chargement...',
+        );
         await _loadResultsFromTable(reset: reset);
       }
     } catch (e) {
@@ -110,27 +136,28 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
     }
   }
 
-  Future<void> _saveRoundResults(
+  Future<void> _saveRoundResultsForGroup(
     Map<String, double> scores,
     List<Participant> participants,
+    String ageGroup,
   ) async {
     try {
-      // Supprimer les anciens résultats pour ce round s'ils existent
+      // Supprimer les anciens résultats pour ce round et groupe
       print(
-        '🗑️ Suppression des anciens résultats pour le round ${_selectedRound!.id} et groupe $_selectedGroup...',
+        '🗑️ Suppression des anciens résultats pour le round ${_selectedRound!.id} et groupe $ageGroup...',
       );
       await _supabase
           .from('round_results')
           .delete()
           .eq('round_id', _selectedRound!.id)
           .eq('version_id', widget.version.id)
-          .eq('age_group', _selectedGroup);
+          .eq('age_group', ageGroup);
 
-      print('✅ Anciens résultats supprimés');
+      print('✅ Anciens résultats supprimés pour le groupe $ageGroup');
 
       // Insérer les nouveaux résultats
       print(
-        '📝 Préparation de ${scores.length} résultats à sauvegarder pour le groupe $_selectedGroup...',
+        '📝 Préparation de ${scores.length} résultats à sauvegarder pour le groupe $ageGroup...',
       );
       final List<Map<String, dynamic>> resultsToInsert = [];
 
@@ -163,19 +190,214 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
       // Insérer tous les résultats en une seule opération
       if (resultsToInsert.isNotEmpty) {
         print(
-          '💾 Insertion de ${resultsToInsert.length} résultats dans round_results...',
+          '💾 Insertion de ${resultsToInsert.length} résultats dans round_results pour le groupe $ageGroup...',
         );
         await _supabase.from('round_results').insert(resultsToInsert);
 
         print(
-          '✅ Résultats sauvegardés avec succès pour ${resultsToInsert.length} participants du groupe $_selectedGroup',
+          '✅ Résultats sauvegardés avec succès pour ${resultsToInsert.length} participants du groupe $ageGroup',
         );
       } else {
-        print('⚠️ Aucun résultat à sauvegarder pour le groupe $_selectedGroup');
+        print('⚠️ Aucun résultat à sauvegarder pour le groupe $ageGroup');
       }
     } catch (e) {
-      print('❌ Erreur lors de la sauvegarde des résultats: $e');
+      print(
+        '❌ Erreur lors de la sauvegarde des résultats pour le groupe $ageGroup: $e',
+      );
       // Ne pas faire échouer toute la méthode si la sauvegarde échoue
+    }
+  }
+
+  /// Charge les résultats pour un round spécifique
+  Future<void> _loadResultsForRound(Round round) async {
+    print(
+      '🎯 _loadResultsForRound appelée pour la round ${round.number} (ID: ${round.id})',
+    );
+
+    try {
+      // Vérifier si le round a des résultats
+      final hasResults = await _checkIfRoundHasResults(round);
+
+      print('🔍 Round ${round.number} a des résultats: $hasResults');
+
+      if (!hasResults) {
+        print(
+          '⚠️ Pas de résultats pour le round ${round.number}, retour à la round précédente',
+        );
+        _returnToPreviousRoundWithResults();
+        return;
+      }
+
+      print('✅ Round ${round.number} a des résultats, chargement...');
+      // Charger les résultats pour ce round spécifique
+      await _loadResultsFromTableForRound(round);
+    } catch (e) {
+      print(
+        '❌ Erreur lors du chargement des résultats pour le round ${round.number}: $e',
+      );
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطأ أثناء تحميل النتائج: $e')));
+    }
+  }
+
+  /// Retourne à la round précédente qui a des résultats
+  Future<void> _returnToPreviousRoundWithResults() async {
+    try {
+      print('🔄 Recherche d\'une round avec des résultats...');
+
+      // Trier les rounds par numéro (du plus grand au plus petit)
+      final sortedRounds = List<Round>.from(_rounds);
+      sortedRounds.sort((a, b) => b.number.compareTo(a.number));
+
+      // Chercher la première round qui a des résultats
+      for (final round in sortedRounds) {
+        if (round.number < _selectedRound!.number) {
+          final hasResults = await _checkIfRoundHasResults(round);
+          if (hasResults) {
+            print(
+              '✅ Round ${round.number} trouvée avec des résultats, retour automatique',
+            );
+
+            // Sauvegarder le numéro de la round d'origine
+            final originalRoundNumber = _selectedRound!.number;
+
+            setState(() {
+              _selectedRound = round;
+              _isLoading = true;
+            });
+
+            // Afficher un message informatif
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'لا توجد نتائج للجولة $originalRoundNumber بعد.\nتم العودة تلقائياً إلى الجولة ${round.number}.',
+                ),
+                backgroundColor: AppTheme.warningColor,
+                duration: const Duration(seconds: 4),
+                action: SnackBarAction(
+                  label: 'حسناً',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                ),
+              ),
+            );
+
+            // Charger les résultats de la round trouvée
+            await _loadResultsFromTableForRound(round);
+            setState(() => _isLoading = false);
+            return;
+          }
+        }
+      }
+
+      // Si aucune round avec résultats n'est trouvée, afficher le message normal
+      print('⚠️ Aucune round avec résultats trouvée');
+      setState(() => _isLoading = false);
+      _showNoResultsMessage(_selectedRound!);
+    } catch (e) {
+      print('❌ Erreur lors du retour à la round précédente: $e');
+      setState(() => _isLoading = false);
+      _showNoResultsMessage(_selectedRound!);
+    }
+  }
+
+  /// Vérifie si un round a des résultats dans la table round_results
+  Future<bool> _checkIfRoundHasResults(Round round) async {
+    try {
+      print(
+        '🔍 Vérification des résultats pour le round ${round.number} (ID: ${round.id})',
+      );
+
+      final resultsData = await _supabase
+          .from('round_results')
+          .select('id')
+          .eq('round_id', round.id)
+          .eq('version_id', widget.version.id)
+          .limit(1);
+
+      print(
+        '📊 Résultats trouvés pour le round ${round.number}: ${resultsData.length}',
+      );
+      return resultsData.isNotEmpty;
+    } catch (e) {
+      print(
+        '❌ Erreur lors de la vérification des résultats pour le round ${round.number}: $e',
+      );
+      return false;
+    }
+  }
+
+  /// Affiche un message informatif quand un round n'a pas de résultats
+  void _showNoResultsMessage(Round round) {
+    print('📱 Affichage du message pour le round ${round.number}');
+
+    setState(() {
+      _isLoading = false;
+      _allParticipants = [];
+      _participantScores = {};
+      _totalCount = 0;
+      _hasMore = false;
+    });
+
+    print('📱 État mis à jour - participants: ${_allParticipants.length}');
+
+    // Afficher un message informatif
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'لا توجد نتائج للجولة ${round.number} بعد.\nلم يقم المصححون بإنهاء تقييم جميع المشاركين.',
+        ),
+        backgroundColor: AppTheme.warningColor,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'حسناً',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
+
+    print('📱 SnackBar affiché pour le round ${round.number}');
+  }
+
+  /// Charge les résultats depuis la table pour un round spécifique
+  Future<void> _loadResultsFromTableForRound(Round round) async {
+    print(
+      '📊 Chargement des résultats pour le round ${round.number} depuis la table...',
+    );
+
+    try {
+      // Charger les résultats depuis la table round_results
+      final resultsData = await _supabase
+          .from('round_results')
+          .select('*, participants(*)')
+          .eq('round_id', round.id)
+          .eq('version_id', widget.version.id)
+          .eq('age_group', _selectedGroup)
+          .eq('participants.is_accepted', true)
+          .order('score', ascending: false);
+
+      if (resultsData.isNotEmpty) {
+        print(
+          '📊 Résultats trouvés pour le round ${round.number}, chargement direct...',
+        );
+        await _loadResultsDirectlyFromTable(resultsData);
+        return;
+      }
+
+      print('⚠️ Aucun résultat trouvé pour le round ${round.number}');
+      _showNoResultsMessage(round);
+    } catch (e) {
+      print(
+        '❌ Erreur lors du chargement depuis round_results pour le round ${round.number}: $e',
+      );
+      _showNoResultsMessage(round);
     }
   }
 
@@ -195,19 +417,58 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
 
       if (resultsData.isNotEmpty) {
         print(
-          '📊 Résultats trouvés dans round_results, recalcul pour mise à jour...',
+          '📊 Résultats trouvés dans round_results pour le groupe $_selectedGroup, chargement direct...',
         );
-        // Toujours recalculer pour s'assurer que la table est à jour
-        await _calculateAndSaveResults();
+        // Charger directement depuis la table sans recalculer
+        await _loadResultsDirectlyFromTable(resultsData);
         return;
       }
     } catch (e) {
       print('❌ Erreur lors du chargement depuis round_results: $e');
     }
 
-    // Si aucun résultat trouvé dans round_results, calculer les résultats
-    print('⚠️ Aucun résultat trouvé dans round_results, calcul en cours...');
-    await _calculateAndSaveResults();
+    // Si aucun résultat trouvé dans round_results, afficher un message informatif
+    print(
+      '⚠️ Aucun résultat trouvé dans round_results pour le groupe $_selectedGroup',
+    );
+    _showNoResultsMessage(_selectedRound!);
+  }
+
+  Future<void> _loadResultsDirectlyFromTable(List<dynamic> resultsData) async {
+    try {
+      print('📊 Chargement direct des résultats depuis round_results...');
+
+      final participants = <Participant>[];
+      final scores = <String, double>{};
+
+      for (final result in resultsData) {
+        final participantData = result['participants'];
+        if (participantData != null) {
+          final participant = Participant.fromMap(participantData);
+          participants.add(participant);
+          scores[participant.id] = (result['score'] as num).toDouble();
+        }
+      }
+
+      print(
+        '📊 ${participants.length} participants chargés depuis round_results',
+      );
+      print('📊 ${scores.length} scores chargés depuis round_results');
+
+      setState(() {
+        _allParticipants = participants;
+        _participantScores = scores;
+        _totalCount = participants.length;
+        _hasMore = true;
+      });
+
+      // Appliquer le filtrage et la pagination
+      _applyFiltersAndPagination();
+    } catch (e) {
+      print('❌ Erreur lors du chargement direct des résultats: $e');
+      // En cas d'erreur, recalculer
+      await _calculateAndSaveResults();
+    }
   }
 
   Future<bool> _checkAllEvaluationsComplete() async {
@@ -223,20 +484,42 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
               .toList();
       final participantIds = participants.map((p) => p.id).toSet();
 
-      // 2. Récupérer les jurys assignés à cette version
+      // 2. Récupérer TOUS les jurys qui ont été assignés à cette version
+      // (inclut les jurys actuellement assignés ET ceux qui ont été supprimés)
       final juryAssignments = await _supabase
           .from('jury_assignments')
           .select('user_id')
           .eq('version_id', widget.version.id);
 
-      final juryIds =
+      // Récupérer aussi les jurys qui ont des évaluations mais ne sont plus assignés
+      final evaluationsForVersion = await _supabase
+          .from('evaluations')
+          .select('jury_id')
+          .eq('version_id', widget.version.id);
+
+      final currentlyAssignedJuryIds =
           juryAssignments.map<String>((e) => e['user_id'] as String).toSet();
+
+      final juryIdsWithEvaluations =
+          evaluationsForVersion
+              .map<String>((e) => e['jury_id'] as String)
+              .toSet();
+
+      // Combiner les deux : jurys actuellement assignés + jurys avec évaluations
+      final juryIds = currentlyAssignedJuryIds.union(juryIdsWithEvaluations);
 
       // 3. Vérifier seulement le round sélectionné
       final selectedRoundId = _selectedRound!.id;
       final selectedRoundNumber = _selectedRound!.number;
 
       print('🎯 Vérification du round sélectionné: $selectedRoundNumber');
+      print(
+        '👨‍⚖️ Jurys actuellement assignés: ${currentlyAssignedJuryIds.length}',
+      );
+      print(
+        '👨‍⚖️ Jurys avec évaluations (inclut supprimés): ${juryIdsWithEvaluations.length}',
+      );
+      print('👨‍⚖️ Total jurys à considérer: ${juryIds.length}');
 
       // 4. Calculer le nombre d'évaluations attendues pour ce round seulement
       final expectedEvaluationsForSelectedRound =
@@ -376,14 +659,25 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
         _selectedRound!.id,
       );
 
-      // 3. Récupérer les participants (seulement ceux acceptés et du groupe sélectionné)
-      final participants =
-          result.participants
-              .where((p) => p.isAccepted && p.ageGroup == _selectedGroup)
-              .toList();
+      print(
+        '🔍 Tous les participants récupérés: ${result.participants.length}',
+      );
+
+      // 3. Déduplication de tous les participants acceptés
+      final allAcceptedParticipantsRaw =
+          result.participants.where((p) => p.isAccepted).toList();
+
+      final uniqueParticipantsMap = <String, Participant>{};
+      for (final participant in allAcceptedParticipantsRaw) {
+        uniqueParticipantsMap[participant.id] = participant;
+      }
+      final allAcceptedParticipants = uniqueParticipantsMap.values.toList();
 
       print(
-        '👥 Participants acceptés du groupe $_selectedGroup: ${participants.length}',
+        '🔧 DÉDUPLICATION TOTALE - Participants acceptés (avant déduplication): ${allAcceptedParticipantsRaw.length}',
+      );
+      print(
+        '🔧 DÉDUPLICATION TOTALE - Participants acceptés (après déduplication): ${allAcceptedParticipants.length}',
       );
 
       // 4. Calcul de la moyenne des évaluations pour chaque participant (seulement pour le round sélectionné)
@@ -394,6 +688,7 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
       print(
         '🧮 Calcul des moyennes pour ${roundEvaluations.length} évaluations du round ${_selectedRound!.number}...',
       );
+
       final Map<String, List<Evaluation>> grouped = {};
       for (final eval in roundEvaluations) {
         grouped.putIfAbsent(eval.participantId, () => []).add(eval);
@@ -402,17 +697,23 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
       print(
         '📊 Groupement par participant: ${grouped.length} participants uniques',
       );
-      final Map<String, double> scores = {};
+
+      // 5. Calculer les scores pour tous les groupes
+      final Map<String, double> allScores = {};
+      final Map<String, Participant> allParticipantsMap = {};
+
       for (final entry in grouped.entries) {
         final participantId = entry.key;
         final evalList = entry.value;
 
-        // Vérifier que le participant est dans notre liste filtrée
+        // Trouver le participant dans la liste déduplicée
         final participant =
-            participants.where((p) => p.id == participantId).firstOrNull;
+            allAcceptedParticipants
+                .where((p) => p.id == participantId)
+                .firstOrNull;
         if (participant == null) {
           print(
-            '⚠️ Participant $participantId non trouvé dans la liste filtrée, ignoré',
+            '⚠️ Participant $participantId non trouvé dans la liste des participants acceptés, ignoré',
           );
           continue;
         }
@@ -421,13 +722,14 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
             evalList.map((e) => e.totalScore).reduce((a, b) => a + b) /
             evalList.length;
 
-        scores[participantId] = average;
+        allScores[participantId] = average;
+        allParticipantsMap[participantId] = participant;
+
         print(
-          '📈 Participant $participantId: ${evalList.length} évaluations, moyenne: ${average.toStringAsFixed(2)}',
+          '📈 Participant $participantId (${participant.ageGroup}): ${evalList.length} évaluations, moyenne: ${average.toStringAsFixed(2)}',
         );
 
         // ✅ Vérification des conditions de passage
-
         bool passed = false;
         if (participant.ageGroup == "صغار" && average >= 14) {
           passed = true;
@@ -447,37 +749,67 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
         }
       }
 
-      // 5. Sauvegarder les résultats dans la table des résultats
-      print('💾 Début de la sauvegarde des résultats calculés...');
+      // 6. Sauvegarder les résultats pour tous les groupes
       print(
-        '📊 ${scores.length} scores calculés pour ${participants.length} participants du groupe $_selectedGroup',
-      );
-      await _saveRoundResults(scores, participants);
-      print('✅ Sauvegarde terminée avec succès');
-
-      // 6. Mise à jour de l'état
-      print(
-        '💾 Mise à jour de l\'état - participants.length: ${participants.length}',
-      );
-      print(
-        '💾 IDs des participants: ${participants.map((p) => p.id).toList()}',
+        '💾 Début de la sauvegarde des résultats calculés pour tous les groupes...',
       );
 
-      // Déduplication des participants par ID
-      final uniqueParticipants = <String, Participant>{};
-      for (final participant in participants) {
-        uniqueParticipants[participant.id] = participant;
+      // Grouper par âge
+      final participantsByAge = <String, List<Participant>>{};
+      for (final participant in allParticipantsMap.values) {
+        participantsByAge
+            .putIfAbsent(participant.ageGroup, () => [])
+            .add(participant);
       }
-      final deduplicatedParticipants = uniqueParticipants.values.toList();
+
+      // Sauvegarder pour chaque groupe
+      for (final entry in participantsByAge.entries) {
+        final ageGroup = entry.key;
+        final participantsForGroup = entry.value;
+
+        final scoresForGroup = <String, double>{};
+        for (final participant in participantsForGroup) {
+          if (allScores.containsKey(participant.id)) {
+            scoresForGroup[participant.id] = allScores[participant.id]!;
+          }
+        }
+
+        print(
+          '📊 Sauvegarde pour le groupe $ageGroup: ${scoresForGroup.length} scores',
+        );
+        await _saveRoundResultsForGroup(
+          scoresForGroup,
+          participantsForGroup,
+          ageGroup,
+        );
+      }
+
+      print('✅ Sauvegarde terminée avec succès pour tous les groupes');
+
+      // 7. Mise à jour de l'état avec les participants du groupe sélectionné
+      final selectedGroupParticipants =
+          allParticipantsMap.values
+              .where((p) => p.ageGroup == _selectedGroup)
+              .toList();
+
+      final selectedGroupScores = <String, double>{};
+      for (final participant in selectedGroupParticipants) {
+        if (allScores.containsKey(participant.id)) {
+          selectedGroupScores[participant.id] = allScores[participant.id]!;
+        }
+      }
 
       print(
-        '🔧 Déduplication - Avant: ${participants.length}, Après: ${deduplicatedParticipants.length}',
+        '💾 MISE À JOUR FINALE - participants.length: ${selectedGroupParticipants.length} pour le groupe $_selectedGroup',
+      );
+      print(
+        '💾 MISE À JOUR FINALE - IDs des participants: ${selectedGroupParticipants.map((p) => p.id).toList()}',
       );
 
       setState(() {
-        _allParticipants = deduplicatedParticipants;
-        _participantScores = scores;
-        _totalCount = deduplicatedParticipants.length;
+        _allParticipants = selectedGroupParticipants;
+        _participantScores = selectedGroupScores;
+        _totalCount = selectedGroupParticipants.length;
         _hasMore = true;
       });
 
@@ -587,15 +919,256 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
     setState(() => _isLoadingMore = false);
   }
 
+  Widget _buildLoadingState() {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingXL),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Indicateur principal
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingL),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+              boxShadow: AppTheme.shadowL,
+            ),
+            child: const SizedBox(
+              width: 60,
+              height: 60,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppTheme.spacingXL),
+
+          // Texte principal
+          Text(
+            'جاري تحميل النتائج',
+            style: AppTheme.headingMedium.copyWith(
+              color: AppTheme.textPrimaryColor,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: AppTheme.spacingS),
+
+          // Texte secondaire
+          Text(
+            'يرجى الانتظار بينما نقوم بتحميل النتائج',
+            style: AppTheme.bodyMedium.copyWith(
+              color: AppTheme.textSecondaryColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: AppTheme.spacingXL),
+
+          // Indicateurs de progression
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: AppTheme.dividerColor, width: 1),
+            ),
+            child: Column(
+              children: [
+                _buildLoadingStep(
+                  icon: Icons.emoji_events_outlined,
+                  title: 'جاري تحميل الجولات',
+                  isActive: true,
+                ),
+                const SizedBox(height: AppTheme.spacingS),
+                _buildLoadingStep(
+                  icon: Icons.people_outlined,
+                  title: 'جاري تحميل المشاركين',
+                  isActive: true,
+                ),
+                const SizedBox(height: AppTheme.spacingS),
+                _buildLoadingStep(
+                  icon: Icons.calculate_outlined,
+                  title: 'جاري حساب النتائج',
+                  isActive: true,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingStep({
+    required IconData icon,
+    required String title,
+    required bool isActive,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color:
+                isActive
+                    ? AppTheme.primaryColor.withOpacity(0.1)
+                    : AppTheme.textDisabledColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color:
+                isActive ? AppTheme.primaryColor : AppTheme.textDisabledColor,
+          ),
+        ),
+        const SizedBox(width: AppTheme.spacingM),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTheme.labelMedium.copyWith(
+              color:
+                  isActive
+                      ? AppTheme.textPrimaryColor
+                      : AppTheme.textDisabledColor,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+        if (isActive)
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildParticipantList() {
     if (_participants.isEmpty) {
-      return EmptyState(
-        icon: Icons.emoji_events_outlined,
-        title: 'لا توجد نتائج',
-        subtitle:
-            _searchQuery.isNotEmpty
-                ? 'لا توجد نتائج مطابقة للبحث'
-                : 'لا توجد نتائج لهذه الفئة أو الجولة',
+      // Message spécial si c'est une round sans résultats
+      if (_selectedRound != null && _totalCount == 0) {
+        return Container(
+          padding: const EdgeInsets.all(AppTheme.spacingXL),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingL),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+                  border: Border.all(
+                    color: AppTheme.warningColor.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Icon(
+                  Icons.assignment_outlined,
+                  size: 64,
+                  color: AppTheme.warningColor,
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacingL),
+              Text(
+                'لا توجد نتائج للجولة ${_selectedRound!.number}',
+                style: AppTheme.headingMedium.copyWith(
+                  color: AppTheme.warningColor,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppTheme.spacingM),
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(color: AppTheme.dividerColor, width: 1),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: AppTheme.warningColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Text(
+                          'السبب:',
+                          style: AppTheme.labelMedium.copyWith(
+                            color: AppTheme.warningColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      'لم يقم المصححون بإنهاء تقييم جميع المشاركين في هذه الجولة بعد.',
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacingL),
+              Text(
+                'يرجى الانتظار حتى ينتهي المصححون من التقييم',
+                style: AppTheme.labelMedium.copyWith(
+                  color: AppTheme.textDisabledColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Message normal pour les autres cas
+      return Container(
+        padding: const EdgeInsets.all(AppTheme.spacingXL),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.emoji_events_outlined,
+              size: 64,
+              color: AppTheme.textDisabledColor,
+            ),
+            const SizedBox(height: AppTheme.spacingM),
+            Text(
+              'لا توجد نتائج',
+              style: AppTheme.headingMedium.copyWith(
+                color: AppTheme.textSecondaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppTheme.spacingS),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'لا توجد نتائج مطابقة للبحث'
+                  : 'لا توجد نتائج لهذه الفئة أو الجولة',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.textDisabledColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       );
     }
 
@@ -797,8 +1370,8 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
       appBar: ModernAppBar(title: 'نتائج النسخة: ${widget.version.name}'),
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
-              : ModernPullToRefresh(
+              ? _buildLoadingState()
+              : RefreshIndicator(
                 onRefresh: () => _loadResultsFromTable(reset: true),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(AppTheme.spacingS),
@@ -876,15 +1449,22 @@ class _VersionResultsPageState extends State<VersionResultsPage> {
                                               if (round != null &&
                                                   round.id !=
                                                       _selectedRound?.id) {
+                                                print(
+                                                  '🔄 Changement de round: ${_selectedRound?.number} → ${round.number}',
+                                                );
                                                 setState(() {
                                                   _selectedRound = round;
                                                   _hasMore = true;
                                                   _searchQuery = '';
+                                                  _isLoading =
+                                                      true; // Afficher le loading
                                                 });
                                                 _searchController.clear();
-                                                _loadResultsFromTable(
-                                                  reset: true,
+                                                print(
+                                                  '🔄 Appel de loadVersionResults pour la round ${round.number}',
                                                 );
+                                                // Passer le round directement pour éviter les problèmes de timing
+                                                _loadResultsForRound(round);
                                               }
                                             },
                                           ),

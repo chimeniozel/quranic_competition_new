@@ -4,6 +4,7 @@ import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/evaluation.dart';
 import 'package:quranic_competition/core/services/evaluation_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
@@ -298,126 +299,175 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Row(
-              children: [
-                Icon(
-                  Icons.warning_outlined,
-                  color: AppTheme.warningColor,
-                  size: 24,
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                const Text('تأكيد الحذف'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'هل تريد حذف ${jury.fullName}؟',
-                  style: AppTheme.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w600,
+    try {
+      // Vérifier si le jury a évalué tous les participants
+      print('🔍 Vérification si le jury a évalué tous les participants...');
+      final hasEvaluatedAll = await _checkJuryHasEvaluatedAll(jury.id);
+
+      String message;
+      String confirmText;
+      if (hasEvaluatedAll) {
+        message = 'سيتم حذف المحكم فقط، وسيتم الاحتفاظ بتقييماته لأنها مكتملة';
+        confirmText = 'حذف المحكم (الاحتفاظ بالتقييمات)';
+      } else {
+        message = 'سيتم حذف المحكم وجميع تقييماته في هذه النسخة';
+        confirmText = 'حذف المحكم والتقييمات';
+      }
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.warning_outlined,
+                    color: AppTheme.warningColor,
+                    size: 24,
                   ),
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: AppTheme.warningColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                    border: Border.all(
-                      color: AppTheme.warningColor.withOpacity(0.3),
+                  const SizedBox(width: AppTheme.spacingS),
+                  const Text('تأكيد الحذف'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'هل تريد حذف ${jury.fullName}؟',
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: AppTheme.warningColor,
-                        size: 16,
+                  const SizedBox(height: AppTheme.spacingS),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacingS),
+                    decoration: BoxDecoration(
+                      color:
+                          hasEvaluatedAll
+                              ? AppTheme.primaryColor.withOpacity(0.1)
+                              : AppTheme.warningColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      border: Border.all(
+                        color:
+                            hasEvaluatedAll
+                                ? AppTheme.primaryColor.withOpacity(0.3)
+                                : AppTheme.warningColor.withOpacity(0.3),
                       ),
-                      const SizedBox(width: AppTheme.spacingS),
-                      Expanded(
-                        child: Text(
-                          'سيتم حذف المحكم وجميع تقييماته في هذه النسخة',
-                          style: AppTheme.bodySmall.copyWith(
-                            color: AppTheme.warningColor,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          hasEvaluatedAll
+                              ? Icons.check_circle_outline
+                              : Icons.info_outline,
+                          color:
+                              hasEvaluatedAll
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.warningColor,
+                          size: 16,
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          child: Text(
+                            message,
+                            style: AppTheme.bodySmall.copyWith(
+                              color:
+                                  hasEvaluatedAll
+                                      ? AppTheme.primaryColor
+                                      : AppTheme.warningColor,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(
+                    'إلغاء',
+                    style: AppTheme.labelMedium.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        hasEvaluatedAll
+                            ? AppTheme.primaryColor
+                            : AppTheme.errorColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                    ),
+                  ),
+                  child: Text(
+                    confirmText,
+                    style: AppTheme.labelMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(
-                  'إلغاء',
-                  style: AppTheme.labelMedium.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.errorColor,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  ),
-                ),
-                child: Text(
-                  'حذف',
-                  style: AppTheme.labelMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-    );
+      );
 
-    if (confirm != true) {
-      print('❌ Suppression annulée par l\'utilisateur');
-      return;
-    }
+      if (confirm != true) {
+        print('❌ Suppression annulée par l\'utilisateur');
+        return;
+      }
 
-    try {
       print('🗑️ Suppression du jury en cours...');
 
-      // 1. Supprimer toutes les évaluations du jury pour cette version
-      print('🗑️ Suppression des évaluations du jury...');
-      await _evaluationService.deleteEvaluationsByJuryInVersion(
-        juryId: jury.id,
-        versionId: widget.version.id,
-      );
+      if (hasEvaluatedAll) {
+        // Le jury a évalué tous les participants : supprimer seulement l'assignation
+        print(
+          '✅ Jury a évalué tous les participants - suppression de l\'assignation seulement',
+        );
+        await _userService.removeJuryFromVersion(
+          userId: jury.id,
+          versionId: widget.version.id,
+        );
+      } else {
+        // Le jury n'a pas évalué tous les participants : supprimer assignation + évaluations
+        print(
+          '⚠️ Jury n\'a pas évalué tous les participants - suppression des évaluations',
+        );
 
-      // 2. Supprimer l'assignation du jury
-      print('🗑️ Suppression de l\'assignation du jury...');
-      await _userService.removeJuryFromVersion(
-        userId: jury.id,
-        versionId: widget.version.id,
-      );
+        // 1. Supprimer toutes les évaluations du jury pour cette version
+        await _evaluationService.deleteEvaluationsByJuryInVersion(
+          juryId: jury.id,
+          versionId: widget.version.id,
+        );
+
+        // 2. Supprimer l'assignation du jury
+        await _userService.removeJuryFromVersion(
+          userId: jury.id,
+          versionId: widget.version.id,
+        );
+      }
 
       await _loadJurysAndEvaluations();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${jury.fullName} تم حذفه بنجاح مع جميع تقييماته'),
+          content: Text(
+            hasEvaluatedAll
+                ? '${jury.fullName} تم حذفه بنجاح (تم الاحتفاظ بتقييماته)'
+                : '${jury.fullName} تم حذفه بنجاح مع جميع تقييماته',
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );
 
-      print('✅ Jury et évaluations supprimés avec succès');
+      print('✅ Suppression du jury terminée avec succès');
     } catch (e) {
       print('❌ Erreur lors de la suppression du jury: $e');
       if (!mounted) return;
@@ -427,6 +477,69 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
           backgroundColor: AppTheme.errorColor,
         ),
       );
+    }
+  }
+
+  /// Vérifie si un jury a évalué tous les participants acceptés de cette version
+  Future<bool> _checkJuryHasEvaluatedAll(String juryId) async {
+    try {
+      print(
+        '🔍 Vérification des évaluations du jury $juryId pour la version ${widget.version.id}',
+      );
+
+      // 1. Récupérer tous les participants acceptés de cette version
+      final supabase = Supabase.instance.client;
+      final participantsResponse = await supabase
+          .from('participant_versions')
+          .select('participant_id, participants(*)')
+          .eq('version_id', widget.version.id)
+          .eq('is_accepted', true);
+
+      final acceptedParticipants =
+          participantsResponse
+              .map((pv) => pv['participant_id'] as String)
+              .toSet();
+
+      print(
+        '👥 Participants acceptés de cette version: ${acceptedParticipants.length}',
+      );
+
+      if (acceptedParticipants.isEmpty) {
+        print(
+          '✅ Aucun participant accepté - le jury est considéré comme ayant évalué tous les participants',
+        );
+        return true;
+      }
+
+      // 2. Récupérer toutes les évaluations de ce jury pour cette version
+      final evaluationsResponse = await supabase
+          .from('evaluations')
+          .select('participant_id')
+          .eq('jury_id', juryId)
+          .eq('version_id', widget.version.id);
+
+      final evaluatedParticipants =
+          evaluationsResponse.map((e) => e['participant_id'] as String).toSet();
+
+      print(
+        '📝 Participants évalués par ce jury: ${evaluatedParticipants.length}',
+      );
+
+      // 3. Vérifier si tous les participants acceptés ont été évalués
+      final hasEvaluatedAll = acceptedParticipants.every(
+        (participantId) => evaluatedParticipants.contains(participantId),
+      );
+
+      print(
+        '🔍 Résultat: ${hasEvaluatedAll ? "OUI" : "NON"} - Le jury a évalué tous les participants',
+      );
+
+      return hasEvaluatedAll;
+    } catch (e) {
+      print('❌ Erreur lors de la vérification des évaluations du jury: $e');
+      // En cas d'erreur, on considère que le jury n'a pas évalué tous les participants
+      // pour éviter de perdre des évaluations par erreur
+      return false;
     }
   }
 
