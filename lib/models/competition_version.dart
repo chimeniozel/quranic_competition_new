@@ -7,6 +7,8 @@ class CompetitionVersion {
   final int maxChildren;
   final bool isRegistrationOpen;
   final bool juryEvaluationEnabled; // Autorisation pour les jurys d'évaluer
+  final double successAverageAdults; // Moyenne de succès pour les adultes
+  final double successAverageChildren; // Moyenne de succès pour les enfants
 
   CompetitionVersion({
     required this.id,
@@ -17,6 +19,8 @@ class CompetitionVersion {
     required this.maxChildren,
     required this.isRegistrationOpen,
     this.juryEvaluationEnabled = false, // Par défaut : désactivé
+    this.successAverageAdults = 70.0, // Par défaut : 70% pour les adultes
+    this.successAverageChildren = 70.0, // Par défaut : 70% pour les enfants
   });
 
   factory CompetitionVersion.fromMap(Map<String, dynamic> map) {
@@ -29,6 +33,9 @@ class CompetitionVersion {
       maxChildren: map['max_children'] ?? 0,
       isRegistrationOpen: map['is_registration_open'] ?? true,
       juryEvaluationEnabled: map['jury_evaluation_enabled'] ?? false,
+      successAverageAdults: (map['success_average_adults'] ?? 70.0).toDouble(),
+      successAverageChildren:
+          (map['success_average_children'] ?? 70.0).toDouble(),
     );
   }
 
@@ -42,6 +49,8 @@ class CompetitionVersion {
       'max_children': maxChildren,
       'is_registration_open': isRegistrationOpen,
       'jury_evaluation_enabled': juryEvaluationEnabled,
+      'success_average_adults': successAverageAdults,
+      'success_average_children': successAverageChildren,
     };
   }
 }

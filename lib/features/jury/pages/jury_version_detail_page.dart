@@ -148,8 +148,14 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     );
 
     // 2. Récupérer évaluations du jury pour cette version
+    print(
+      '🔍 JuryVersionDetailPage - Récupération des évaluations pour jury: $juryId, version: $versionId',
+    );
     final evaluationsResponse = await _evaluationService
         .getEvaluationsByJuryInVersion(juryId: juryId, versionId: versionId);
+    print(
+      '🔍 JuryVersionDetailPage - Évaluations récupérées: ${evaluationsResponse.length}',
+    );
 
     // Affichage debug des roundId des évaluations récupérées
     for (final eval in evaluationsResponse) {
@@ -226,8 +232,14 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       }
 
       // Récupérer évaluations du jury pour cette version
+      print(
+        '🔍 JuryVersionDetailPage - Rechargement des évaluations pour jury: $juryId, version: $versionId',
+      );
       final evaluationsResponse = await _evaluationService
           .getEvaluationsByJuryInVersion(juryId: juryId, versionId: versionId);
+      print(
+        '🔍 JuryVersionDetailPage - Évaluations rechargées: ${evaluationsResponse.length}',
+      );
 
       final normalizedRoundId = _selectedRound?.id.trim().toLowerCase();
 
@@ -410,11 +422,17 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                       final juryId = appUser?.id ?? '';
 
                       // Récupérer toutes les évaluations faites par ce jury dans cette version
+                      print(
+                        '🔍 JuryVersionDetailPage - Export des évaluations pour jury: $juryId, version: ${widget.version.id}',
+                      );
                       final evaluations = await evaluationService
                           .getEvaluationsByJuryInVersion(
                             juryId: juryId,
                             versionId: widget.version.id,
                           );
+                      print(
+                        '🔍 JuryVersionDetailPage - Évaluations pour export: ${evaluations.length}',
+                      );
 
                       await EvaluationService.exportEvaluatedParticipantsLocally(
                         context: context,

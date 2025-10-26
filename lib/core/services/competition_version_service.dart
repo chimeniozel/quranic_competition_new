@@ -90,15 +90,134 @@ class CompetitionVersionService {
     }
 
     final userId = user.id;
+    print('🔍 fetchMyVersions - User ID: $userId');
 
-    final response = await _supabase
-        .from('jury_assignments')
-        .select('version:competition_versions(*)') // alias version
-        .eq('user_id', userId);
+    try {
+      // Étape 1: Vérifier les assignations directes
+      print('🔍 Étape 1: Vérification des assignations directes...');
+      final directAssignments = await _supabase
+          .from('round_jury_assignments')
+          .select('*')
+          .eq('user_id', userId);
 
-    return (response as List)
-        .map((row) => CompetitionVersion.fromMap(row['version']))
-        .toList();
+      print('🔍 Assignations directes trouvées: ${directAssignments.length}');
+      for (final assignment in directAssignments) {
+        print(
+          '🔍 Assignment: user_id=${assignment['user_id']}, round_id=${assignment['round_id']}',
+        );
+      }
+
+      if (directAssignments.isEmpty) {
+        print('❌ Aucune assignation trouvée pour cet utilisateur');
+        return [];
+      }
+
+      // Étape 2: Récupérer les rounds assignés
+      print('🔍 Étape 2: Récupération des rounds assignés...');
+      final roundIds =
+          directAssignments.map((a) => a['round_id'] as String).toList();
+      final roundsResponse = await _supabase
+          .from('rounds')
+          .select('*, version:competition_versions(*)')
+          .inFilter('id', roundIds);
+
+      print('🔍 Rounds trouvés: ${roundsResponse.length}');
+      for (final round in roundsResponse) {
+        print(
+          '🔍 Round: ${round['number']}, version_id=${round['version_id']}',
+        );
+      }
+
+      // Étape 3: Extraire les versions uniques
+      print('🔍 Étape 3: Extraction des versions uniques...');
+      final Set<String> versionIds = {};
+      final List<Map<String, dynamic>> versionsData = [];
+
+      for (final round in roundsResponse) {
+        final version = round['version'];
+        if (version != null) {
+          final versionId = version['id'] as String;
+          print('🔍 Version trouvée: ${version['name']} (ID: $versionId)');
+          if (!versionIds.contains(versionId)) {
+            versionIds.add(versionId);
+            versionsData.add(version);
+          }
+        }
+      }
+
+      print(
+        '🔍 fetchMyVersions - Final versions count: ${versionsData.length}',
+      );
+      print('🔍 fetchMyVersions - Version IDs: $versionIds');
+
+      return versionsData
+          .map((versionData) => CompetitionVersion.fromMap(versionData))
+          .toList();
+    } catch (e) {
+      print('❌ Erreur dans fetchMyVersions: $e');
+      return [];
+    }
+  }
+
+  /// Méthode de test pour vérifier les données des jurys
+  Future<void> debugJuryData() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      print('❌ Utilisateur non connecté');
+      return;
+    }
+
+    print('🔍 === DEBUG JURY DATA ===');
+    print('🔍 User ID: ${user.id}');
+    print('🔍 User Email: ${user.email}');
+
+    try {
+      // 1. Vérifier le profil utilisateur
+      final profile =
+          await _supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+
+      print('🔍 Profile: ${profile['full_name']} (Role: ${profile['role']})');
+
+      // 2. Vérifier les assignations
+      final assignments = await _supabase
+          .from('round_jury_assignments')
+          .select('*')
+          .eq('user_id', user.id);
+
+      print('🔍 Assignations trouvées: ${assignments.length}');
+      for (final assignment in assignments) {
+        print('🔍 Assignment: round_id=${assignment['round_id']}');
+      }
+
+      // 3. Vérifier tous les jurys
+      final allJurys = await _supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'jury');
+
+      print('🔍 Tous les jurys: ${allJurys.length}');
+      for (final jury in allJurys) {
+        print('🔍 Jury: ${jury['full_name']} (ID: ${jury['id']})');
+      }
+
+      // 4. Vérifier toutes les assignations
+      final allAssignments = await _supabase
+          .from('round_jury_assignments')
+          .select('*');
+
+      print('🔍 Toutes les assignations: ${allAssignments.length}');
+      for (final assignment in allAssignments) {
+        print(
+          '🔍 Assignment: user_id=${assignment['user_id']}, round_id=${assignment['round_id']}',
+        );
+      }
+    } catch (e) {
+      print('❌ Erreur dans debugJuryData: $e');
+    }
   }
 
   Future<void> createVersion({
@@ -197,6 +316,8 @@ class CompetitionVersionService {
     required bool isActive,
     required bool isRegistrationOpen,
     required bool juryEvaluationEnabled,
+    required double successAverageAdults,
+    required double successAverageChildren,
   }) async {
     final response =
         await _supabase
@@ -209,6 +330,8 @@ class CompetitionVersionService {
               'is_active': isActive,
               'is_registration_open': isRegistrationOpen,
               'jury_evaluation_enabled': juryEvaluationEnabled,
+              'success_average_adults': successAverageAdults,
+              'success_average_children': successAverageChildren,
             })
             .eq('id', id)
             .select();
@@ -222,5 +345,55 @@ class CompetitionVersionService {
     // Mais selon la version supabase_flutter, la gestion d'erreur peut être différente
     // Si tu utilises le client Dart officiel, il faut vérifier un objet Response avec 'error' dessus.
     // Ici, on suppose que la réponse est correcte si on arrive jusque là.
+  }
+
+  /// Récupère une version par son ID
+  Future<CompetitionVersion?> getVersionById(String versionId) async {
+    try {
+      final response =
+          await _supabase
+              .from('competition_versions')
+              .select()
+              .eq('id', versionId)
+              .single();
+
+      return CompetitionVersion.fromMap(response);
+    } catch (e) {
+      print('Erreur lors de la récupération de la version: $e');
+      return null;
+    }
+  }
+
+  /// Récupère le nombre de participants par groupe d'âge pour une version
+  Future<Map<String, int>> getParticipantCountsByAgeGroup(
+    String versionId,
+  ) async {
+    try {
+      // Récupérer le nombre de participants adultes pour cette version
+      final adultsResponse = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId)
+          .eq('age_group', 'كبار');
+
+      // Récupérer le nombre de participants enfants pour cette version
+      final childrenResponse = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId)
+          .eq('age_group', 'صغار');
+
+      final adultsCount = adultsResponse.length;
+      final childrenCount = childrenResponse.length;
+
+      print(
+        '📊 Nombre de participants récupéré pour version $versionId: Adultes=$adultsCount, Enfants=$childrenCount',
+      );
+
+      return {'adults': adultsCount, 'children': childrenCount};
+    } catch (e) {
+      print('Erreur lors de la récupération du nombre de participants: $e');
+      return {'adults': 0, 'children': 0};
+    }
   }
 }

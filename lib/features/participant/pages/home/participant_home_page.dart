@@ -20,6 +20,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   bool _isLoading = false;
   bool _hasActiveCompetition = false;
   CompetitionVersion? _activeVersion;
+  bool _adultsRegistrationOpen = true;
+  bool _childrenRegistrationOpen = true;
   final _competitionService = CompetitionVersionService();
   StreamSubscription<List<CompetitionVersion>>? _competitionSubscription;
 
@@ -67,6 +69,11 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
       CompetitionVersion? activeVersion =
           activeVersions.isNotEmpty ? activeVersions.first : null;
 
+      // Vérifier les limites de participants si une compétition est active
+      if (activeVersion != null) {
+        await _checkParticipantLimits(activeVersion);
+      }
+
       if (mounted) {
         setState(() {
           _hasActiveCompetition = hasActiveCompetition;
@@ -84,6 +91,36 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
           _hasActiveCompetition = false;
           _activeVersion = null;
           _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkParticipantLimits(CompetitionVersion version) async {
+    try {
+      // Récupérer le nombre de participants par groupe d'âge
+      final participantCounts = await _competitionService
+          .getParticipantCountsByAgeGroup(version.id);
+
+      final adultsCount = participantCounts['adults'] ?? 0;
+      final childrenCount = participantCounts['children'] ?? 0;
+
+      print(
+        '📊 Nombre de participants: Adultes=$adultsCount/${version.maxAdults}, Enfants=$childrenCount/${version.maxChildren}',
+      );
+
+      if (mounted) {
+        setState(() {
+          _adultsRegistrationOpen = adultsCount < version.maxAdults;
+          _childrenRegistrationOpen = childrenCount < version.maxChildren;
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la vérification des limites: $e');
+      if (mounted) {
+        setState(() {
+          _adultsRegistrationOpen = true;
+          _childrenRegistrationOpen = true;
         });
       }
     }
@@ -185,35 +222,92 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   children: [
                                     Expanded(
                                       child: PrimaryButton(
-                                        onPressed: () {
-                                          context.push(
-                                            '/participant/register',
-                                            extra: {
-                                              'versionId': _activeVersion!.id,
-                                              'ageGroup': 'صغار',
-                                            },
-                                          );
-                                        },
+                                        onPressed:
+                                            _childrenRegistrationOpen
+                                                ? () {
+                                                  context.push(
+                                                    '/participant/register',
+                                                    extra: {
+                                                      'versionId':
+                                                          _activeVersion!.id,
+                                                      'ageGroup': 'صغار',
+                                                    },
+                                                  );
+                                                }
+                                                : null,
                                         text: 'فرع الصغار',
                                       ),
                                     ),
                                     const SizedBox(width: AppTheme.spacingS),
                                     Expanded(
                                       child: PrimaryButton(
-                                        onPressed: () {
-                                          context.push(
-                                            '/participant/register',
-                                            extra: {
-                                              'versionId': _activeVersion!.id,
-                                              'ageGroup': 'كبار',
-                                            },
-                                          );
-                                        },
+                                        onPressed:
+                                            _adultsRegistrationOpen
+                                                ? () {
+                                                  context.push(
+                                                    '/participant/register',
+                                                    extra: {
+                                                      'versionId':
+                                                          _activeVersion!.id,
+                                                      'ageGroup': 'كبار',
+                                                    },
+                                                  );
+                                                }
+                                                : null,
                                         text: 'فرع الكبار',
                                       ),
                                     ),
                                   ],
                                 ),
+
+                                // Message d'information si un groupe est complet
+                                if (!_childrenRegistrationOpen ||
+                                    !_adultsRegistrationOpen) ...[
+                                  const SizedBox(height: AppTheme.spacingS),
+                                  Container(
+                                    padding: const EdgeInsets.all(
+                                      AppTheme.spacingS,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.warningColor.withOpacity(
+                                        0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusM,
+                                      ),
+                                      border: Border.all(
+                                        color: AppTheme.warningColor
+                                            .withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          color: AppTheme.warningColor,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(
+                                          width: AppTheme.spacingS,
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            !_childrenRegistrationOpen &&
+                                                    !_adultsRegistrationOpen
+                                                ? 'تم الوصول للحد الأقصى من المشاركين في كلا الفرعين'
+                                                : !_childrenRegistrationOpen
+                                                ? 'تم الوصول للحد الأقصى من المشاركين في فرع الصغار'
+                                                : 'تم الوصول للحد الأقصى من المشاركين في فرع الكبار',
+                                            style: AppTheme.bodySmall.copyWith(
+                                              color: AppTheme.warningColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ] else ...[
                                 SizedBox(
                                   width: double.infinity,

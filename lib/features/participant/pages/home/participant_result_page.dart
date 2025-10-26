@@ -132,7 +132,8 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
     }
 
     try {
-      final result = await _resultsService.getResultsWithPagination(
+      final result = 
+      await _resultsService.getResultsWithPagination(
         roundId: _selectedRound!.id,
         ageGroup: _selectedAgeGroup,
         page: reset ? 0 : _currentPage,

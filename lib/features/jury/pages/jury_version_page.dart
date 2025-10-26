@@ -28,7 +28,17 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
 
   Future<void> _loadVersions() async {
     setState(() => _isLoading = true);
+
+    print('🔍 JuryVersionPage - Chargement des versions...');
     _versions = await _service.fetchMyVersions();
+    print('🔍 JuryVersionPage - Versions chargées: ${_versions.length}');
+
+    for (final version in _versions) {
+      print(
+        '🔍 JuryVersionPage - Version: ${version.name} (ID: ${version.id})',
+      );
+    }
+
     setState(() => _isLoading = false);
   }
 

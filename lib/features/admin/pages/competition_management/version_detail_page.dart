@@ -143,7 +143,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
             : <Participant>[];
 
     setState(() {
-      _filteredParticipants = paginatedParticipants;
+        _filteredParticipants = paginatedParticipants;
       _totalCount = totalCount;
     });
   }
@@ -261,8 +261,8 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                   // Informations principales
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                         Text(
                           participant.fullName,
                           style: AppTheme.labelLarge.copyWith(
@@ -345,7 +345,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                         color: Colors.grey[600],
                       ),
                     ),
-                    Text(
+              Text(
                       participant.registrationNumber?.toString() ?? 'غير محدد',
                       style: AppTheme.bodyMedium.copyWith(
                         color: AppTheme.primaryColor,
@@ -355,8 +355,8 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                   ],
                 ),
               ),
-            ],
-          ),
+          ],
+        ),
         ),
       ),
     );
@@ -437,7 +437,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                           borderRadius: BorderRadius.circular(AppTheme.radiusM),
                         ),
                         child: Column(
-                          children: [
+                children: [
                             Text(
                               widget.version.name,
                               style: AppTheme.headingSmall.copyWith(
@@ -458,7 +458,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                             if (_totalCount > 0) ...[
                               const SizedBox(height: AppTheme.spacingS),
                               Container(
-                                padding: const EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                                   horizontal: AppTheme.spacingS,
                                   vertical: 4,
                                 ),
@@ -541,10 +541,10 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                                 : AppTheme.errorColor,
                                         fontWeight: FontWeight.w600,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                        ),
+                      ],
+                    ),
+                  ),
                             ],
                           ),
                         ),
@@ -605,7 +605,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                               AppTheme.radiusM,
                                             ),
                                           ),
-                                          child: Text(
+                    child: Text(
                                             'كبار',
                                             textAlign: TextAlign.center,
                                             style: AppTheme.labelLarge.copyWith(
@@ -617,10 +617,10 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
+                      ),
+                    ),
+                  ),
+                  Expanded(
                                       child: GestureDetector(
                                         onTap: () => _selectGroup('صغار'),
                                         child: Container(
@@ -945,9 +945,9 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
+                  ),
+                ],
+              ),
     );
   }
 

@@ -25,6 +25,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
 
   List<AppUser> _jurys = [];
   bool _isLoading = true;
+  bool _isCheckingEvaluations = false;
 
   @override
   void initState() {
@@ -265,6 +266,9 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
 
       await _loadJurysAndEvaluations();
 
+      // Forcer le recalcul des résultats après l'ajout d'un nouveau jury
+      await _forceRecalculateResults();
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -300,9 +304,15 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
     }
 
     try {
+      // Afficher le loading pendant la vérification
+      setState(() => _isCheckingEvaluations = true);
+
       // Vérifier si le jury a évalué tous les participants
       print('🔍 Vérification si le jury a évalué tous les participants...');
       final hasEvaluatedAll = await _checkJuryHasEvaluatedAll(jury.id);
+
+      // Masquer le loading
+      setState(() => _isCheckingEvaluations = false);
 
       String message;
       String confirmText;
@@ -455,6 +465,9 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
 
       await _loadJurysAndEvaluations();
 
+      // Forcer le recalcul des résultats après la suppression d'un jury
+      await _forceRecalculateResults();
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -470,6 +483,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
       print('✅ Suppression du jury terminée avec succès');
     } catch (e) {
       print('❌ Erreur lors de la suppression du jury: $e');
+      setState(() => _isCheckingEvaluations = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -480,66 +494,129 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
     }
   }
 
-  /// Vérifie si un jury a évalué tous les participants acceptés de cette version
+  /// Vérifie si un jury a évalué tous les participants acceptés pour tous les rounds où il est assigné
   Future<bool> _checkJuryHasEvaluatedAll(String juryId) async {
     try {
       print(
         '🔍 Vérification des évaluations du jury $juryId pour la version ${widget.version.id}',
       );
 
-      // 1. Récupérer tous les participants acceptés de cette version
       final supabase = Supabase.instance.client;
-      final participantsResponse = await supabase
-          .from('participant_versions')
-          .select('participant_id, participants(*)')
-          .eq('version_id', widget.version.id)
-          .eq('is_accepted', true);
 
-      final acceptedParticipants =
-          participantsResponse
-              .map((pv) => pv['participant_id'] as String)
-              .toSet();
-
-      print(
-        '👥 Participants acceptés de cette version: ${acceptedParticipants.length}',
-      );
-
-      if (acceptedParticipants.isEmpty) {
-        print(
-          '✅ Aucun participant accepté - le jury est considéré comme ayant évalué tous les participants',
-        );
-        return true;
-      }
-
-      // 2. Récupérer toutes les évaluations de ce jury pour cette version
-      final evaluationsResponse = await supabase
-          .from('evaluations')
-          .select('participant_id')
-          .eq('jury_id', juryId)
+      // 1. Récupérer tous les rounds où ce jury est assigné
+      final roundsResponse = await supabase
+          .from('rounds')
+          .select('id, number')
           .eq('version_id', widget.version.id);
 
-      final evaluatedParticipants =
-          evaluationsResponse.map((e) => e['participant_id'] as String).toSet();
+      if (roundsResponse.isEmpty) {
+        print('⚠️ Aucun round trouvé pour cette version');
+        return true; // Pas de rounds = pas d'évaluations nécessaires
+      }
 
-      print(
-        '📝 Participants évalués par ce jury: ${evaluatedParticipants.length}',
-      );
+      final roundIds = roundsResponse.map((r) => r['id'] as String).toList();
+      print('📋 ${roundIds.length} rounds trouvés pour la version');
 
-      // 3. Vérifier si tous les participants acceptés ont été évalués
-      final hasEvaluatedAll = acceptedParticipants.every(
-        (participantId) => evaluatedParticipants.contains(participantId),
-      );
+      // 2. Vérifier que le jury est assigné à au moins un round
+      final assignmentsResponse = await supabase
+          .from('round_jury_assignments')
+          .select('round_id')
+          .eq('user_id', juryId)
+          .inFilter('round_id', roundIds);
 
-      print(
-        '🔍 Résultat: ${hasEvaluatedAll ? "OUI" : "NON"} - Le jury a évalué tous les participants',
-      );
+      if (assignmentsResponse.isEmpty) {
+        print('⚠️ Jury non assigné à cette version');
+        return true; // Pas assigné = pas d'évaluations nécessaires
+      }
 
-      return hasEvaluatedAll;
+      final assignedRoundIds =
+          assignmentsResponse.map((a) => a['round_id'] as String).toList();
+      print('🎯 Jury assigné à ${assignedRoundIds.length} rounds');
+
+      // 3. Pour chaque round assigné, vérifier que le jury a évalué tous les participants acceptés
+      for (final roundId in assignedRoundIds) {
+        final round = roundsResponse.firstWhere((r) => r['id'] == roundId);
+        final roundNumber = round['number'];
+
+        print('🔍 Vérification du round $roundNumber...');
+
+        // Récupérer les participants acceptés pour ce round
+        final participantsResponse = await supabase
+            .from('participant_versions')
+            .select('participant_id')
+            .eq('version_id', widget.version.id)
+            .eq('is_accepted', true);
+
+        final acceptedParticipants =
+            participantsResponse
+                .map((pv) => pv['participant_id'] as String)
+                .toSet();
+
+        if (acceptedParticipants.isEmpty) {
+          print('✅ Round $roundNumber: Aucun participant accepté');
+          continue;
+        }
+
+        // Récupérer les évaluations du jury pour ce round
+        final evaluationsResponse = await supabase
+            .from('evaluations')
+            .select('participant_id')
+            .eq('jury_id', juryId)
+            .eq('round_id', roundId);
+
+        final evaluatedParticipants =
+            evaluationsResponse
+                .map((e) => e['participant_id'] as String)
+                .toSet();
+
+        print(
+          '📝 Round $roundNumber: ${evaluatedParticipants.length}/${acceptedParticipants.length} participants évalués',
+        );
+
+        // Vérifier que tous les participants ont été évalués pour ce round
+        final hasEvaluatedAllInRound = acceptedParticipants.every(
+          (participantId) => evaluatedParticipants.contains(participantId),
+        );
+
+        if (!hasEvaluatedAllInRound) {
+          print('❌ Round $roundNumber: Évaluations incomplètes');
+          return false;
+        }
+
+        print('✅ Round $roundNumber: Toutes les évaluations complètes');
+      }
+
+      print('🎉 Tous les rounds assignés ont des évaluations complètes');
+      return true;
     } catch (e) {
       print('❌ Erreur lors de la vérification des évaluations du jury: $e');
       // En cas d'erreur, on considère que le jury n'a pas évalué tous les participants
       // pour éviter de perdre des évaluations par erreur
       return false;
+    }
+  }
+
+  /// Force le recalcul des résultats après modification des jurys
+  Future<void> _forceRecalculateResults() async {
+    try {
+      print(
+        '🔄 Forçage du recalcul des résultats après modification des jurys...',
+      );
+
+      final supabase = Supabase.instance.client;
+
+      // Supprimer tous les résultats existants pour cette version
+      await supabase
+          .from('round_results')
+          .delete()
+          .eq('version_id', widget.version.id);
+
+      print(
+        '✅ Anciens résultats supprimés, les nouveaux seront calculés lors du prochain accès',
+      );
+    } catch (e) {
+      print('❌ Erreur lors du forçage du recalcul: $e');
+      // Ne pas afficher d'erreur à l'utilisateur car ce n'est pas critique
     }
   }
 
@@ -571,12 +648,52 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
                 ? 'التقييم مفعل - لا يمكن إضافة محكمين'
                 : 'إضافة محكم جديد',
       ),
-      body:
+      body: Stack(
+        children: [
           _isLoading
               ? const LoadingOverlay(child: SizedBox())
               : _jurys.isEmpty
               ? _buildEmptyState()
               : _buildJurysList(),
+          if (_isCheckingEvaluations)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingL),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+                      Text(
+                        'جاري التحقق من التقييمات...',
+                        style: AppTheme.labelMedium.copyWith(
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -757,23 +874,37 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
               ),
             ],
           ),
-          trailing: IconButton(
-            icon: Icon(
-              Icons.delete_outline,
-              color:
-                  widget.version.juryEvaluationEnabled
-                      ? AppTheme.textDisabledColor
-                      : AppTheme.errorColor,
-            ),
-            tooltip:
-                widget.version.juryEvaluationEnabled
-                    ? 'التقييم مفعل - لا يمكن حذف المحكم'
-                    : 'حذف المحكم',
-            onPressed:
-                widget.version.juryEvaluationEnabled
-                    ? null
-                    : () => _removeJury(jury),
-          ),
+          trailing:
+              _isCheckingEvaluations
+                  ? Container(
+                    width: 24,
+                    height: 24,
+                    padding: const EdgeInsets.all(4),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor,
+                      ),
+                    ),
+                  )
+                  : IconButton(
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color:
+                          widget.version.juryEvaluationEnabled
+                              ? AppTheme.textDisabledColor
+                              : AppTheme.errorColor,
+                    ),
+                    tooltip:
+                        widget.version.juryEvaluationEnabled
+                            ? 'التقييم مفعل - لا يمكن حذف المحكم'
+                            : 'حذف المحكم',
+                    onPressed:
+                        widget.version.juryEvaluationEnabled ||
+                                _isCheckingEvaluations
+                            ? null
+                            : () => _removeJury(jury),
+                  ),
         ),
       ),
     );

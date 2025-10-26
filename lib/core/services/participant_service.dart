@@ -14,19 +14,56 @@ class ParticipantService {
       final versionCheck =
           await _supabase
               .from('competition_versions')
-              .select('is_active, is_registration_open')
+              .select(
+                'is_active, is_registration_open, max_adults, max_children',
+              )
               .eq('id', versionId)
               .single();
 
       final bool isActive = versionCheck['is_active'] as bool;
       final bool isRegistrationOpen =
           versionCheck['is_registration_open'] as bool;
+      final int maxAdults = versionCheck['max_adults'] as int;
+      final int maxChildren = versionCheck['max_children'] as int;
 
       if (!isActive || !isRegistrationOpen) {
         throw Exception('التسجيل غير متاح لهذه المسابقة');
       }
 
-      // 1. Insérer le participant (sans version_id ni registration_number)
+      // 0.1. Vérifier les limites de participants pour cette version spécifique
+      final currentAdultsCount = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId)
+          .eq('age_group', 'كبار')
+          .then((response) => response.length);
+
+      final currentChildrenCount = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId)
+          .eq('age_group', 'صغار')
+          .then((response) => response.length);
+
+      print(
+        '📊 Vérification côté serveur: Adultes=$currentAdultsCount/$maxAdults, Enfants=$currentChildrenCount/$maxChildren',
+      );
+
+      // Vérifier si le groupe d'âge du participant a atteint sa limite
+      if (participant.ageGroup == 'كبار' && currentAdultsCount >= maxAdults) {
+        throw Exception(
+          'تم الوصول للحد الأقصى من المشاركين في فرع الكبار ($maxAdults مشارك)',
+        );
+      }
+
+      if (participant.ageGroup == 'صغار' &&
+          currentChildrenCount >= maxChildren) {
+        throw Exception(
+          'تم الوصول للحد الأقصى من المشاركين في فرع الصغار ($maxChildren مشارك)',
+        );
+      }
+
+      // 1. Insérer le participant avec competition_id
       final response =
           await _supabase
               .from('participants')
@@ -42,6 +79,7 @@ class ParticipantService {
                 'won_previous_ranks': participant.wonPreviousRanks,
                 'participated_before': participant.participatedBefore,
                 'age_group': participant.ageGroup,
+                'competition_id': versionId, // Ajouter le competition_id
                 'created_at': participant.createdAt.toIso8601String(),
                 'is_accepted': participant.isAccepted,
                 'rejection_reason': participant.rejectionReason,
@@ -54,19 +92,9 @@ class ParticipantService {
       // 2. Récupérer l'id du participant nouvellement créé
       final participantId = response['id'] as String;
 
-      // 3. Créer l'entrée dans la table de liaison participant_versions
-      final versionResponse =
-          await _supabase
-              .from('participant_versions')
-              .insert({
-                'participant_id': participantId,
-                'version_id': versionId,
-                'created_at': DateTime.now().toIso8601String(),
-              })
-              .select()
-              .single();
-
-      print("Version response: $versionResponse");
+      // 3. Note: La table participant_versions n'est plus utilisée
+      // Les participants sont maintenant directement liés aux compétitions via la table participants
+      print("Participant créé avec succès, ID: $participantId");
 
       // 4. Récupérer le numéro d'inscription depuis la réponse du participant
       final registrationNumberData = response['registration_number'];
@@ -87,30 +115,88 @@ class ParticipantService {
     String versionId, {
     Round? activeRound,
   }) async {
-    dynamic response;
+    print(
+      '🔍 ParticipantService - fetchParticipantsByVersionAndRounds pour version: $versionId, round: ${activeRound?.number}',
+    );
 
-    if (activeRound?.number == 1) {
-      // Round 1 ou pas encore défini → tous les participants
-      response = await _supabase
-          .from('participant_versions')
-          .select('participant_id, participants(*)')
-          .eq('version_id', versionId);
-      return response.map<Participant>((record) {
-        final participantData = record['participants'] as Map<String, dynamic>;
-        return Participant.fromMap(participantData);
-      }).toList();
-    } else if (activeRound?.number == 2) {
-      // Round 2 et plus → uniquement ceux qui ont passé le round 1
-      response = await _supabase
-          .from('participant_versions')
-          .select('participant_id, participants(*)')
-          .eq('version_id', versionId)
-          .eq('passed_round1', true);
-      return response.map<Participant>((record) {
-        final participantData = record['participants'] as Map<String, dynamic>;
-        return Participant.fromMap(participantData);
-      }).toList();
-    } else {
+    try {
+      if (activeRound?.number == 1) {
+        // Round 1 → tous les participants acceptés
+        print('🔍 Round 1: Récupération de tous les participants acceptés');
+        final response = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('is_accepted', true);
+
+        final participants =
+            response.map<Participant>((record) {
+              return Participant.fromMap(record);
+            }).toList();
+
+        print(
+          '🔍 Round 1: ${participants.length} participants acceptés trouvés',
+        );
+        return participants;
+      } else if (activeRound?.number == 2) {
+        // Round 2+ → participants acceptés ET qui ont passé le round 1
+        print(
+          '🔍 Round ${activeRound?.number}: Récupération des participants acceptés et qualifiés',
+        );
+
+        // Récupérer tous les participants acceptés
+        final allParticipantsResponse = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('is_accepted', true);
+
+        final allParticipants =
+            allParticipantsResponse.map<Participant>((record) {
+              return Participant.fromMap(record);
+            }).toList();
+
+        // Filtrer ceux qui ont passé le round 1
+        final qualifiedParticipants = <Participant>[];
+        for (final participant in allParticipants) {
+          // Vérifier si le participant a passé le round 1
+          final passedRound1Response =
+              await _supabase
+                  .from('participant_versions')
+                  .select('passed_round1')
+                  .eq('participant_id', participant.id)
+                  .eq('version_id', versionId)
+                  .single();
+
+          if (passedRound1Response['passed_round1'] == true) {
+            qualifiedParticipants.add(participant);
+          }
+        }
+
+        print(
+          '🔍 Round ${activeRound?.number}: ${qualifiedParticipants.length} participants qualifiés trouvés',
+        );
+        return qualifiedParticipants;
+      } else {
+        // Pas de round spécifique → tous les participants acceptés
+        print(
+          '🔍 Pas de round spécifique: Récupération de tous les participants acceptés',
+        );
+        final response = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('is_accepted', true);
+
+        final participants =
+            response.map<Participant>((record) {
+              return Participant.fromMap(record);
+            }).toList();
+
+        print(
+          '🔍 Pas de round spécifique: ${participants.length} participants acceptés trouvés',
+        );
+        return participants;
+      }
+    } catch (e) {
+      print('❌ Erreur dans fetchParticipantsByVersionAndRounds: $e');
       return [];
     }
   }
@@ -119,29 +205,73 @@ class ParticipantService {
     String versionId, {
     Round? activeRound,
   }) async {
-    final response;
-    if (activeRound == null) {
-      response = await _supabase
-          .from('participant_versions')
-          .select('participant_id, participants(*)')
-          .eq('version_id', versionId);
-    } else if (activeRound.name == 'الجولة الأولى') {
-      response = await _supabase
-          .from('participant_versions')
-          .select('participant_id, participants(*)')
-          .eq('version_id', versionId);
-    } else {
-      response = await _supabase
-          .from('participant_versions')
-          .select('participant_id, participants(*)')
-          .eq('version_id', versionId)
-          .eq('passed_round1', true);
-    }
+    print(
+      '🔍 ParticipantService - fetchParticipantsByVersion pour version: $versionId, round: ${activeRound?.name}',
+    );
 
-    return response.map<Participant>((record) {
-      final participantData = record['participants'] as Map<String, dynamic>;
-      return Participant.fromMap(participantData);
-    }).toList();
+    try {
+      if (activeRound == null || activeRound.name == 'الجولة الأولى') {
+        // Round 1 ou pas de round → tous les participants acceptés
+        print(
+          '🔍 Round 1 ou pas de round: Récupération de tous les participants acceptés',
+        );
+        final response = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('is_accepted', true);
+
+        final participants =
+            response.map<Participant>((record) {
+              return Participant.fromMap(record);
+            }).toList();
+
+        print(
+          '🔍 Round 1 ou pas de round: ${participants.length} participants acceptés trouvés',
+        );
+        return participants;
+      } else {
+        // Round 2+ → participants acceptés ET qui ont passé le round 1
+        print(
+          '🔍 Round ${activeRound.name}: Récupération des participants acceptés et qualifiés',
+        );
+
+        // Récupérer tous les participants acceptés
+        final allParticipantsResponse = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('is_accepted', true);
+
+        final allParticipants =
+            allParticipantsResponse.map<Participant>((record) {
+              return Participant.fromMap(record);
+            }).toList();
+
+        // Filtrer ceux qui ont passé le round 1
+        final qualifiedParticipants = <Participant>[];
+        for (final participant in allParticipants) {
+          // Vérifier si le participant a passé le round 1
+          final passedRound1Response =
+              await _supabase
+                  .from('participant_versions')
+                  .select('passed_round1')
+                  .eq('participant_id', participant.id)
+                  .eq('version_id', versionId)
+                  .single();
+
+          if (passedRound1Response['passed_round1'] == true) {
+            qualifiedParticipants.add(participant);
+          }
+        }
+
+        print(
+          '🔍 Round ${activeRound.name}: ${qualifiedParticipants.length} participants qualifiés trouvés',
+        );
+        return qualifiedParticipants;
+      }
+    } catch (e) {
+      print('❌ Erreur dans fetchParticipantsByVersion: $e');
+      return [];
+    }
   }
 
   // Supprimer un participant
@@ -175,38 +305,28 @@ class ParticipantService {
     int pageSize = 20,
   }) async {
     try {
-      // Récupérer les participants via la table participant_versions
+      print(
+        '🔍 ParticipantService - getParticipantsByVersion pour version: $versionId, page: $page, pageSize: $pageSize',
+      );
+
+      // Récupérer directement depuis la table participants
       final response = await _supabase
-          .from('participant_versions')
-          .select('''
-            participants (
-              id,
-              full_name,
-              gender,
-              birth_date,
-              phone,
-              quran_memorized,
-              reading_methods,
-              residence,
-              has_ijaza,
-              won_previous_ranks,
-              participated_before,
-              age_group,
-              created_at,
-              is_accepted,
-              registration_number,
-              rejection_reason
-            )
-          ''')
-          .eq('version_id', versionId)
+          .from('participants')
+          .select('*')
           .order('created_at', ascending: false)
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      return response
-          .map((item) => Participant.fromMap(item['participants']))
-          .toList();
+      final participants =
+          response.map<Participant>((record) {
+            return Participant.fromMap(record);
+          }).toList();
+
+      print(
+        '🔍 ParticipantService - getParticipantsByVersion: ${participants.length} participants récupérés',
+      );
+      return participants;
     } catch (e) {
-      print('Erreur lors de la récupération des participants: $e');
+      print('❌ Erreur dans getParticipantsByVersion: $e');
       rethrow;
     }
   }
@@ -216,36 +336,27 @@ class ParticipantService {
     String versionId,
   ) async {
     try {
+      print(
+        '🔍 ParticipantService - getAllParticipantsByVersion pour version: $versionId',
+      );
+
+      // Récupérer directement depuis la table participants
       final response = await _supabase
-          .from('participant_versions')
-          .select('''
-            participants (
-              id,
-              full_name,
-              gender,
-              birth_date,
-              phone,
-              quran_memorized,
-              reading_methods,
-              residence,
-              has_ijaza,
-              won_previous_ranks,
-              participated_before,
-              age_group,
-              created_at,
-              is_accepted,
-              registration_number,
-              rejection_reason
-            )
-          ''')
-          .eq('version_id', versionId)
+          .from('participants')
+          .select('*')
           .order('created_at', ascending: false);
 
-      return response
-          .map((item) => Participant.fromMap(item['participants']))
-          .toList();
+      final participants =
+          response.map<Participant>((record) {
+            return Participant.fromMap(record);
+          }).toList();
+
+      print(
+        '🔍 ParticipantService - getAllParticipantsByVersion: ${participants.length} participants récupérés',
+      );
+      return participants;
     } catch (e) {
-      print('Erreur lors de la récupération de tous les participants: $e');
+      print('❌ Erreur dans getAllParticipantsByVersion: $e');
       rethrow;
     }
   }
@@ -253,35 +364,25 @@ class ParticipantService {
   /// Récupère tous les participants de toutes les versions (pour versionId = 'default')
   Future<List<Participant>> getAllParticipantsFromAllVersions() async {
     try {
+      print('🔍 ParticipantService - getAllParticipantsFromAllVersions');
+
+      // Récupérer directement depuis la table participants
       final response = await _supabase
-          .from('participant_versions')
-          .select('''
-            participants (
-              id,
-              full_name,
-              gender,
-              birth_date,
-              phone,
-              quran_memorized,
-              reading_methods,
-              residence,
-              has_ijaza,
-              won_previous_ranks,
-              participated_before,
-              age_group,
-              created_at,
-              is_accepted,
-              registration_number,
-              rejection_reason
-            )
-          ''')
+          .from('participants')
+          .select('*')
           .order('created_at', ascending: false);
 
-      return response
-          .map((item) => Participant.fromMap(item['participants']))
-          .toList();
+      final participants =
+          response.map<Participant>((record) {
+            return Participant.fromMap(record);
+          }).toList();
+
+      print(
+        '🔍 ParticipantService - getAllParticipantsFromAllVersions: ${participants.length} participants récupérés',
+      );
+      return participants;
     } catch (e) {
-      print('Erreur lors de la récupération de tous les participants: $e');
+      print('❌ Erreur dans getAllParticipantsFromAllVersions: $e');
 
       // Gestion spécifique des erreurs de connexion
       if (e.toString().contains('SocketException') ||

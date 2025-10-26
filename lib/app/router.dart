@@ -6,8 +6,9 @@ import 'package:quranic_competition/features/admin/pages/media_management/edit_m
 import 'package:quranic_competition/features/admin/pages/media_management/batch_add_media_page.dart';
 import 'package:quranic_competition/models/archive_media.dart';
 import 'package:quranic_competition/features/admin/pages/competition_management/version_detail_page.dart';
-import 'package:quranic_competition/features/admin/pages/competition_management/version_jurys_page.dart';
-import 'package:quranic_competition/features/admin/pages/competition_management/version_results_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/all_rounds_jurys_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/version_round_result_page.dart';
+import 'package:quranic_competition/features/admin/pages/competition_management/version_result_page.dart';
 import 'package:quranic_competition/features/auth/pages/sign_up_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_page.dart';
 import 'package:quranic_competition/features/jury/pages/jury_version_detail_page.dart';
@@ -21,6 +22,7 @@ import 'package:quranic_competition/features/participant/pages/participants/part
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
+import 'package:quranic_competition/models/round.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/pages/login_page.dart';
@@ -332,7 +334,7 @@ final GoRouter appRouter = GoRouter(
       path: '/jury/version_jurys',
       builder: (context, state) {
         final version = state.extra as CompetitionVersion;
-        return VersionJurysPage(version: version);
+        return AllRoundsJurysPage(version: version);
       },
     ),
 
@@ -371,7 +373,25 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/version_results',
       builder: (context, state) {
         final version = state.extra as CompetitionVersion;
-        return VersionResultsPage(version: version);
+        return VersionRoundResultPage(version: version);
+      },
+    ),
+    GoRoute(
+      path: '/admin/version_result/:roundId',
+      builder: (context, state) {
+        final roundId = state.pathParameters['roundId'];
+        final extra = state.extra as Map<String, dynamic>?;
+
+        if (roundId == null || extra == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : données manquantes')),
+          );
+        }
+
+        final version = extra['version'] as CompetitionVersion;
+        final round = extra['round'] as Round;
+
+        return VersionResultPage(version: version, round: round);
       },
     ),
 

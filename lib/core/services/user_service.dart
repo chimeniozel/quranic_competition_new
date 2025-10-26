@@ -14,63 +14,66 @@ class UserService {
     return AppUser.fromMap(response);
   }
 
-  /// Récupère tous les jurys liés à une version
+  /// Récupère tous les jurys liés à une version (utilise la nouvelle structure round_jury_assignments)
   Future<List<AppUser>> getJurysByVersion(String versionId) async {
     try {
-      print('🔍 Récupération des jurys pour la version: $versionId');
+      print(
+        '🔍 Récupération des jurys pour la version: $versionId (nouvelle structure)',
+      );
 
-      // Essayer d'abord avec la jointure profiles(*)
-      try {
-        final response = await _supabase
-            .from('jury_assignments')
-            .select('profiles(*)')
-            .eq('version_id', versionId);
-
-        print('✅ Jointure réussie: ${response.length} jurys trouvés');
-
-        return response
-            .map<AppUser>((item) => AppUser.fromMap(item['profiles']))
-            .toList();
-      } catch (joinError) {
-        print('⚠️ Jointure échouée: $joinError');
-        print('🔄 Utilisation de la méthode alternative...');
-      }
-
-      // Méthode alternative: récupérer les IDs puis les profils
-      final assignmentsResponse = await _supabase
-          .from('jury_assignments')
-          .select('user_id')
+      // 1. Récupérer tous les rounds de cette version
+      final roundsResponse = await _supabase
+          .from('rounds')
+          .select('id')
           .eq('version_id', versionId);
 
-      print('📋 ${assignmentsResponse.length} assignments trouvés');
+      if (roundsResponse.isEmpty) {
+        print('⚠️ Aucun round trouvé pour cette version');
+        return [];
+      }
+
+      final roundIds =
+          roundsResponse.map((round) => round['id'] as String).toList();
+      print('📋 ${roundIds.length} rounds trouvés pour la version');
+
+      // 2. Récupérer tous les jurys assignés à ces rounds
+      final assignmentsResponse = await _supabase
+          .from('round_jury_assignments')
+          .select('user_id')
+          .inFilter('round_id', roundIds);
 
       if (assignmentsResponse.isEmpty) {
         print('⚠️ Aucun jury assigné à cette version');
         return [];
       }
 
-      final userIds =
+      // 3. Extraire les IDs des jurys uniques
+      final juryIds =
           assignmentsResponse
               .map<String>((assignment) => assignment['user_id'] as String)
+              .toSet()
               .toList();
 
-      print('👥 IDs des jurys: $userIds');
+      print('👥 ${juryIds.length} jurys uniques trouvés pour la version');
 
-      // Récupérer les profils des utilisateurs
+      // 4. Récupérer les profils des jurys
       final profilesResponse = await _supabase
           .from('profiles')
           .select()
-          .inFilter('id', userIds)
+          .inFilter('id', juryIds)
           .eq('role', 'jury');
 
-      print('✅ ${profilesResponse.length} profils de jurys récupérés');
+      final jurysList =
+          profilesResponse
+              .map<AppUser>((profile) => AppUser.fromMap(profile))
+              .toList();
 
-      return profilesResponse
-          .map<AppUser>((profile) => AppUser.fromMap(profile))
-          .toList();
+      print('✅ ${jurysList.length} profils de jurys récupérés');
+
+      return jurysList;
     } catch (e) {
       print('❌ Erreur dans getJurysByVersion: $e');
-      rethrow;
+      return [];
     }
   }
 
@@ -93,21 +96,48 @@ class UserService {
     required String userId,
     required String versionId,
   }) async {
-    await _supabase.from('jury_assignments').insert({
-      'user_id': userId,
-      'version_id': versionId,
-    });
+    // Récupérer tous les rounds de cette version
+    final roundsResponse = await _supabase
+        .from('rounds')
+        .select('id')
+        .eq('version_id', versionId);
+
+    if (roundsResponse.isEmpty) {
+      throw Exception('Aucun round trouvé pour cette version');
+    }
+
+    // Assigner le jury à tous les rounds de la version
+    for (final round in roundsResponse) {
+      await _supabase.from('round_jury_assignments').insert({
+        'user_id': userId,
+        'round_id': round['id'],
+      });
+    }
   }
 
   Future<void> removeJuryFromVersion({
     required String userId,
     required String versionId,
   }) async {
+    // Récupérer tous les rounds de cette version
+    final roundsResponse = await _supabase
+        .from('rounds')
+        .select('id')
+        .eq('version_id', versionId);
+
+    if (roundsResponse.isEmpty) {
+      return; // Aucun round à traiter
+    }
+
+    final roundIds =
+        roundsResponse.map((round) => round['id'] as String).toList();
+
+    // Supprimer toutes les assignations du jury pour ces rounds
     await _supabase
-        .from('jury_assignments')
+        .from('round_jury_assignments')
         .delete()
         .eq('user_id', userId)
-        .eq('version_id', versionId);
+        .inFilter('round_id', roundIds);
   }
 
   /// Récupère tous les utilisateurs sauf l'utilisateur connecté

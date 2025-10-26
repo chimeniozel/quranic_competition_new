@@ -164,6 +164,73 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     }
   }
 
+  Future<void> _checkAgeGroupLimit() async {
+    try {
+      // Récupérer les informations de la version
+      final version = await _competitionService.getVersionById(
+        widget.versionId,
+      );
+      if (version == null) {
+        setState(() {
+          _isRegistrationAllowed = false;
+          _registrationErrorMessage = 'المسابقة غير موجودة';
+        });
+        return;
+      }
+
+      // Récupérer le nombre de participants pour ce groupe d'âge
+      final participantCounts = await _competitionService
+          .getParticipantCountsByAgeGroup(widget.versionId);
+
+      final currentCount =
+          widget.ageGroup == 'كبار'
+              ? (participantCounts['adults'] ?? 0)
+              : (participantCounts['children'] ?? 0);
+
+      final maxCount =
+          widget.ageGroup == 'كبار' ? version.maxAdults : version.maxChildren;
+
+      print(
+        '📊 Vérification limite: ${widget.ageGroup} = $currentCount/$maxCount',
+      );
+
+      if (currentCount >= maxCount) {
+        setState(() {
+          _isRegistrationAllowed = false;
+          _registrationErrorMessage =
+              'تم الوصول للحد الأقصى من المشاركين في فرع ${widget.ageGroup}';
+        });
+
+        // Afficher un SnackBar au lieu d'un dialog pour une meilleure UX
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'تم الوصول للحد الأقصى من المشاركين في فرع ${widget.ageGroup} (${maxCount} مشارك)',
+              ),
+              backgroundColor: AppTheme.errorColor,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'موافق',
+                textColor: Colors.white,
+                onPressed: () {
+                  Navigator.of(context).pop(); // Retourner à la page précédente
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      print('Erreur lors de la vérification de la limite du groupe d\'âge: $e');
+      setState(() {
+        _isRegistrationAllowed = false;
+        _registrationErrorMessage = 'خطأ في التحقق من الحد الأقصى للمشاركين';
+      });
+    }
+  }
+
   Future<void> _pickBirthDate() async {
     final date = await showDatePicker(
       context: context,
@@ -218,6 +285,14 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
         },
       );
       return;
+    }
+
+    // Vérifier si le groupe d'âge a atteint sa limite
+    await _checkAgeGroupLimit();
+
+    // Vérifier à nouveau juste avant l'inscription (double vérification)
+    if (!_isRegistrationAllowed) {
+      return; // Sortir si l'inscription n'est pas autorisée
     }
 
     if (!_formKey.currentState!.validate()) return;
@@ -277,6 +352,13 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     }
 
     setState(() => _isLoading = true);
+
+    // Vérification finale des limites juste avant l'inscription
+    await _checkAgeGroupLimit();
+    if (!_isRegistrationAllowed) {
+      setState(() => _isLoading = false);
+      return;
+    }
 
     // Déterminer si le participant doit être automatiquement refusé
     final bool isOutsideCountry = _residence == 'خارج موريتانيا';
@@ -447,19 +529,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Vérifier le statut',
-            onPressed: () {
-              print('🔄 Vérification manuelle du statut');
-              _checkRegistrationStatus();
-            },
-          ),
-          // Indicateur de statut d'inscription en temps réel
-          Container(
-            padding: const EdgeInsets.all(8),
-            child: Icon(
-              _isRegistrationAllowed ? Icons.check_circle : Icons.cancel,
-              color: _isRegistrationAllowed ? Colors.green : Colors.red,
-              size: 20,
-            ),
+            onPressed: () {},
           ),
         ],
       ),

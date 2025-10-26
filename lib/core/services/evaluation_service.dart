@@ -85,15 +85,45 @@ class EvaluationService {
     }
   }
 
-  Future<List<Evaluation>> getEvaluationsByJuryInVersion({
+  /// Récupère les évaluations d'un jury pour un round spécifique
+  Future<List<Evaluation>> getEvaluationsByJuryInRound({
     required String juryId,
-    required String versionId,
+    required String roundId,
   }) async {
     final response = await _supabase
         .from('evaluations')
         .select('*, participants(age_group)')
         .eq('jury_id', juryId)
+        .eq('round_id', roundId);
+
+    return response.map<Evaluation>((e) {
+      final ageGroup = e['participants']['age_group'];
+      return Evaluation.fromMap(e, ageGroup);
+    }).toList();
+  }
+
+  Future<List<Evaluation>> getEvaluationsByJuryInVersion({
+    required String juryId,
+    required String versionId,
+  }) async {
+    // Récupérer les rounds de cette version
+    final roundsResponse = await _supabase
+        .from('rounds')
+        .select('id')
         .eq('version_id', versionId);
+
+    if (roundsResponse.isEmpty) {
+      return [];
+    }
+
+    final roundIds = roundsResponse.map((r) => r['id'] as String).toList();
+
+    // Récupérer les évaluations du jury pour tous les rounds de cette version
+    final response = await _supabase
+        .from('evaluations')
+        .select('*, participants(age_group)')
+        .eq('jury_id', juryId)
+        .inFilter('round_id', roundIds);
 
     return response.map<Evaluation>((e) {
       final ageGroup = e['participants']['age_group'];

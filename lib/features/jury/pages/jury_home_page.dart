@@ -63,10 +63,20 @@ class _JuryHomePageState extends State<JuryHomePage> {
 
     try {
       // Charger le profil utilisateur
-    final user = await AuthService().getUserProfile();
+      final user = await AuthService().getUserProfile();
+      print(
+        '🔍 JuryHomePage - User loaded: ${user?.fullName} (ID: ${user?.id})',
+      );
+
+      // Debug: Vérifier les données des jurys
+      await CompetitionVersionService().debugJuryData();
 
       // Charger les versions assignées au jury
       final versions = await CompetitionVersionService().fetchMyVersions();
+      print('🔍 JuryHomePage - Versions loaded: ${versions.length}');
+      for (final version in versions) {
+        print('🔍 JuryHomePage - Version: ${version.name} (ID: ${version.id})');
+      }
 
       // Charger les statistiques d'évaluation
       Map<String, dynamic> stats = {};
@@ -97,12 +107,12 @@ class _JuryHomePageState extends State<JuryHomePage> {
         }
       }
 
-    setState(() {
-      appUser = user;
+      setState(() {
+        appUser = user;
         _myVersions = versions;
         _statistics = stats;
-      isLoading = false;
-    });
+        isLoading = false;
+      });
     } catch (e) {
       setState(() => isLoading = false);
     }
@@ -425,9 +435,9 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 ),
                 const SizedBox(width: AppTheme.spacingM),
                 Expanded(
-              child: Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                    children: [
                       Text(
                         version.name,
                         style: AppTheme.labelLarge.copyWith(
@@ -556,8 +566,8 @@ class _JuryHomePageState extends State<JuryHomePage> {
               ),
             ],
           ),
-              ),
-            ),
+        ),
+      ),
     );
   }
 }
