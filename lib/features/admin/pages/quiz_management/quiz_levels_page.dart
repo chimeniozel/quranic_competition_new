@@ -128,10 +128,10 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
   Widget _buildLevelCard(QuizLevel level) {
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       onTap: () => context.push('/admin/quiz/levels/${level.id}/questions'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +163,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
 
               // Level Info
               Expanded(
@@ -223,7 +223,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
             ],
           ),
 
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
 
           // Actions and Info
           Row(
@@ -358,7 +358,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
               : ModernPullToRefresh(
                 onRefresh: _loadLevels,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -376,7 +376,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                                 color: AppTheme.primaryColor,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Expanded(
                               child: StatCard(
                                 title: 'المستويات النشطة',
@@ -434,7 +434,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                                     ..._levels.map(
                                       (level) => _buildLevelCard(level),
                                     ),
-                                    const SizedBox(height: AppTheme.spacingM),
+                                    const SizedBox(height: AppTheme.spacingS),
                                   ],
                                 ),
                       ),

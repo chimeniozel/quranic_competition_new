@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,6 +31,8 @@ class _QuizPageState extends State<QuizPage> {
   int _currentQuestionIndex = 0;
   bool _isLoading = false;
   bool _isSubmitting = false;
+  int _consecutiveCorrectAnswers =
+      0; // Compteur de bonnes réponses consécutives
 
   @override
   void initState() {
@@ -56,18 +59,35 @@ class _QuizPageState extends State<QuizPage> {
       // Charger les questions
       final questions = await _quizService.getQuestionsByLevel(widget.levelId);
 
-      // Charger les options pour chaque question
+      // Randomiser l'ordre des questions avec une graine aléatoire
+      // Utiliser une méthode de shuffle plus robuste
+      final shuffledQuestions = <QuizQuestion>[];
+      final remainingQuestions = List<QuizQuestion>.from(questions);
+      final random = Random(DateTime.now().millisecondsSinceEpoch);
+
+      while (remainingQuestions.isNotEmpty) {
+        final randomIndex = random.nextInt(remainingQuestions.length);
+        shuffledQuestions.add(remainingQuestions.removeAt(randomIndex));
+      }
+
+      // Charger les options pour chaque question et randomiser leur ordre
       final options = <List<QuizOption>>[];
-      for (final question in questions) {
+      for (final question in shuffledQuestions) {
         final questionOptions = await _quizService.getOptionsByQuestion(
           question.id,
         );
-        options.add(questionOptions);
+        // Randomiser l'ordre des options pour chaque question avec une nouvelle graine
+        final shuffledOptions = List<QuizOption>.from(questionOptions);
+        final optionRandom = Random(
+          DateTime.now().millisecondsSinceEpoch + question.id.hashCode,
+        );
+        shuffledOptions.shuffle(optionRandom);
+        options.add(shuffledOptions);
       }
 
       setState(() {
         _level = level;
-        _questions = questions;
+        _questions = shuffledQuestions;
         _options = options;
         _isLoading = false;
       });
@@ -93,7 +113,34 @@ class _QuizPageState extends State<QuizPage> {
     });
   }
 
-  void _nextQuestion() {
+  Future<void> _nextQuestion() async {
+    // Vérifier si la réponse actuelle est correcte
+    final currentQuestion = _questions[_currentQuestionIndex];
+    final selectedOptionId = _answers[currentQuestion.id];
+
+    if (selectedOptionId != null) {
+      final currentOptions = _options[_currentQuestionIndex];
+      final selectedOption = currentOptions.firstWhere(
+        (opt) => opt.id == selectedOptionId,
+        orElse: () => currentOptions.first,
+      );
+
+      if (selectedOption.isCorrect) {
+        _consecutiveCorrectAnswers++;
+
+        // Afficher un message d'encouragement après chaque 10 bonnes réponses consécutives
+        if (_consecutiveCorrectAnswers % 10 == 0) {
+          await _showEncouragementMessage(_consecutiveCorrectAnswers);
+        }
+      } else {
+        // Réinitialiser le compteur si la réponse est incorrecte
+        _consecutiveCorrectAnswers = 0;
+      }
+    } else {
+      // Si aucune réponse n'est sélectionnée, réinitialiser le compteur
+      _consecutiveCorrectAnswers = 0;
+    }
+
     if (_currentQuestionIndex < _questions.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -102,6 +149,16 @@ class _QuizPageState extends State<QuizPage> {
     } else {
       _submitQuiz();
     }
+  }
+
+  Future<void> _showEncouragementMessage(int consecutiveCount) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return _EncouragementDialog(consecutiveCount: consecutiveCount);
+      },
+    );
   }
 
   void _previousQuestion() {
@@ -270,18 +327,66 @@ class _QuizPageState extends State<QuizPage> {
             if (question.imageUrl != null && question.imageUrl!.isNotEmpty) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  question.imageUrl!,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+                child: Builder(
+                  builder: (context) {
+                    // Si l'URL ne commence pas par http/https, c'est probablement un chemin de storage
+                    String imageUrl = question.imageUrl!;
+                    if (!imageUrl.startsWith('http://') &&
+                        !imageUrl.startsWith('https://')) {
+                      // C'est un chemin de storage Supabase, obtenir l'URL publique
+                      try {
+                        final supabase = Supabase.instance.client;
+                        imageUrl = supabase.storage
+                            .from('images')
+                            .getPublicUrl(imageUrl);
+                        print('URL publique de l\'image: $imageUrl');
+                      } catch (e) {
+                        print(
+                          'Erreur lors de la récupération de l\'URL publique: $e',
+                        );
+                      }
+                    }
+
+                    return Image.network(
+                      imageUrl,
+                      width: double.infinity,
                       height: 200,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported, size: 50),
-                      ),
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value:
+                                  loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('Erreur de chargement d\'image: $error');
+                        print('URL de l\'image: $imageUrl');
+                        print('URL originale: ${question.imageUrl}');
+                        return Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.image_not_supported, size: 50),
+                                SizedBox(height: 8),
+                                Text('تعذر تحميل الصورة'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -361,7 +466,7 @@ class _QuizPageState extends State<QuizPage> {
   Widget _buildProgressIndicator() {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
       child: ModernProgressIndicator(
@@ -373,7 +478,7 @@ class _QuizPageState extends State<QuizPage> {
 
   Widget _buildNavigationButtons() {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       child: Row(
         children: [
           if (_currentQuestionIndex > 0)
@@ -384,7 +489,7 @@ class _QuizPageState extends State<QuizPage> {
               ),
             ),
           if (_currentQuestionIndex > 0)
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: PrimaryButton(
               onPressed: _nextQuestion,
@@ -442,6 +547,167 @@ class _QuizPageState extends State<QuizPage> {
                   _buildNavigationButtons(),
                 ],
               ),
+    );
+  }
+}
+
+// Widget pour le message d'encouragement avec effets visuels
+class _EncouragementDialog extends StatefulWidget {
+  final int consecutiveCount;
+
+  const _EncouragementDialog({required this.consecutiveCount});
+
+  @override
+  State<_EncouragementDialog> createState() => _EncouragementDialogState();
+}
+
+class _EncouragementDialogState extends State<_EncouragementDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+
+    _controller.forward();
+
+    // Fermer automatiquement après 3 secondes
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Opacity(
+            opacity: _fadeAnimation.value,
+            child: Transform.rotate(
+              angle: _rotationAnimation.value * 0.1,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.amber.shade400,
+                        Colors.orange.shade400,
+                        Colors.deepOrange.shade400,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.5),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Animation de confettis/étoiles
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 500),
+                        builder: (context, value, child) {
+                          return Transform.scale(
+                            scale: value,
+                            child: Icon(
+                              Icons.stars,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        '🎉 ممتاز! 🎉',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              offset: const Offset(2, 2),
+                              blurRadius: 4,
+                              color: Colors.black.withOpacity(0.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${widget.consecutiveCount} إجابات صحيحة متتالية!',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              offset: const Offset(1, 1),
+                              blurRadius: 3,
+                              color: Colors.black.withOpacity(0.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'استمر في التقدم! أنت تبلي بلاءً حسناً',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

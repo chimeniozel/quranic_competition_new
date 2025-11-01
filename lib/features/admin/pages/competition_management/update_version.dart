@@ -259,7 +259,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                             0.1,
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Row(
                               children: [
                                 Icon(
@@ -267,7 +267,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                   color: AppTheme.warningColor,
                                   size: 28,
                                 ),
-                                const SizedBox(width: AppTheme.spacingM),
+                                const SizedBox(width: AppTheme.spacingS),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -324,7 +324,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       size: 24,
                                     ),
                                   ),
-                                  const SizedBox(width: AppTheme.spacingM),
+                                  const SizedBox(width: AppTheme.spacingS),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -454,7 +454,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: AppTheme.spacingM),
+                                  const SizedBox(width: AppTheme.spacingS),
                                   Expanded(
                                     child: TextField(
                                       controller: _maxChildrenController,
@@ -510,7 +510,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       style: AppTheme.bodyMedium,
                                       decoration: InputDecoration(
                                         labelText: 'متوسط النجاح للكبار (%)',
-                                        hintText: '70.0',
+                                        hintText: '85.0',
                                         prefixIcon: Icon(
                                           Icons.trending_up,
                                           color:
@@ -527,7 +527,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: AppTheme.spacingM),
+                                  const SizedBox(width: AppTheme.spacingS),
                                   Expanded(
                                     child: TextField(
                                       controller:
@@ -537,7 +537,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       style: AppTheme.bodyMedium,
                                       decoration: InputDecoration(
                                         labelText: 'متوسط النجاح للصغار (%)',
-                                        hintText: '70.0',
+                                        hintText: '14.0',
                                         prefixIcon: Icon(
                                           Icons.trending_up,
                                           color:
@@ -559,7 +559,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                               const SizedBox(height: AppTheme.spacingS),
                               Container(
                                 padding: const EdgeInsets.all(
-                                  AppTheme.spacingM,
+                                  AppTheme.spacingS,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppTheme.infoColor.withOpacity(0.1),
@@ -613,7 +613,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.all(
-                                        AppTheme.spacingM,
+                                        AppTheme.spacingS,
                                       ),
                                       decoration: BoxDecoration(
                                         color:
@@ -696,11 +696,11 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: AppTheme.spacingM),
+                                  const SizedBox(width: AppTheme.spacingS),
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.all(
-                                        AppTheme.spacingM,
+                                        AppTheme.spacingS,
                                       ),
                                       decoration: BoxDecoration(
                                         color:
@@ -808,7 +808,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                               // Message d'information sur la logique des switches
                               Container(
                                 padding: const EdgeInsets.all(
-                                  AppTheme.spacingM,
+                                  AppTheme.spacingS,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppTheme.infoColor.withOpacity(0.1),
@@ -819,32 +819,53 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                     color: AppTheme.infoColor.withOpacity(0.3),
                                   ),
                                 ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color: AppTheme.infoColor,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Text(
-                                        'ملاحظة: لا يمكن فتح التسجيل وتفعيل تقييم المحكمين في نفس الوقت',
-                                        style: AppTheme.bodySmall.copyWith(
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
                                           color: AppTheme.infoColor,
-                                          fontWeight: FontWeight.w500,
+                                          size: 20,
                                         ),
+                                        const SizedBox(
+                                          width: AppTheme.spacingS,
+                                        ),
+                                        Text(
+                                          'قواعد الإعدادات',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: AppTheme.infoColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: AppTheme.spacingS),
+                                    Text(
+                                      '• لا يمكن فتح التسجيل وتفعيل تقييم المحكمين في نفس الوقت',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.infoColor,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '• عند إلغاء تفعيل النسخة، يتم إغلاق التسجيل والتقييم تلقائياً',
+                                      style: AppTheme.bodySmall.copyWith(
+                                        color: AppTheme.infoColor,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: AppTheme.spacingM),
+                              const SizedBox(height: AppTheme.spacingS),
 
                               // Statut actif
                               Container(
                                 padding: const EdgeInsets.all(
-                                  AppTheme.spacingM,
+                                  AppTheme.spacingS,
                                 ),
                                 decoration: BoxDecoration(
                                   color:
@@ -881,7 +902,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                               : AppTheme.errorColor,
                                       size: 24,
                                     ),
-                                    const SizedBox(width: AppTheme.spacingM),
+                                    const SizedBox(width: AppTheme.spacingS),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -909,9 +930,17 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                       value: _isActive,
                                       onChanged:
                                           _canEdit
-                                              ? (val) => setState(
-                                                () => _isActive = val,
-                                              )
+                                              ? (val) {
+                                                setState(() {
+                                                  _isActive = val;
+                                                  // Si la version est désactivée, fermer l'inscription et l'évaluation
+                                                  if (!val) {
+                                                    _isRegistrationOpen = false;
+                                                    _juryEvaluationEnabled =
+                                                        false;
+                                                  }
+                                                });
+                                              }
                                               : null,
                                       activeColor: AppTheme.successColor,
                                       inactiveThumbColor: AppTheme.errorColor,
@@ -924,7 +953,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                               // Statut d'inscription
                               Container(
                                 padding: const EdgeInsets.all(
-                                  AppTheme.spacingM,
+                                  AppTheme.spacingS,
                                 ),
                                 decoration: BoxDecoration(
                                   color:
@@ -961,7 +990,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                               : AppTheme.errorColor,
                                       size: 24,
                                     ),
-                                    const SizedBox(width: AppTheme.spacingM),
+                                    const SizedBox(width: AppTheme.spacingS),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -988,7 +1017,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                     Switch(
                                       value: _isRegistrationOpen,
                                       onChanged:
-                                          _canEdit
+                                          (_canEdit && _isActive)
                                               ? (val) {
                                                 setState(() {
                                                   _isRegistrationOpen = val;
@@ -1011,7 +1040,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                               // Statut d'évaluation des jurys
                               Container(
                                 padding: const EdgeInsets.all(
-                                  AppTheme.spacingM,
+                                  AppTheme.spacingS,
                                 ),
                                 decoration: BoxDecoration(
                                   color:
@@ -1048,7 +1077,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                               : AppTheme.errorColor,
                                       size: 24,
                                     ),
-                                    const SizedBox(width: AppTheme.spacingM),
+                                    const SizedBox(width: AppTheme.spacingS),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -1075,7 +1104,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                                     Switch(
                                       value: _juryEvaluationEnabled,
                                       onChanged:
-                                          _canEdit
+                                          (_canEdit && _isActive)
                                               ? (val) {
                                                 setState(() {
                                                   _juryEvaluationEnabled = val;

@@ -120,7 +120,7 @@ class DashboardSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: padding ?? const EdgeInsets.all(AppTheme.spacingM),
+          padding: padding ?? const EdgeInsets.all(AppTheme.spacingS),
           child: Row(
             children: [
               Expanded(
@@ -212,7 +212,7 @@ class ModernListTile extends StatelessWidget {
                   : null),
           onTap: onTap,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.spacingM,
+            horizontal: AppTheme.spacingS,
             vertical: AppTheme.spacingS,
           ),
         ),
@@ -241,8 +241,8 @@ class StatsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppTheme.spacingM,
-        mainAxisSpacing: AppTheme.spacingM,
+        crossAxisSpacing: AppTheme.spacingS,
+        mainAxisSpacing: AppTheme.spacingS,
         childAspectRatio: 2.8,
       ),
       itemCount: stats.length,
@@ -281,7 +281,7 @@ class ModernProgressCard extends StatelessWidget {
           Row(
             children: [
               Icon(icon, color: cardColor, size: 24),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +311,7 @@ class ModernProgressCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
           ModernProgressIndicator(value: progress, color: cardColor, height: 6),
         ],
       ),
@@ -360,7 +360,7 @@ class ModernNotificationCard extends StatelessWidget {
             ),
             child: Icon(icon, color: notificationColor, size: 20),
           ),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,8 +444,8 @@ class QuickActionGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppTheme.spacingM,
-        mainAxisSpacing: AppTheme.spacingM,
+        crossAxisSpacing: AppTheme.spacingS,
+        mainAxisSpacing: AppTheme.spacingS,
         childAspectRatio: 1.4,
       ),
       itemCount: actions.length,

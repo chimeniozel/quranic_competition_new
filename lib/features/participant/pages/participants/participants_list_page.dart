@@ -237,7 +237,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
       ),
       child: ModernCard(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -258,7 +258,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               Row(
                 children: [
                   Expanded(child: _buildAgeGroupButton('الكل', Colors.grey)),
@@ -289,7 +289,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
+          horizontal: AppTheme.spacingS,
           vertical: AppTheme.spacingS,
         ),
         decoration: BoxDecoration(
@@ -332,7 +332,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
       child: ModernCard(
@@ -343,7 +343,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
             hintStyle: AppTheme.bodyMedium.copyWith(color: Colors.grey[500]),
             prefixIcon: Icon(Icons.search, color: AppTheme.primaryColor),
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.all(AppTheme.spacingM),
+            contentPadding: const EdgeInsets.all(AppTheme.spacingS),
           ),
           style: AppTheme.bodyMedium,
           onChanged: (value) {
@@ -379,7 +379,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
 
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
       child: InkWell(
@@ -400,7 +400,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
         },
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -417,7 +417,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   // Informations principales
                   Expanded(
                     child: Column(
@@ -481,7 +481,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               // Numéro d'enregistrement
               Container(
                 width: double.infinity,
@@ -535,10 +535,10 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     }
 
     return Container(
-      margin: const EdgeInsets.all(AppTheme.spacingM),
+      margin: const EdgeInsets.all(AppTheme.spacingS),
       child: ModernCard(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             children: [
               Row(
@@ -554,7 +554,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -638,12 +638,12 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     if (_activeCompetition != null) {
       return Container(
         margin: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
+          horizontal: AppTheme.spacingS,
           vertical: AppTheme.spacingS,
         ),
         child: ModernCard(
           child: Container(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
@@ -670,7 +670,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                     size: 16,
                   ),
                 ),
-                const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -700,12 +700,12 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     } else if (_lastCompetition != null) {
       return Container(
         margin: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
+          horizontal: AppTheme.spacingS,
           vertical: AppTheme.spacingS,
         ),
         child: ModernCard(
           child: Container(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
@@ -732,7 +732,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                     size: 16,
                   ),
                 ),
-                const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -829,7 +829,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                   if (_isLoading && _filteredParticipants.isNotEmpty)
                     SliverToBoxAdapter(
                       child: Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
                         child: const Center(child: CircularProgressIndicator()),
                       ),
                     ),

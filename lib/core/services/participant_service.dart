@@ -9,105 +9,218 @@ class ParticipantService {
     required Participant participant,
     required String versionId,
   }) async {
+    const int maxRetries = 3;
+    int retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        // 0. Vérifier que l'inscription est toujours ouverte pour cette version
+        final versionCheck =
+            await _supabase
+                .from('competition_versions')
+                .select(
+                  'is_active, is_registration_open, max_adults, max_children',
+                )
+                .eq('id', versionId)
+                .single();
+
+        final bool isActive = versionCheck['is_active'] as bool;
+        final bool isRegistrationOpen =
+            versionCheck['is_registration_open'] as bool;
+        final int maxAdults = versionCheck['max_adults'] as int;
+        final int maxChildren = versionCheck['max_children'] as int;
+
+        if (!isActive || !isRegistrationOpen) {
+          throw Exception('التسجيل غير متاح لهذه المسابقة');
+        }
+
+        // 0.1. Vérifier les limites de participants pour cette version spécifique
+        final currentAdultsCount = await _supabase
+            .from('participants')
+            .select('id')
+            .eq('competition_id', versionId)
+            .eq('age_group', 'كبار')
+            .then((response) => response.length);
+
+        final currentChildrenCount = await _supabase
+            .from('participants')
+            .select('id')
+            .eq('competition_id', versionId)
+            .eq('age_group', 'صغار')
+            .then((response) => response.length);
+
+        print(
+          '📊 Vérification côté serveur: Adultes=$currentAdultsCount/$maxAdults, Enfants=$currentChildrenCount/$maxChildren',
+        );
+
+        // Vérifier si le groupe d'âge du participant a atteint sa limite
+        if (participant.ageGroup == 'كبار' && currentAdultsCount >= maxAdults) {
+          throw Exception(
+            'تم الوصول للحد الأقصى من المشاركين في فرع الكبار ($maxAdults مشارك)',
+          );
+        }
+
+        if (participant.ageGroup == 'صغار' &&
+            currentChildrenCount >= maxChildren) {
+          throw Exception(
+            'تم الوصول للحد الأقصى من المشاركين في فرع الصغار ($maxChildren مشارك)',
+          );
+        }
+
+        // 0.2. Générer le numéro d'enregistrement pour cette compétition
+        final nextRegistrationNumber = await _getNextRegistrationNumber(
+          versionId,
+        );
+        print(
+          '📝 Prochain numéro d\'enregistrement pour la compétition $versionId: $nextRegistrationNumber',
+        );
+
+        // 1. Insérer le participant avec competition_id et numéro d'enregistrement
+        final response =
+            await _supabase
+                .from('participants')
+                .insert({
+                  'full_name': participant.fullName,
+                  'gender': participant.gender,
+                  'birth_date': participant.birthDate.toIso8601String(),
+                  'phone': participant.phone,
+                  'quran_memorized': participant.quranMemorized,
+                  'reading_methods': participant.readingMethods,
+                  'residence': participant.residence,
+                  'has_ijaza': participant.hasIjaza,
+                  'won_previous_ranks': participant.wonPreviousRanks,
+                  'participated_before': participant.participatedBefore,
+                  'age_group': participant.ageGroup,
+                  'competition_id': versionId, // Ajouter le competition_id
+                  'registration_number':
+                      nextRegistrationNumber, // Ajouter le numéro d'enregistrement
+                  'created_at': participant.createdAt.toIso8601String(),
+                  'is_accepted': participant.isAccepted,
+                  'rejection_reason': participant.rejectionReason,
+                })
+                .select()
+                .single();
+
+        print("Inscription réussie : $response");
+
+        // 2. Récupérer l'id du participant nouvellement créé
+        final participantId = response['id'] as String;
+
+        // 3. Note: La table participant_versions n'est plus utilisée
+        // Les participants sont maintenant directement liés aux compétitions via la table participants
+        print("Participant créé avec succès, ID: $participantId");
+
+        // 4. Retourner le numéro d'enregistrement généré
+        print(
+          "✅ Participant inscrit avec le numéro d'enregistrement: $nextRegistrationNumber",
+        );
+        return nextRegistrationNumber;
+      } catch (e) {
+        retryCount++;
+        print(
+          '⚠️ Tentative d\'inscription $retryCount/$maxRetries échouée: $e',
+        );
+
+        // Si c'est une erreur de contrainte unique (numéro dupliqué), réessayer
+        if (e.toString().contains('duplicate key') ||
+            e.toString().contains('unique constraint') ||
+            e.toString().contains('registration_number')) {
+          if (retryCount < maxRetries) {
+            print('🔄 Conflit de numéro détecté, nouvelle tentative...');
+            await Future.delayed(Duration(milliseconds: 100 * retryCount));
+            continue;
+          }
+        }
+
+        // Si ce n'est pas une erreur de conflit ou si on a épuisé les tentatives
+        print('❌ Erreur lors de l\'inscription: $e');
+        throw Exception('Erreur lors de l\'inscription: $e');
+      }
+    }
+
+    // Ne devrait jamais arriver ici
+    throw Exception('Échec de l\'inscription après $maxRetries tentatives');
+  }
+
+  /// Génère le prochain numéro d'enregistrement pour une compétition donnée
+  /// Utilise un mécanisme atomique pour éviter les race conditions
+  Future<int> _getNextRegistrationNumber(String versionId) async {
+    const int maxRetries = 3;
+    int retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        // Utiliser une transaction atomique pour générer le numéro
+        final response = await _supabase.rpc(
+          'get_next_registration_number',
+          params: {'competition_id': versionId},
+        );
+
+        if (response != null) {
+          final registrationNumber = response as int;
+          print(
+            '✅ Numéro d\'enregistrement généré atomiquement: $registrationNumber pour la compétition $versionId',
+          );
+          return registrationNumber;
+        } else {
+          throw Exception('Erreur lors de la génération du numéro');
+        }
+      } catch (e) {
+        retryCount++;
+        print(
+          '⚠️ Tentative $retryCount/$maxRetries échouée pour la compétition $versionId: $e',
+        );
+
+        if (retryCount >= maxRetries) {
+          // En cas d'échec total, utiliser la méthode de fallback
+          print('🔄 Utilisation de la méthode de fallback');
+          return await _getNextRegistrationNumberFallback(versionId);
+        }
+
+        // Attendre un court délai avant de réessayer
+        await Future.delayed(Duration(milliseconds: 100 * retryCount));
+      }
+    }
+
+    // Ne devrait jamais arriver ici
+    return 1;
+  }
+
+  /// Méthode de fallback en cas d'échec de la méthode atomique
+  Future<int> _getNextRegistrationNumberFallback(String versionId) async {
     try {
-      // 0. Vérifier que l'inscription est toujours ouverte pour cette version
-      final versionCheck =
-          await _supabase
-              .from('competition_versions')
-              .select(
-                'is_active, is_registration_open, max_adults, max_children',
-              )
-              .eq('id', versionId)
-              .single();
+      // Récupérer le plus grand numéro d'enregistrement pour cette compétition
+      // Filtrer les valeurs NULL pour éviter les problèmes
+      final response = await _supabase
+          .from('participants')
+          .select('registration_number')
+          .eq('competition_id', versionId)
+          .not('registration_number', 'is', null)
+          .order('registration_number', ascending: false)
+          .limit(1);
 
-      final bool isActive = versionCheck['is_active'] as bool;
-      final bool isRegistrationOpen =
-          versionCheck['is_registration_open'] as bool;
-      final int maxAdults = versionCheck['max_adults'] as int;
-      final int maxChildren = versionCheck['max_children'] as int;
-
-      if (!isActive || !isRegistrationOpen) {
-        throw Exception('التسجيل غير متاح لهذه المسابقة');
+      if (response.isEmpty) {
+        // Premier participant de cette compétition
+        print(
+          '🎯 Premier participant pour la compétition $versionId (fallback)',
+        );
+        return 1;
       }
 
-      // 0.1. Vérifier les limites de participants pour cette version spécifique
-      final currentAdultsCount = await _supabase
-          .from('participants')
-          .select('id')
-          .eq('competition_id', versionId)
-          .eq('age_group', 'كبار')
-          .then((response) => response.length);
-
-      final currentChildrenCount = await _supabase
-          .from('participants')
-          .select('id')
-          .eq('competition_id', versionId)
-          .eq('age_group', 'صغار')
-          .then((response) => response.length);
+      final maxRegistrationNumber =
+          response.first['registration_number'] as int? ?? 0;
+      final nextNumber = maxRegistrationNumber + 1;
 
       print(
-        '📊 Vérification côté serveur: Adultes=$currentAdultsCount/$maxAdults, Enfants=$currentChildrenCount/$maxChildren',
+        '📊 Compétition $versionId (fallback): Dernier numéro = $maxRegistrationNumber, Prochain = $nextNumber',
       );
-
-      // Vérifier si le groupe d'âge du participant a atteint sa limite
-      if (participant.ageGroup == 'كبار' && currentAdultsCount >= maxAdults) {
-        throw Exception(
-          'تم الوصول للحد الأقصى من المشاركين في فرع الكبار ($maxAdults مشارك)',
-        );
-      }
-
-      if (participant.ageGroup == 'صغار' &&
-          currentChildrenCount >= maxChildren) {
-        throw Exception(
-          'تم الوصول للحد الأقصى من المشاركين في فرع الصغار ($maxChildren مشارك)',
-        );
-      }
-
-      // 1. Insérer le participant avec competition_id
-      final response =
-          await _supabase
-              .from('participants')
-              .insert({
-                'full_name': participant.fullName,
-                'gender': participant.gender,
-                'birth_date': participant.birthDate.toIso8601String(),
-                'phone': participant.phone,
-                'quran_memorized': participant.quranMemorized,
-                'reading_methods': participant.readingMethods,
-                'residence': participant.residence,
-                'has_ijaza': participant.hasIjaza,
-                'won_previous_ranks': participant.wonPreviousRanks,
-                'participated_before': participant.participatedBefore,
-                'age_group': participant.ageGroup,
-                'competition_id': versionId, // Ajouter le competition_id
-                'created_at': participant.createdAt.toIso8601String(),
-                'is_accepted': participant.isAccepted,
-                'rejection_reason': participant.rejectionReason,
-              })
-              .select()
-              .single();
-
-      print("Inscription réussie : $response");
-
-      // 2. Récupérer l'id du participant nouvellement créé
-      final participantId = response['id'] as String;
-
-      // 3. Note: La table participant_versions n'est plus utilisée
-      // Les participants sont maintenant directement liés aux compétitions via la table participants
-      print("Participant créé avec succès, ID: $participantId");
-
-      // 4. Récupérer le numéro d'inscription depuis la réponse du participant
-      final registrationNumberData = response['registration_number'];
-      print("Registration number from participant: $registrationNumberData");
-      final registrationNumber =
-          registrationNumberData is int
-              ? registrationNumberData
-              : 0; // Valeur par défaut si null ou non int
-
-      return registrationNumber;
+      return nextNumber;
     } catch (e) {
-      print('Erreur lors de l\'inscription: $e');
-      throw Exception('Erreur lors de l\'inscription: $e');
+      print(
+        '❌ Erreur lors de la génération du numéro d\'enregistrement (fallback): $e',
+      );
+      // En cas d'erreur, retourner 1 pour éviter les blocages
+      return 1;
     }
   }
 
@@ -158,15 +271,7 @@ class ParticipantService {
         final qualifiedParticipants = <Participant>[];
         for (final participant in allParticipants) {
           // Vérifier si le participant a passé le round 1
-          final passedRound1Response =
-              await _supabase
-                  .from('participant_versions')
-                  .select('passed_round1')
-                  .eq('participant_id', participant.id)
-                  .eq('version_id', versionId)
-                  .single();
-
-          if (passedRound1Response['passed_round1'] == true) {
+          if (participant.passedRound1 == true) {
             qualifiedParticipants.add(participant);
           }
         }
@@ -204,21 +309,25 @@ class ParticipantService {
   Future<List<Participant>> fetchParticipantsByVersion(
     String versionId, {
     Round? activeRound,
+    bool includeRejected = false,
   }) async {
     print(
-      '🔍 ParticipantService - fetchParticipantsByVersion pour version: $versionId, round: ${activeRound?.name}',
+      '🔍 ParticipantService - fetchParticipantsByVersion pour version: $versionId, round: ${activeRound?.name}, includeRejected: $includeRejected',
     );
 
     try {
       if (activeRound == null || activeRound.name == 'الجولة الأولى') {
-        // Round 1 ou pas de round → tous les participants acceptés
+        // Round 1 ou pas de round → participants acceptés ou tous selon includeRejected
         print(
-          '🔍 Round 1 ou pas de round: Récupération de tous les participants acceptés',
+          '🔍 Round 1 ou pas de round: Récupération ${includeRejected ? 'de tous les participants' : 'des participants acceptés'}',
         );
-        final response = await _supabase
-            .from('participants')
-            .select('*')
-            .eq('is_accepted', true);
+        var query = _supabase.from('participants').select('*');
+        
+        if (!includeRejected) {
+          query = query.eq('is_accepted', true);
+        }
+        
+        final response = await query;
 
         final participants =
             response.map<Participant>((record) {
@@ -226,7 +335,7 @@ class ParticipantService {
             }).toList();
 
         print(
-          '🔍 Round 1 ou pas de round: ${participants.length} participants acceptés trouvés',
+          '🔍 Round 1 ou pas de round: ${participants.length} participants trouvés',
         );
         return participants;
       } else {
@@ -235,7 +344,7 @@ class ParticipantService {
           '🔍 Round ${activeRound.name}: Récupération des participants acceptés et qualifiés',
         );
 
-        // Récupérer tous les participants acceptés
+        // Récupérer tous les participants acceptés (pour les rounds, on ne prend que les acceptés)
         final allParticipantsResponse = await _supabase
             .from('participants')
             .select('*')
@@ -250,15 +359,7 @@ class ParticipantService {
         final qualifiedParticipants = <Participant>[];
         for (final participant in allParticipants) {
           // Vérifier si le participant a passé le round 1
-          final passedRound1Response =
-              await _supabase
-                  .from('participant_versions')
-                  .select('passed_round1')
-                  .eq('participant_id', participant.id)
-                  .eq('version_id', versionId)
-                  .single();
-
-          if (passedRound1Response['passed_round1'] == true) {
+          if (participant.passedRound1 == true) {
             qualifiedParticipants.add(participant);
           }
         }

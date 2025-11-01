@@ -393,7 +393,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
               ? null
               : Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingM,
+                  horizontal: AppTheme.spacingS,
                   vertical: AppTheme.spacingS,
                 ),
                 margin: const EdgeInsets.only(right: AppTheme.spacingL),
@@ -474,7 +474,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
               : ModernPullToRefresh(
                 onRefresh: _loadParticipantsWithEvaluationStatus,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     children: [
                       // Message d'autorisation d'évaluation
@@ -488,7 +488,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                 color: AppTheme.errorColor,
                                 size: 28,
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -528,7 +528,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                 color: AppTheme.warningColor,
                                 size: 24,
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,7 +768,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                           },
                                           child: Padding(
                                             padding: const EdgeInsets.all(
-                                              AppTheme.spacingM,
+                                              AppTheme.spacingS,
                                             ),
                                             child: Row(
                                               children: [
@@ -794,7 +794,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                                   ),
                                                 ),
                                                 const SizedBox(
-                                                  width: AppTheme.spacingM,
+                                                  width: AppTheme.spacingS,
                                                 ),
                                                 // Informations
                                                 Expanded(
@@ -852,7 +852,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
         child: Row(
           children: [
             Icon(Icons.info, color: AppTheme.textSecondaryColor, size: 24),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Text(
                 'لا توجد جولات متاحة',
@@ -887,7 +887,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       child: Row(
         children: [
           Icon(Icons.event, color: AppTheme.primaryColor, size: 24),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<Round>(
@@ -987,7 +987,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       child: Row(
         children: [
           Icon(icon, color: color, size: 24),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

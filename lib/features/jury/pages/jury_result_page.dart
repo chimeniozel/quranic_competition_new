@@ -267,7 +267,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
                   controller: _scrollController,
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
                           _buildVersionSelector(),
@@ -284,7 +284,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
                         child:
                             _isLoadingMore
                                 ? const Padding(
-                                  padding: EdgeInsets.all(AppTheme.spacingM),
+                                  padding: EdgeInsets.all(AppTheme.spacingS),
                                   child: Center(
                                     child: CircularProgressIndicator(),
                                   ),
@@ -300,7 +300,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
   Widget _buildVersionSelector() {
     return ModernCard(
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -338,7 +338,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
                 size: 24,
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +371,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
       child: Row(
         children: [
           Icon(Icons.emoji_events, color: AppTheme.successColor, size: 24),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child:
                 _rounds.isEmpty
@@ -419,7 +419,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
       child: Row(
         children: [
           Icon(Icons.groups, color: AppTheme.warningColor, size: 24),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: Row(
               children: [
@@ -504,7 +504,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
       return const SliverToBoxAdapter(
         child: Center(
           child: Padding(
-            padding: EdgeInsets.all(AppTheme.spacingM),
+            padding: EdgeInsets.all(AppTheme.spacingS),
             child: CircularProgressIndicator(),
           ),
         ),
@@ -535,7 +535,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           final result = filteredResults[index];
@@ -567,7 +567,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
       margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
       child: ModernCard(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Row(
             children: [
               // Position et médaille
@@ -598,7 +598,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
                           ),
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
 
               // Informations du participant (sans nom)
               Expanded(
@@ -642,7 +642,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
               // Score
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingM,
+                  horizontal: AppTheme.spacingS,
                   vertical: AppTheme.spacingS,
                 ),
                 decoration: BoxDecoration(

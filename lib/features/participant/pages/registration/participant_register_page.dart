@@ -351,7 +351,10 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       });
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      print('🔄 Loading démarré: $_isLoading');
+    });
 
     // Vérification finale des limites juste avant l'inscription
     await _checkAgeGroupLimit();
@@ -427,21 +430,29 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       );
 
       // Message personnalisé selon le statut d'acceptation
+      final ageGroupText = widget.ageGroup == 'كبار' ? 'الكبار' : 'الصغار';
       String message;
       if (shouldAutoReject) {
         if (isOutsideCountry && hasWonPreviousRanks) {
           message =
-              'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً للأسباب التالية:\n• الإقامة خارج موريتانيا\n• حصولك على المرتبة الأولى أو الثانية في مسابقة سابقة';
+              'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً للأسباب التالية:\n• الإقامة خارج موريتانيا\n• حصولك على المرتبة الأولى أو الثانية في مسابقة سابقة';
         } else if (isOutsideCountry) {
           message =
-              'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك تقيم خارج موريتانيا';
+              'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك تقيم خارج موريتانيا';
         } else {
           message =
-              'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة سابقة';
+              'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة سابقة';
         }
       } else {
-        message = 'تم تسجيلك بنجاح برقم التسجيل: $frenchRegistrationNumber';
+        message =
+            'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber';
       }
+
+      // Arrêter le loading avant d'afficher le dialog de succès
+      setState(() {
+        _isLoading = false;
+        print('✅ Loading arrêté (succès): $_isLoading');
+      });
 
       // Afficher le message dans un dialog au lieu d'un SnackBar
       showDialog(
@@ -476,6 +487,12 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       );
     } catch (e) {
       print('فشل التسجيل: $e');
+
+      // Arrêter le loading avant d'afficher l'erreur
+      setState(() {
+        _isLoading = false;
+        print('❌ Loading arrêté (erreur): $_isLoading');
+      });
 
       // Message d'erreur plus convivial pour l'utilisateur
       String errorMessage = 'حدث خطأ أثناء التسجيل';
@@ -514,8 +531,6 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       )) {
         Navigator.of(context).pop();
       }
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -535,7 +550,16 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       ),
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
+              ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('جاري التسجيل...'),
+                  ],
+                ),
+              )
               : ModernPullToRefresh(
                 onRefresh: () async {
                   // Simuler un refresh
@@ -552,9 +576,9 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                             _registrationErrorMessage != null) ...[
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             margin: const EdgeInsets.only(
-                              bottom: AppTheme.spacingM,
+                              bottom: AppTheme.spacingS,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
@@ -597,7 +621,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                         // Section des informations personnelles
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -630,7 +654,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 TextFormField(
                                   controller: _fullNameController,
@@ -723,7 +747,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                         // Section des المعلومات القرآنية
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -756,7 +780,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 DropdownButtonFormField<String>(
                                   value: _quranMemorized,
@@ -873,7 +897,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                         // Section des questions supplémentaires
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -925,7 +949,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                     });
                                   },
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 _buildSwitchTile(
                                   title: 'هل شاركت في نسخة ماضية؟',
@@ -960,17 +984,30 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingM),
+                        const SizedBox(height: AppTheme.spacingS),
 
                         // Bouton de soumission
                         SizedBox(
                           width: double.infinity,
-                          child: PrimaryButton(
-                            onPressed: _isRegistrationAllowed ? _submit : null,
-                            text:
-                                _isRegistrationAllowed
-                                    ? 'تسجيل'
-                                    : 'التسجيل غير متاح',
+                          child: Builder(
+                            builder: (context) {
+                              print(
+                                '🔘 Bouton rebuild - _isLoading: $_isLoading, _isRegistrationAllowed: $_isRegistrationAllowed',
+                              );
+                              return PrimaryButton(
+                                onPressed:
+                                    (_isRegistrationAllowed && !_isLoading)
+                                        ? _submit
+                                        : null,
+                                text:
+                                    _isLoading
+                                        ? 'جاري التسجيل...'
+                                        : (_isRegistrationAllowed
+                                            ? 'تسجيل'
+                                            : 'التسجيل غير متاح'),
+                                isLoading: _isLoading,
+                              );
+                            },
                           ),
                         ),
                       ],

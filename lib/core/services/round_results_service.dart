@@ -414,13 +414,13 @@ class RoundResultsService {
               .single();
 
       return {
-        'adults': (response['success_average_adults'] ?? 70.0).toDouble(),
-        'children': (response['success_average_children'] ?? 70.0).toDouble(),
+        'adults': (response['success_average_adults'] ?? 85.0).toDouble(),
+        'children': (response['success_average_children'] ?? 14.0).toDouble(),
       };
     } catch (e) {
       print('❌ Erreur lors de la récupération des moyennes de succès: $e');
       // Valeurs par défaut en cas d'erreur
-      return {'adults': 70.0, 'children': 70.0};
+      return {'adults': 85.0, 'children': 14.0};
     }
   }
 }

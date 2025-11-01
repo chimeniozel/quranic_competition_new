@@ -7,6 +7,7 @@ import 'package:quranic_competition/core/services/round_service.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class VersionRoundResultPage extends StatefulWidget {
   final CompetitionVersion version;
@@ -51,8 +52,80 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
     }
   }
 
+  Future<bool> _checkCalculationAllowed() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final version =
+          await supabase
+              .from('competition_versions')
+              .select(
+                'is_active, is_registration_open, jury_evaluation_enabled, name',
+              )
+              .eq('id', widget.version.id)
+              .single();
+
+      final bool isActive = version['is_active'] == true;
+      final bool isRegistrationOpen = version['is_registration_open'] == true;
+      final bool juryEnabled = version['jury_evaluation_enabled'] == true;
+
+      if (!isActive) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('لا يمكن حساب النتائج لأن النسخة غير مفعلة'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+        return false;
+      }
+
+      if (isRegistrationOpen) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('أغلق التسجيل أولاً قبل حساب النتائج'),
+              backgroundColor: AppTheme.warningColor,
+            ),
+          );
+        }
+        return false;
+      }
+
+      if (juryEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'أوقف تقييم المحكّمين أولاً قبل حساب النتائج',
+              ),
+              backgroundColor: AppTheme.warningColor,
+            ),
+          );
+        }
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذر التحقق من شروط الحساب: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
   Future<void> _calculateResults(String roundId) async {
     try {
+      // Vérifier les préconditions de la version
+      final allowed = await _checkCalculationAllowed();
+      if (!allowed) return;
+
       // Afficher un dialog de chargement
       showDialog(
         context: context,
@@ -76,7 +149,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   Text(
                     'جاري حساب النتائج...',
                     style: AppTheme.bodyMedium.copyWith(
@@ -140,6 +213,8 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
       }
     }
   }
+
+  // Bouton de publication supprimé dans cette page (publication depuis صفحة النتائج التفصيلية)
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +310,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
                 ),
               )
               : ListView.builder(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 itemCount: _rounds.length,
                 itemBuilder: (context, index) {
                   final round = _rounds[index];
@@ -247,13 +322,13 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
 
   Widget _buildRoundCard(Round round) {
     return ModernCard(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header du round
           Container(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
               borderRadius: const BorderRadius.vertical(
@@ -274,7 +349,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +397,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
 
           // Contenu du round
           Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -356,6 +431,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: AppTheme.spacingS),
                     const SizedBox(width: AppTheme.spacingS),
                     Expanded(
                       child: OutlinedButton.icon(

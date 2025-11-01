@@ -64,7 +64,7 @@ class QuizResultPage extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -72,7 +72,7 @@ class QuizResultPage extends StatelessWidget {
               ModernCard(
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -87,7 +87,7 @@ class QuizResultPage extends StatelessWidget {
                   child: Column(
                     children: [
                       Icon(Icons.quiz, size: 60, color: Colors.white),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
                       Text(
                         result.levelName,
                         style: AppTheme.labelLarge.copyWith(
@@ -107,7 +107,7 @@ class QuizResultPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Résultats principaux
               Row(
@@ -293,7 +293,7 @@ class QuizResultPage extends StatelessWidget {
                       text: 'مسابقات أخرى',
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   Expanded(
                     child: PrimaryButton(
                       onPressed: () => context.go('/participant'),

@@ -128,7 +128,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
           () => context.push('/participant/archives/competition/${version.id}'),
       child: ModernCard(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -169,7 +169,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Statistiques des médias
               Row(
@@ -217,7 +217,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Bouton pour voir tous les détails
               SizedBox(
@@ -325,7 +325,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                               onRefresh: _refreshData,
                               child: ListView.builder(
                                 padding: const EdgeInsets.only(
-                                  bottom: AppTheme.spacingM,
+                                  bottom: AppTheme.spacingS,
                                 ),
                                 itemCount: _filteredVersions.length,
                                 itemBuilder: (context, index) {

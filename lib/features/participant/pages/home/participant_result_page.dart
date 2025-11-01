@@ -132,8 +132,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
     }
 
     try {
-      final result = 
-      await _resultsService.getResultsWithPagination(
+      final result = await _resultsService.getResultsWithPagination(
         roundId: _selectedRound!.id,
         ageGroup: _selectedAgeGroup,
         page: reset ? 0 : _currentPage,
@@ -206,7 +205,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
   Widget _buildVersionSelector() {
     return ModernCard(
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -244,7 +243,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                 size: 24,
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,7 +346,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
               // Message informatif si aucun round publié
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -367,7 +366,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
                         size: 16,
                       ),
                     ),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const SizedBox(width: AppTheme.spacingS),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

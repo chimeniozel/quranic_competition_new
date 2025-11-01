@@ -124,7 +124,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           0,
           0,
         ),
-        const SizedBox(height: AppTheme.spacingM),
+        const SizedBox(height: AppTheme.spacingS),
         _buildDefaultProgressCard(
           'تقييم المشاركين - الصغار',
           'صغار',
@@ -155,7 +155,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       );
 
       if (i < _evaluationStats.length - 1) {
-        cards.add(const SizedBox(height: AppTheme.spacingM));
+        cards.add(const SizedBox(height: AppTheme.spacingS));
       }
     }
 
@@ -185,7 +185,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
               child: Icon(icon, color: color, size: 25),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +217,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ],
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Text(
               '${(progress * 100).toInt()}%',
               style: AppTheme.headingSmall.copyWith(
@@ -252,7 +252,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
               child: Icon(icon, color: color, size: 25),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,7 +280,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ],
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Text(
               '0%',
               style: AppTheme.headingSmall.copyWith(
@@ -311,7 +311,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             userName: 'مدير النظام',
             userRole: 'admin',
             onProfileTap: () => context.push('/profile'),
-            onSecurityTap: () => context.push('/security'),
             onLogoutTap: () => _showLogoutConfirmation(context),
           ),
         ],
@@ -321,7 +320,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: ModernPullToRefresh(
           onRefresh: _loadDashboardData,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -366,10 +365,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         onTap: () => context.push('/admin/archives'),
                       ),
                       QuickAction(
-                        title: 'التقارير',
-                        icon: Icons.assessment,
-                        color: AppTheme.errorColor,
-                        onTap: () {},
+                        title: 'فسحة العيد',
+                        icon: Icons.celebration,
+                        color: Colors.green,
+                        onTap: () => context.push('/admin/eid-sessions'),
+                      ),
+                      QuickAction(
+                        title: 'من نحن',
+                        icon: Icons.info,
+                        color: Colors.teal,
+                        onTap: () => context.push('/admin/about-us'),
                       ),
                     ],
                     crossAxisCount: 2,
@@ -398,13 +403,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         icon: Icons.person,
                         color: AppTheme.primaryColor,
                         onTap: () => context.push('/profile'),
-                      ),
-                      UserMenuOption(
-                        title: 'الأمان',
-                        subtitle: 'كلمة المرور والإعدادات الأمنية',
-                        icon: Icons.security,
-                        color: AppTheme.warningColor,
-                        onTap: () => context.push('/security'),
                       ),
                       UserMenuOption(
                         title: 'الإشعارات',

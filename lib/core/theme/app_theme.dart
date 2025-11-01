@@ -24,8 +24,7 @@ class AppTheme {
 
   // Espacements
   static const double spacingXS = 4.0;
-  static const double spacingS = 8.0;
-  static const double spacingM = 16.0;
+  static const double spacingS = 10.0;
   static const double spacingL = 24.0;
   static const double spacingXL = 32.0;
   static const double spacingXXL = 48.0;
@@ -73,7 +72,7 @@ class AppTheme {
           elevation: elevationS,
           padding: const EdgeInsets.symmetric(
             horizontal: spacingL,
-            vertical: spacingM,
+            vertical: spacingS,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusM),
@@ -87,7 +86,7 @@ class AppTheme {
           side: const BorderSide(color: primaryColor),
           padding: const EdgeInsets.symmetric(
             horizontal: spacingL,
-            vertical: spacingM,
+            vertical: spacingS,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusM),
@@ -99,7 +98,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
           padding: const EdgeInsets.symmetric(
-            horizontal: spacingM,
+            horizontal: spacingS,
             vertical: spacingS,
           ),
           shape: RoundedRectangleBorder(
@@ -132,8 +131,8 @@ class AppTheme {
           borderSide: const BorderSide(color: errorColor, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: spacingM,
-          vertical: spacingM,
+          horizontal: spacingS,
+          vertical: spacingS,
         ),
         labelStyle: const TextStyle(color: textSecondaryColor),
         hintStyle: const TextStyle(color: textDisabledColor),

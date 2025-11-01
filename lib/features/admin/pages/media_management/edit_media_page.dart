@@ -300,7 +300,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                 child: Form(
                   key: _formKey,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppTheme.spacingM),
+                    padding: const EdgeInsets.all(AppTheme.spacingS),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -513,7 +513,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                         // Formulaire de modification
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -523,7 +523,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                       : 'تعديل المحتوى',
                                   style: AppTheme.headingMedium,
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 // Sélecteur de version (seulement si nécessaire)
                                 if (_needsVersionSelection) ...[
@@ -561,7 +561,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: AppTheme.spacingM),
+                                  const SizedBox(height: AppTheme.spacingS),
                                 ],
 
                                 // Sélecteur de type de média (seulement en création)
@@ -622,7 +622,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                       }
                                     },
                                   ),
-                                  const SizedBox(height: AppTheme.spacingM),
+                                  const SizedBox(height: AppTheme.spacingS),
                                 ],
 
                                 // Titre (seulement pour les vidéos)
@@ -656,7 +656,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                         : widget.media.type)
                                     .toString()
                                     .contains('video'))
-                                  const SizedBox(height: AppTheme.spacingM),
+                                  const SizedBox(height: AppTheme.spacingS),
 
                                 // URL
                                 if ((_isCreate
@@ -669,7 +669,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                   // Message informatif quand une image de galerie est sélectionnée
                                   Container(
                                     padding: const EdgeInsets.all(
-                                      AppTheme.spacingM,
+                                      AppTheme.spacingS,
                                     ),
                                     decoration: BoxDecoration(
                                       color: AppTheme.infoColor.withValues(
@@ -706,7 +706,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: AppTheme.spacingM),
+                                  const SizedBox(height: AppTheme.spacingS),
                                 ],
                                 TextFormField(
                                   controller: _urlController,
@@ -790,7 +790,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 // Bouton de sélection d'image (seulement pour les images)
                                 if ((_isCreate
@@ -813,7 +813,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                       _selectedImageFile != null)
                                     Container(
                                       padding: const EdgeInsets.all(
-                                        AppTheme.spacingM,
+                                        AppTheme.spacingS,
                                       ),
                                       decoration: BoxDecoration(
                                         color: AppTheme.successColor.withValues(
@@ -872,7 +872,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                 text: 'إلغاء',
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Expanded(
                               child: PrimaryButton(
                                 onPressed: _isLoading ? null : _saveChanges,

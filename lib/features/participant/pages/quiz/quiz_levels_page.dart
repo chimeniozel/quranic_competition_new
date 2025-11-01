@@ -66,7 +66,7 @@ class _ParticipantQuizLevelsPageState extends State<ParticipantQuizLevelsPage> {
           },
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
           child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -96,7 +96,7 @@ class _ParticipantQuizLevelsPageState extends State<ParticipantQuizLevelsPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const SizedBox(width: AppTheme.spacingS),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,10 +126,10 @@ class _ParticipantQuizLevelsPageState extends State<ParticipantQuizLevelsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingM,
+                    horizontal: AppTheme.spacingS,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(

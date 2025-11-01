@@ -9,6 +9,12 @@ import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'package:excel/excel.dart' as xls;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
 
 class VersionDetailPage extends StatefulWidget {
   final CompetitionVersion version;
@@ -33,6 +39,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
   String _searchQuery = '';
   AppUser? appUser;
   bool _dataLoaded = false;
+  bool _isExporting = false;
 
   // Pagination settings
   static const int _itemsPerPage = 10;
@@ -72,10 +79,13 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
       AuthService authService = AuthService();
       AppUser? user = await authService.getUserProfile();
 
-      // Charger tous les participants (seulement si pas encore chargés ou rechargement forcé)
+      // Charger tous les participants (acceptés et rejetés) pour la page de détails
       if (reset || forceReload) {
         final participants = await _participantService
-            .fetchParticipantsByVersion(widget.version.id);
+            .fetchParticipantsByVersion(
+              widget.version.id,
+              includeRejected: true, // Inclure les participants rejetés
+            );
         setState(() {
           appUser = user;
           _allParticipants = participants;
@@ -103,8 +113,11 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
       filtered =
           filtered.where((p) {
             if (_selectedStatus == 'المقبولون') {
+              // Participants acceptés: isAccepted doit être explicitement true
               return p.isAccepted == true;
             } else if (_selectedStatus == 'المرفوضون') {
+              // Participants rejetés: isAccepted doit être explicitement false
+              // Note: isAccepted est un bool non nullable, donc on vérifie == false
               return p.isAccepted == false;
             }
             return true;
@@ -143,7 +156,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
             : <Participant>[];
 
     setState(() {
-        _filteredParticipants = paginatedParticipants;
+      _filteredParticipants = paginatedParticipants;
       _totalCount = totalCount;
     });
   }
@@ -204,6 +217,193 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
     }
   }
 
+  Future<void> _exportParticipantsToExcel() async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
+    try {
+      // Préparer les listes selon les filtres demandés
+      final List<Participant> accepted =
+          _allParticipants.where((p) => p.isAccepted == true).toList();
+      final List<Participant> rejected =
+          _allParticipants.where((p) => p.isAccepted == false).toList();
+      final List<Participant> adults =
+          _allParticipants.where((p) => p.ageGroup == 'كبار').toList();
+      final List<Participant> children =
+          _allParticipants.where((p) => p.ageGroup == 'صغار').toList();
+
+      final xls.Excel excel = xls.Excel.createExcel();
+
+      List<List<xls.CellValue?>> _buildRows(List<Participant> list) {
+        final rows = <List<xls.CellValue?>>[];
+        rows.add([
+          xls.TextCellValue('رقم التسجيل'),
+          xls.TextCellValue('الاسم الكامل'),
+          xls.TextCellValue('الجنس'),
+          xls.TextCellValue('تاريخ الميلاد'),
+          xls.TextCellValue('الهاتف'),
+          xls.TextCellValue('الفئة'),
+          xls.TextCellValue('الحالة'),
+          xls.TextCellValue('سبب الرفض'),
+          xls.TextCellValue('تاريخ الإنشاء'),
+        ]);
+        for (final p in list) {
+          rows.add([
+            xls.TextCellValue((p.registrationNumber ?? '').toString()),
+            xls.TextCellValue(p.fullName),
+            xls.TextCellValue(p.gender),
+            xls.TextCellValue(p.birthDate.toIso8601String().split('T').first),
+            xls.TextCellValue(p.phone),
+            xls.TextCellValue(p.ageGroup),
+            xls.TextCellValue(
+              p.isAccepted == true
+                  ? 'مقبول'
+                  : p.isAccepted == false
+                  ? 'مرفوض'
+                  : 'قيد المراجعة',
+            ),
+            xls.TextCellValue(p.rejectionReason ?? ''),
+            xls.TextCellValue(p.createdAt.toIso8601String()),
+          ]);
+        }
+        return rows;
+      }
+
+      void _addSheet(String name, List<Participant> list) {
+        final sheet = excel[name];
+        final rows = _buildRows(list);
+        for (final row in rows) {
+          sheet.appendRow(row);
+        }
+      }
+
+      // Remplir les feuilles
+      _addSheet('جميع المشاركين', _allParticipants);
+      _addSheet('المقبولون', accepted);
+      _addSheet('المرفوضون', rejected);
+      _addSheet('الكبار', adults);
+      _addSheet('الصغار', children);
+
+      // Supprimer la feuille par défaut vide (Sheet1)
+      try {
+        final defaultSheet = excel.getDefaultSheet();
+        if (defaultSheet != null) {
+          excel.delete(defaultSheet);
+        }
+      } catch (e) {
+        // Si la feuille par défaut n'existe pas ou est déjà supprimée, ignorer
+        debugPrint('Note: Impossible de supprimer la feuille par défaut: $e');
+      }
+
+      // Nom de fichier significatif بالعربية
+      final versionName = widget.version.name.trim();
+      final fileName =
+          'المتسابقين_المشاركين_في_النسخة_${versionName}_${widget.version.year}.xlsx';
+
+      final bytes = excel.save();
+      if (bytes == null) {
+        throw Exception('فشل توليد الملف');
+      }
+
+      // تحويل List<int> إلى Uint8List للمشاركة والحفظ
+      final uint8Bytes = Uint8List.fromList(bytes);
+
+      // حفظ مؤقت للسماح بالمشاركة
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsBytes(uint8Bytes, flush: true);
+
+      if (!mounted) return;
+
+      // عرض خيارات للمستخدم: حفظ أو مشاركة
+      final action = await showDialog<String>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('اختر الإجراء', style: AppTheme.headingSmall),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ما الذي تريد فعله بالملف؟', style: AppTheme.bodyMedium),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop('save'),
+                child: Text(
+                  'حفظ في الملفات',
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop('share'),
+                child: Text(
+                  'مشاركة',
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (action == 'save') {
+        // السماح للمستخدم باختيار موقع الحفظ
+        try {
+          final String? savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'اختر موقع الحفظ',
+            fileName: fileName,
+            type: FileType.custom,
+            allowedExtensions: ['xlsx'],
+            bytes: uint8Bytes, // مطلوب على Android و iOS
+          );
+
+          if (savePath != null) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('تم حفظ الملف بنجاح'),
+                backgroundColor: AppTheme.successColor,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          // إذا ألغى المستخدم، لا تفعل شيئاً
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('خطأ في حفظ الملف: $e'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+      } else if (action == 'share') {
+        // مشاركة الملف
+        await Share.shareXFiles(
+          [XFile(tempFile.path)],
+          text:
+              'متسابقين النسخة: ${widget.version.name} - سنة ${widget.version.year}',
+          subject: 'المتسابقين المشاركين في النسخة ${versionName}',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تعذر تصدير المشاركين: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   void _navigateToParticipantDetail(Participant participant) {
     context.pushNamed(
       'participant-detail',
@@ -240,7 +440,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
         onTap: () => _navigateToParticipantDetail(participant),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -257,12 +457,12 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   // Informations principales
                   Expanded(
                     child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
                           participant.fullName,
                           style: AppTheme.labelLarge.copyWith(
@@ -321,7 +521,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               // Numéro d'enregistrement
               Container(
                 width: double.infinity,
@@ -345,7 +545,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                         color: Colors.grey[600],
                       ),
                     ),
-              Text(
+                    Text(
                       participant.registrationNumber?.toString() ?? 'غير محدد',
                       style: AppTheme.bodyMedium.copyWith(
                         color: AppTheme.primaryColor,
@@ -355,8 +555,8 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                   ],
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -395,6 +595,19 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
       appBar: ModernAppBar(
         title: widget.version.name,
         actions: [
+          // Export to Excel
+          IconButton(
+            onPressed: _isExporting ? null : _exportParticipantsToExcel,
+            tooltip: 'تصدير إلى Excel',
+            icon:
+                _isExporting
+                    ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.file_download),
+          ),
           IconButton(
             onPressed: () {
               context.pushNamed('jury-version-jurys', extra: widget.version);
@@ -424,7 +637,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                       // Header avec statistiques
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -437,7 +650,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                           borderRadius: BorderRadius.circular(AppTheme.radiusM),
                         ),
                         child: Column(
-                children: [
+                          children: [
                             Text(
                               widget.version.name,
                               style: AppTheme.headingSmall.copyWith(
@@ -458,7 +671,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                             if (_totalCount > 0) ...[
                               const SizedBox(height: AppTheme.spacingS),
                               Container(
-                    padding: const EdgeInsets.symmetric(
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: AppTheme.spacingS,
                                   vertical: 4,
                                 ),
@@ -487,7 +700,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                       // Statut d'inscription
                       ModernCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
                           child: Row(
                             children: [
                               Container(
@@ -518,7 +731,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                   size: 24,
                                 ),
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,10 +754,10 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                                 : AppTheme.errorColor,
                                         fontWeight: FontWeight.w600,
                                       ),
-                        ),
-                      ],
-                    ),
-                  ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -554,7 +767,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                       // Section de filtrage moderne
                       ModernCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -573,7 +786,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: AppTheme.spacingM),
+                              const SizedBox(height: AppTheme.spacingS),
 
                               // Boutons de catégorie modernisés
                               Container(
@@ -593,7 +806,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                         onTap: () => _selectGroup('كبار'),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                            vertical: AppTheme.spacingM,
+                                            vertical: AppTheme.spacingS,
                                             horizontal: AppTheme.spacingL,
                                           ),
                                           decoration: BoxDecoration(
@@ -605,7 +818,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                               AppTheme.radiusM,
                                             ),
                                           ),
-                    child: Text(
+                                          child: Text(
                                             'كبار',
                                             textAlign: TextAlign.center,
                                             style: AppTheme.labelLarge.copyWith(
@@ -617,15 +830,15 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
                                       child: GestureDetector(
                                         onTap: () => _selectGroup('صغار'),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                            vertical: AppTheme.spacingM,
+                                            vertical: AppTheme.spacingS,
                                             horizontal: AppTheme.spacingL,
                                           ),
                                           decoration: BoxDecoration(
@@ -655,7 +868,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: AppTheme.spacingM),
+                              const SizedBox(height: AppTheme.spacingS),
 
                               // Filtrage par statut d'acceptation
                               Row(
@@ -710,7 +923,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: AppTheme.spacingM),
+                              const SizedBox(height: AppTheme.spacingS),
 
                               // Champ de recherche modernisé
                               Container(
@@ -738,8 +951,8 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                     ),
                                     border: InputBorder.none,
                                     contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: AppTheme.spacingM,
-                                      vertical: AppTheme.spacingM,
+                                      horizontal: AppTheme.spacingS,
+                                      vertical: AppTheme.spacingS,
                                     ),
                                   ),
                                 ),
@@ -753,7 +966,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                       // Header des participants
                       ModernCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
                           child: Row(
                             children: [
                               Container(
@@ -774,7 +987,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                   size: 24,
                                 ),
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -800,7 +1013,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                               if (_filteredParticipants.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: AppTheme.spacingM,
+                                    horizontal: AppTheme.spacingS,
                                     vertical: AppTheme.spacingS,
                                   ),
                                   decoration: BoxDecoration(
@@ -862,7 +1075,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
 
   Widget _buildPaginationWidget() {
     return Container(
-      margin: const EdgeInsets.only(top: AppTheme.spacingM),
+      margin: const EdgeInsets.only(top: AppTheme.spacingS),
       padding: const EdgeInsets.all(AppTheme.spacingS),
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
@@ -945,9 +1158,9 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                 ),
               ),
             ],
-                  ),
-                ],
-              ),
+          ),
+        ],
+      ),
     );
   }
 

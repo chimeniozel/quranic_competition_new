@@ -127,40 +127,37 @@ class EvaluationStatsService {
       if (activeRound.number == 1) {
         // Round 1: tous les participants de la version
         final response = await _supabase
-            .from('participant_versions')
-            .select('participant_id, participants(*)')
-            .eq('version_id', versionId);
+            .from('participants')
+            .select('*')
+            .eq('competition_id', versionId)
+            .eq('is_accepted', true);
 
         return response.map<Participant>((record) {
-          final participantData =
-              record['participants'] as Map<String, dynamic>;
-          return Participant.fromMap(participantData);
+          return Participant.fromMap(record);
         }).toList();
       } else if (activeRound.number == 2) {
         // Round 2: seulement ceux qui ont passé le round 1
         final response = await _supabase
-            .from('participant_versions')
-            .select('participant_id, participants(*)')
-            .eq('version_id', versionId)
+            .from('participants')
+            .select('*')
+            .eq('competition_id', versionId)
+            .eq('is_accepted', true)
             .eq('passed_round1', true);
 
         return response.map<Participant>((record) {
-          final participantData =
-              record['participants'] as Map<String, dynamic>;
-          return Participant.fromMap(participantData);
+          return Participant.fromMap(record);
         }).toList();
       } else {
         // Autres rounds: logique similaire
         final response = await _supabase
-            .from('participant_versions')
-            .select('participant_id, participants(*)')
-            .eq('version_id', versionId)
+            .from('participants')
+            .select('*')
+            .eq('competition_id', versionId)
+            .eq('is_accepted', true)
             .eq('passed_round1', true);
 
         return response.map<Participant>((record) {
-          final participantData =
-              record['participants'] as Map<String, dynamic>;
-          return Participant.fromMap(participantData);
+          return Participant.fromMap(record);
         }).toList();
       }
     } catch (e) {

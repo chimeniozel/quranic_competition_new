@@ -230,7 +230,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
         // Barre de recherche
         ModernCard(
           child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -257,7 +257,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
                 TextField(
                   controller: _searchController,
                   onChanged: _onSearchChanged,
@@ -298,7 +298,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
         // Filtres de type
         ModernCard(
           child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -325,7 +325,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
                 Row(
                   children: [
                     Expanded(
@@ -387,7 +387,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
+          horizontal: AppTheme.spacingS,
           vertical: AppTheme.spacingS,
         ),
         decoration: BoxDecoration(
@@ -428,7 +428,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
           },
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
           child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -471,7 +471,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 if (rule.imageUrl != null && rule.imageUrl!.isNotEmpty) ...[
                   ClipRRect(
@@ -492,7 +492,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                       },
                     ),
                   ),
-                  const SizedBox(height: AppTheme.spacingM),
+                  const SizedBox(height: AppTheme.spacingS),
                 ],
 
                 if (rule.type == TajweedType.video &&
@@ -500,7 +500,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                   GestureDetector(
                     onTap: () => _launchVideo(rule.videoUrl!),
                     child: Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       decoration: BoxDecoration(
                         color: AppTheme.errorColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -522,7 +522,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                               size: 28,
                             ),
                           ),
-                          const SizedBox(width: AppTheme.spacingM),
+                          const SizedBox(width: AppTheme.spacingS),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,7 +573,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppTheme.spacingM),
+                  const SizedBox(height: AppTheme.spacingS),
                 ],
 
                 Text(
@@ -585,12 +585,12 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 // Message pour indiquer que c'est cliquable
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingM,
+                    horizontal: AppTheme.spacingS,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
@@ -619,10 +619,10 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   decoration: BoxDecoration(
                     color: AppTheme.backgroundColor,
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -732,7 +732,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                                 return _isLoadingMore
                                     ? const Padding(
                                       padding: EdgeInsets.all(
-                                        AppTheme.spacingM,
+                                        AppTheme.spacingS,
                                       ),
                                       child: Center(
                                         child: CircularProgressIndicator(),
@@ -740,7 +740,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                                     )
                                     : Padding(
                                       padding: const EdgeInsets.all(
-                                        AppTheme.spacingM,
+                                        AppTheme.spacingS,
                                       ),
                                       child: SizedBox(
                                         width: double.infinity,

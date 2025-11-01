@@ -29,7 +29,7 @@ class ModernUserMenu extends StatelessWidget {
       children: [
         // Header utilisateur
         Container(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           decoration: BoxDecoration(
             gradient: AppTheme.primaryGradient,
             borderRadius: const BorderRadius.only(
@@ -44,7 +44,7 @@ class ModernUserMenu extends StatelessWidget {
                 imageUrl: avatarUrl,
                 size: 50,
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +215,7 @@ class UserMenuItem extends StatelessWidget {
                 ),
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
+          horizontal: AppTheme.spacingS,
           vertical: AppTheme.spacingS,
         ),
       ),
@@ -338,7 +338,7 @@ class ModernContextMenu extends StatelessWidget {
                         ),
                         child: Icon(item.icon, color: item.color, size: 16),
                       ),
-                      const SizedBox(width: AppTheme.spacingM),
+                      const SizedBox(width: AppTheme.spacingS),
                       Expanded(
                         child: Text(item.title, style: AppTheme.bodyMedium),
                       ),
@@ -415,7 +415,7 @@ class UserProfileCompact extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         decoration: BoxDecoration(
           color: AppTheme.backgroundColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -428,7 +428,7 @@ class UserProfileCompact extends StatelessWidget {
               imageUrl: avatarUrl,
               size: 40,
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

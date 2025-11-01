@@ -690,7 +690,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppTheme.spacingL,
-                  vertical: AppTheme.spacingM,
+                  vertical: AppTheme.spacingS,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -870,8 +870,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                             border: InputBorder.none,
                                             contentPadding:
                                                 const EdgeInsets.symmetric(
-                                                  horizontal: AppTheme.spacingM,
-                                                  vertical: AppTheme.spacingM,
+                                                  horizontal: AppTheme.spacingS,
+                                                  vertical: AppTheme.spacingS,
                                                 ),
                                             filled: false,
                                           ),
@@ -1150,8 +1150,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                               contentPadding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal:
-                                                        AppTheme.spacingM,
-                                                    vertical: AppTheme.spacingM,
+                                                        AppTheme.spacingS,
+                                                    vertical: AppTheme.spacingS,
                                                   ),
                                               filled: false,
                                             ),
@@ -1167,7 +1167,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: AppTheme.spacingM),
+                                      const SizedBox(width: AppTheme.spacingS),
 
                                       // Dropdown filtre avec design moderne
                                       Expanded(
@@ -1376,12 +1376,12 @@ class _UserManagementPageState extends State<UserManagementPage> {
                               },
                             ),
 
-                            const SizedBox(height: AppTheme.spacingM),
+                            const SizedBox(height: AppTheme.spacingS),
 
                             // Liste des utilisateurs
                             Container(
                               // padding: const EdgeInsets.all(
-                              //   AppTheme.spacingM,
+                              //   AppTheme.spacingS,
                               // ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(
@@ -1482,7 +1482,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: AppTheme.spacingM),
+                                  const SizedBox(height: AppTheme.spacingS),
 
                                   // Contenu de la liste
                                   _filteredUsers.isEmpty
@@ -1493,7 +1493,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                             (user) => _buildUserCard(user),
                                           ),
                                           const SizedBox(
-                                            height: AppTheme.spacingM,
+                                            height: AppTheme.spacingS,
                                           ),
                                         ],
                                       ),

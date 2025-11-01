@@ -85,7 +85,7 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
           content: const Text(
             'تم إنشاء حسابك بنجاح!\n\n'
-            'يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب.\n'
+            'في انتظار توثيق حسابك من قبل الإدارة.\n'
             'بعد ذلك، ستتمكن من تسجيل الدخول.',
           ),
           actions: [
@@ -231,7 +231,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: InputDecoration(
                   labelText: 'رقم الهاتف',
                   prefixIcon: const Icon(Icons.phone_outlined),
-                  hintText: '+966501234567',
+                  hintText: '+2222020202020',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -258,33 +258,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 labelText: 'تأكيد كلمة المرور',
               ),
               const SizedBox(height: 16),
-              // Sélection du rôle
-              DropdownButtonFormField<String>(
-                value: _role,
-                decoration: InputDecoration(
-                  labelText: 'الدور',
-                  prefixIcon: const Icon(Icons.work_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'membre', child: Text('عضو عادي')),
-                  DropdownMenuItem(
-                    value: 'jury',
-                    child: Text('عضو لجنة التحكيم'),
-                  ),
-                  DropdownMenuItem(value: 'admin', child: Text('مدير')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _role = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 32),
 
               // Bouton d'inscription
               _isLoading

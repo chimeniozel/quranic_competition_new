@@ -15,6 +15,7 @@ class Participant {
   final DateTime createdAt;
   bool isEvaluated;
   bool isAccepted; // حالة قبول المشاركة
+  bool passedRound1; // هل نجح في الجولة الأولى
   final String? rejectionReason; // سبب الرفض
   final String? competitionId;
 
@@ -35,6 +36,7 @@ class Participant {
     required this.createdAt,
     this.isEvaluated = false,
     this.isAccepted = true,
+    this.passedRound1 = false,
     this.rejectionReason,
     this.competitionId,
   });
@@ -57,6 +59,7 @@ class Participant {
       createdAt: DateTime.parse(map['created_at'] as String),
       isEvaluated: map['is_evaluated'] as bool? ?? false,
       isAccepted: map['is_accepted'] as bool? ?? true,
+      passedRound1: map['passed_round1'] as bool? ?? false,
       rejectionReason: map['rejection_reason'] as String?,
       competitionId: map['competition_id'] as String?,
     );
@@ -80,6 +83,7 @@ class Participant {
       'created_at': createdAt.toIso8601String(),
       'is_evaluated': isEvaluated,
       'is_accepted': isAccepted,
+      'passed_round1': passedRound1,
       'rejection_reason': rejectionReason,
       'competition_id': competitionId,
     };

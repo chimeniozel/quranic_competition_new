@@ -306,7 +306,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                 subtitle: 'تأكد من وجود جولة نشطة للتقييم',
               )
               : SingleChildScrollView(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -322,7 +322,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                                 color: AppTheme.errorColor,
                                 size: 24,
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,7 +359,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                                 color: AppTheme.infoColor,
                                 size: 20,
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Text(
                                   'تم نشر النتائج - يمكنك عرض التقييم فقط',
@@ -398,7 +398,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                           2,
                           (v) => _noteModel.noteIltizamRiwaya = v,
                         ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
 
                       // Carte de résultat total
                       ModernCard(
@@ -411,7 +411,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                               color: AppTheme.primaryColor,
                               size: 28,
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Text(
                               'النتيجة النهائية:',
                               style: AppTheme.headingSmall.copyWith(
@@ -429,7 +429,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
 
                       // Champ de notes
                       ModernCard(
@@ -452,7 +452,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                           maxLines: 3,
                         ),
                       ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
 
                       // Bouton de soumission (seulement si autorisé et pas en lecture seule)
                       if (!_isReadOnly &&
@@ -466,7 +466,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                                         .withOpacity(0.1),
                                     child: const Padding(
                                       padding: EdgeInsets.all(
-                                        AppTheme.spacingM,
+                                        AppTheme.spacingS,
                                       ),
                                       child: Row(
                                         mainAxisAlignment:
@@ -479,7 +479,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                                               strokeWidth: 2,
                                             ),
                                           ),
-                                          SizedBox(width: AppTheme.spacingM),
+                                          SizedBox(width: AppTheme.spacingS),
                                           Text('جاري الإرسال...'),
                                         ],
                                       ),
@@ -511,7 +511,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                                 color: AppTheme.errorColor,
                                 size: 20,
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Text(
                                   'التقييم غير مسموح به - انتظر إذن المسؤول',
@@ -536,7 +536,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                                 color: AppTheme.textSecondaryColor,
                                 size: 20,
                               ),
-                              const SizedBox(width: AppTheme.spacingM),
+                              const SizedBox(width: AppTheme.spacingS),
                               Expanded(
                                 child: Text(
                                   'تم نشر النتائج - لا يمكن تعديل التقييم',

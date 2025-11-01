@@ -17,7 +17,7 @@ class ParticipantDetailPage extends StatelessWidget {
   ) {
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
       child: Container(
@@ -30,11 +30,11 @@ class ParticipantDetailPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -48,7 +48,7 @@ class ParticipantDetailPage extends StatelessWidget {
                 ),
                 child: Icon(icon, color: Colors.white, size: 16),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,7 +100,7 @@ class ParticipantDetailPage extends StatelessWidget {
 
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
       child: Container(
@@ -113,11 +113,11 @@ class ParticipantDetailPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -131,7 +131,7 @@ class ParticipantDetailPage extends StatelessWidget {
                 ),
                 child: Icon(icon, color: Colors.white, size: 16),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,7 +184,7 @@ class ParticipantDetailPage extends StatelessWidget {
             : Icons.hourglass_empty;
 
     return ModernCard(
-      margin: const EdgeInsets.all(AppTheme.spacingM),
+      margin: const EdgeInsets.all(AppTheme.spacingS),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -203,7 +203,7 @@ class ParticipantDetailPage extends StatelessWidget {
             children: [
               // Statut principal
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -219,14 +219,14 @@ class ParticipantDetailPage extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       decoration: BoxDecoration(
                         color: statusColor,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(statusIcon, color: Colors.white, size: 20),
                     ),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const SizedBox(width: AppTheme.spacingS),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,10 +248,10 @@ class ParticipantDetailPage extends StatelessWidget {
 
               // Raison de refus si applicable
               if (isAccepted == false) ...[
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -306,7 +306,7 @@ class ParticipantDetailPage extends StatelessWidget {
 
   Widget _buildHeaderCard() {
     return ModernCard(
-      margin: const EdgeInsets.all(AppTheme.spacingM),
+      margin: const EdgeInsets.all(AppTheme.spacingS),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -349,7 +349,7 @@ class ParticipantDetailPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Nom complet
               Text(
@@ -364,7 +364,7 @@ class ParticipantDetailPage extends StatelessWidget {
               // Groupe d'âge
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingM,
+                  horizontal: AppTheme.spacingS,
                   vertical: AppTheme.spacingS,
                 ),
                 decoration: BoxDecoration(
@@ -407,12 +407,12 @@ class ParticipantDetailPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Numéro d'enregistrement
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -440,7 +440,7 @@ class ParticipantDetailPage extends StatelessWidget {
                         size: 16,
                       ),
                     ),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const SizedBox(width: AppTheme.spacingS),
                     Text('رقم التسجيل', style: AppTheme.labelMedium),
                     const SizedBox(width: AppTheme.spacingS),
                     Text(
@@ -490,10 +490,10 @@ class ParticipantDetailPage extends StatelessWidget {
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacingM,
-                vertical: AppTheme.spacingM,
+                horizontal: AppTheme.spacingS,
+                vertical: AppTheme.spacingS,
               ),
-              padding: const EdgeInsets.all(AppTheme.spacingM),
+              padding: const EdgeInsets.all(AppTheme.spacingS),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
@@ -522,7 +522,7 @@ class ParticipantDetailPage extends StatelessWidget {
                       size: 16,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   Text(
                     'المعلومات الشخصية',
                     style: AppTheme.headingSmall.copyWith(
@@ -566,10 +566,10 @@ class ParticipantDetailPage extends StatelessWidget {
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacingM,
-                vertical: AppTheme.spacingM,
+                horizontal: AppTheme.spacingS,
+                vertical: AppTheme.spacingS,
               ),
-              padding: const EdgeInsets.all(AppTheme.spacingM),
+              padding: const EdgeInsets.all(AppTheme.spacingS),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
@@ -596,7 +596,7 @@ class ParticipantDetailPage extends StatelessWidget {
                       size: 16,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   Text(
                     'معلومات المشاركة',
                     style: AppTheme.headingSmall.copyWith(

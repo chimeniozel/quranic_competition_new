@@ -6,6 +6,7 @@ import 'package:quranic_competition/core/services/round_results_service.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class VersionResultPage extends StatefulWidget {
   final CompetitionVersion version;
@@ -28,14 +29,18 @@ class _VersionResultPageState extends State<VersionResultPage> {
   List<RoundResult> _allResults = []; // Tous les résultats chargés
   List<RoundResult> _results = []; // Résultats filtrés par groupe d'âge
   bool _isLoading = true;
+  bool _isPublishing = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   String _selectedAgeGroup = 'كبار';
+  late bool _published;
+  bool get _hasResults => _allResults.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _published = widget.round.resultIsPublished;
     _loadResults();
   }
 
@@ -109,6 +114,146 @@ class _VersionResultPageState extends State<VersionResultPage> {
     );
   }
 
+  Future<void> _publishResults() async {
+    if (_published || _isPublishing) return;
+    if (!_hasResults) {
+      _showErrorSnackBar('لا توجد نتائج لنشرها');
+      return;
+    }
+    setState(() => _isPublishing = true);
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => AlertDialog(
+              backgroundColor: AppTheme.backgroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+              ),
+              content: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Text(
+                    'جاري نشر النتائج...',
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      );
+
+      final supabase = Supabase.instance.client;
+      await supabase
+          .from('rounds')
+          .update({'result_is_published': true})
+          .eq('id', widget.round.id);
+
+      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        setState(() {
+          _published = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.public, color: Colors.white),
+                SizedBox(width: AppTheme.spacingS),
+                Text('تم نشر النتائج بنجاح'),
+              ],
+            ),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusS),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      _showErrorSnackBar('خطأ أثناء نشر النتائج');
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
+  Future<void> _unpublishResults() async {
+    if (!_published || _isPublishing) return;
+    setState(() => _isPublishing = true);
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => AlertDialog(
+              backgroundColor: AppTheme.backgroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+              ),
+              content: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Text(
+                    'جاري إلغاء نشر النتائج...',
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      );
+
+      final supabase = Supabase.instance.client;
+      await supabase
+          .from('rounds')
+          .update({'result_is_published': false})
+          .eq('id', widget.round.id);
+
+      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        setState(() => _published = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.undo, color: Colors.white),
+                SizedBox(width: AppTheme.spacingS),
+                Text('تم إلغاء نشر النتائج'),
+              ],
+            ),
+            backgroundColor: AppTheme.warningColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusS),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      _showErrorSnackBar('خطأ أثناء إلغاء النشر');
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
   List<RoundResult> get _filteredResults {
     if (_searchQuery.isEmpty) {
       return _results;
@@ -138,6 +283,70 @@ class _VersionResultPageState extends State<VersionResultPage> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          if (!_published && _hasResults)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: AppTheme.spacingS),
+              child: ElevatedButton.icon(
+                onPressed: _isPublishing ? null : _publishResults,
+                icon:
+                    _isPublishing
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Icon(Icons.publish, color: Colors.white),
+                label: const Text('نشر النتائج'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.successColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingS,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  ),
+                  elevation: AppTheme.elevationS,
+                ),
+              ),
+            )
+          else if (_published)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: AppTheme.spacingS),
+              child: OutlinedButton.icon(
+                onPressed: _isPublishing ? null : _unpublishResults,
+                icon:
+                    _isPublishing
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.undo),
+                label: const Text('إلغاء النشر'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.warningColor,
+                  side: const BorderSide(color: AppTheme.warningColor),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingS,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body:
           _isLoading
@@ -203,7 +412,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
                   controller: _scrollController,
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
                           _buildRoundInfo(),
@@ -223,7 +432,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
   Widget _buildRoundInfo() {
     return ModernCard(
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -261,7 +470,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
                 size: 24,
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,13 +506,11 @@ class _VersionResultPageState extends State<VersionResultPage> {
               ),
               decoration: BoxDecoration(
                 color:
-                    widget.round.resultIsPublished
-                        ? AppTheme.successColor
-                        : AppTheme.warningColor,
+                    _published ? AppTheme.successColor : AppTheme.warningColor,
                 borderRadius: BorderRadius.circular(AppTheme.radiusS),
               ),
               child: Text(
-                widget.round.resultIsPublished ? 'منشور' : 'غير منشور',
+                _published ? 'منشور' : 'غير منشور',
                 style: AppTheme.bodySmall.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -321,7 +528,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
       child: Row(
         children: [
           Icon(Icons.groups, color: AppTheme.warningColor, size: 24),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: Row(
               children: [
@@ -420,7 +627,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           final result = filteredResults[index];
@@ -452,7 +659,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
       margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
       child: ModernCard(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Row(
             children: [
               // Position et médaille
@@ -483,7 +690,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
                           ),
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
 
               // Informations du participant
               Expanded(
@@ -544,7 +751,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
               // Score
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingM,
+                  horizontal: AppTheme.spacingS,
                   vertical: AppTheme.spacingS,
                 ),
                 decoration: BoxDecoration(

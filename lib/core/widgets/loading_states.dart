@@ -36,7 +36,7 @@ class ModernLoadingIndicator extends StatelessWidget {
             ),
           ),
           if (showMessage && message != null) ...[
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
             Text(
               message!,
               style: AppTheme.bodyMedium,
@@ -101,12 +101,12 @@ class ListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding ?? const EdgeInsets.all(AppTheme.spacingM),
+      padding: padding ?? const EdgeInsets.all(AppTheme.spacingS),
       child: Column(
         children: List.generate(
           itemCount,
           (index) => Padding(
-            padding: const EdgeInsets.only(bottom: AppTheme.spacingM),
+            padding: const EdgeInsets.only(bottom: AppTheme.spacingS),
             child: LoadingSkeleton(
               width: double.infinity,
               height: itemHeight,

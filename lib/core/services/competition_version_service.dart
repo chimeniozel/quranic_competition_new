@@ -226,6 +226,8 @@ class CompetitionVersionService {
     required int maxAdults,
     required int maxChildren,
     required bool isRegistrationOpen,
+    required double successAverageAdults,
+    required double successAverageChildren,
   }) async {
     final response =
         await _supabase
@@ -237,6 +239,9 @@ class CompetitionVersionService {
               'max_children': maxChildren,
               'is_registration_open': isRegistrationOpen,
               'is_active': true,
+              'jury_evaluation_enabled': false,
+              'success_average_adults': successAverageAdults,
+              'success_average_children': successAverageChildren,
             })
             .select()
             .single();
@@ -292,18 +297,113 @@ class CompetitionVersionService {
     return success;
   }
 
+  /// Récupère les statistiques des éléments liés à une version
+  Future<Map<String, int>> getVersionRelatedCounts(String versionId) async {
+    try {
+      // Compter les participants
+      final participantsResponse = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId);
+      final participantsCount = participantsResponse.length;
+
+      // Compter les rounds
+      final roundsResponse = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId);
+      final roundsCount = roundsResponse.length;
+
+      // Compter les évaluations (via les rounds)
+      int evaluationsCount = 0;
+      if (roundsCount > 0) {
+        final evaluationsResponse = await _supabase
+            .from('evaluations')
+            .select('id')
+            .inFilter('round_id', roundsResponse.map((r) => r['id']).toList());
+        evaluationsCount = evaluationsResponse.length;
+      }
+
+      // Compter les assignations de jurys (via les rounds)
+      int juryAssignmentsCount = 0;
+      if (roundsCount > 0) {
+        final juryAssignmentsResponse = await _supabase
+            .from('round_jury_assignments')
+            .select('user_id')
+            .inFilter('round_id', roundsResponse.map((r) => r['id']).toList());
+        juryAssignmentsCount = juryAssignmentsResponse.length;
+      }
+
+      // Compter les résultats
+      final resultsResponse = await _supabase
+          .from('round_results')
+          .select('id')
+          .eq('version_id', versionId);
+      final resultsCount = resultsResponse.length;
+
+      return {
+        'participants': participantsCount,
+        'rounds': roundsCount,
+        'evaluations': evaluationsCount,
+        'juryAssignments': juryAssignmentsCount,
+        'results': resultsCount,
+      };
+    } catch (e) {
+      print('Erreur lors de la récupération des statistiques: $e');
+      return {
+        'participants': 0,
+        'rounds': 0,
+        'evaluations': 0,
+        'juryAssignments': 0,
+        'results': 0,
+      };
+    }
+  }
+
+  /// Supprime une version de compétition avec suppression en cascade
   Future<void> deleteVersion(String versionId) async {
-    final response =
-        await _supabase
-            .from('competition_versions')
-            .delete()
-            .eq('id', versionId)
-            .select(); // récupérer les données supprimées
+    try {
+      // Vérifier d'abord si la version est active
+      final versionResponse =
+          await _supabase
+              .from('competition_versions')
+              .select('is_active, name')
+              .eq('id', versionId)
+              .single();
 
-    print('Delete response: $response');
+      if (versionResponse['is_active'] == true) {
+        throw Exception(
+          'لا يمكن حذف النسخة النشطة "${versionResponse['name']}". يجب إلغاء تفعيلها أولاً.',
+        );
+      }
 
-    if ((response.isEmpty)) {
-      throw Exception('Erreur lors de la suppression : version introuvable');
+      // Récupérer les statistiques avant suppression
+      final counts = await getVersionRelatedCounts(versionId);
+
+      print('🗑️ Suppression de la version $versionId');
+      print('📊 Éléments qui seront supprimés:');
+      print('   - Participants: ${counts['participants']}');
+      print('   - Rounds: ${counts['rounds']}');
+      print('   - Évaluations: ${counts['evaluations']}');
+      print('   - Assignations jurys: ${counts['juryAssignments']}');
+      print('   - Résultats: ${counts['results']}');
+
+      // Supprimer la version (la suppression en cascade s'occupera du reste)
+      final response =
+          await _supabase
+              .from('competition_versions')
+              .delete()
+              .eq('id', versionId)
+              .select();
+
+      if (response.isEmpty) {
+        throw Exception('Erreur lors de la suppression : version introuvable');
+      }
+
+      print('✅ Version supprimée avec succès (suppression en cascade)');
+    } catch (e) {
+      print('❌ Erreur lors de la suppression de la version: $e');
+      rethrow;
     }
   }
 

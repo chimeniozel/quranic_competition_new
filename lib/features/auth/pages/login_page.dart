@@ -135,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                 'حسابك غير محقق حالياً. يجب أن يتم التحقق من حسابك من قبل الإدارة للوصول إلى المنصة.',
                 style: TextStyle(fontSize: 16),
               ),
-              SizedBox(height: AppTheme.spacingM),
+              SizedBox(height: AppTheme.spacingS),
               Text(
                 'يرجى التواصل مع الإدارة أو المحاولة لاحقاً.',
                 style: TextStyle(
@@ -190,7 +190,7 @@ class _LoginPageState extends State<LoginPage> {
           // Rafraîchir la page si nécessaire
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Form(
             key: _formKey,
             child: Column(
@@ -206,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     children: [
                       Icon(Icons.login, size: 60, color: Colors.white),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
                       Text(
                         'مرحباً بك',
                         style: AppTheme.headingMedium.copyWith(
@@ -236,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                   prefixIcon: const Icon(Icons.email_outlined),
                   validator: _validateEmail,
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 ModernTextField(
                   controller: _passwordController,
@@ -268,7 +268,7 @@ class _LoginPageState extends State<LoginPage> {
                   isLoading: _isLoading,
                   fullWidth: true,
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 // Liens d'action
                 Row(
@@ -284,7 +284,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 // Bouton pour accéder à la page d'accueil
                 SecondaryButton(
@@ -307,7 +307,7 @@ class _LoginPageState extends State<LoginPage> {
                             color: AppTheme.infoColor,
                             size: 20,
                           ),
-                          const SizedBox(width: AppTheme.spacingM),
+                          const SizedBox(width: AppTheme.spacingS),
                           Expanded(
                             child: Text(
                               'تأكد من استخدام بيانات الدخول الصحيحة للوصول إلى حسابك',
@@ -327,7 +327,7 @@ class _LoginPageState extends State<LoginPage> {
                             color: AppTheme.warningColor,
                             size: 20,
                           ),
-                          const SizedBox(width: AppTheme.spacingM),
+                          const SizedBox(width: AppTheme.spacingS),
                           Expanded(
                             child: Text(
                               'يجب أن يكون حسابك محققاً من قبل الإدارة للوصول',

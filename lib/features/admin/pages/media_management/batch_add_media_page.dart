@@ -287,14 +287,14 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 child: Form(
                   key: _formKey,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppTheme.spacingM),
+                    padding: const EdgeInsets.all(AppTheme.spacingS),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Sélection de la compétition
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -302,7 +302,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                   'اختيار المسابقة',
                                   style: AppTheme.headingMedium,
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
                                 DropdownButtonFormField<CompetitionVersion>(
                                   value: _selectedVersion,
                                   decoration: InputDecoration(
@@ -339,13 +339,13 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingM),
+                        const SizedBox(height: AppTheme.spacingS),
 
                         // Aperçu global des images sélectionnées
                         if (_getAllSelectedImages().isNotEmpty) ...[
                           ModernCard(
                             child: Padding(
-                              padding: const EdgeInsets.all(AppTheme.spacingM),
+                              padding: const EdgeInsets.all(AppTheme.spacingS),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -366,7 +366,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: AppTheme.spacingM),
+                                  const SizedBox(height: AppTheme.spacingS),
                                   Container(
                                     height: 120,
                                     child: ListView.builder(
@@ -484,13 +484,13 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: AppTheme.spacingM),
+                          const SizedBox(height: AppTheme.spacingS),
                         ],
 
                         // Liste des médias
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -508,7 +508,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
                                 ...List.generate(_mediaItems.length, (index) {
                                   return _buildMediaItem(index);
                                 }),
@@ -521,7 +521,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                         // Bouton de sauvegarde principal en bas
                         ModernCard(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: SizedBox(
                               width: double.infinity,
                               child: PrimaryButton(
@@ -544,8 +544,8 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
     final item = _mediaItems[index];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       decoration: BoxDecoration(
         border: Border.all(color: AppTheme.dividerColor),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -568,7 +568,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 ),
             ],
           ),
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
 
           // Sélecteur de type
           DropdownButtonFormField<MediaType>(
@@ -612,7 +612,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
               }
             },
           ),
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
 
           // Titre (seulement pour les vidéos)
           if (item.type == MediaType.video) ...[
@@ -639,7 +639,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 });
               },
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
           ],
 
           // URL pour les vidéos seulement
@@ -670,7 +670,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 });
               },
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
           ],
 
           // Boutons pour les images
@@ -693,7 +693,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 item.selectedFiles!.isNotEmpty) ...[
               const SizedBox(height: AppTheme.spacingS),
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: AppTheme.successColor.withValues(alpha: 0.1),
                   border: Border.all(
@@ -719,7 +719,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Aperçu des images sélectionnées
               Container(

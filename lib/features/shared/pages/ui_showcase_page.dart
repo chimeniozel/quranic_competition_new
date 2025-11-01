@@ -25,7 +25,7 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
           await Future.delayed(const Duration(seconds: 1));
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -35,19 +35,19 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                 child: Column(
                   children: [
                     const PrimaryButton(text: 'زر أساسي', icon: Icons.star),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     const PrimaryButton(
                       text: 'زر أساسي مع تحميل',
                       isLoading: true,
                     ),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     const SecondaryButton(text: 'زر ثانوي', icon: Icons.edit),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     const SecondaryButton(
                       text: 'زر ثانوي مع تحميل',
                       isLoading: true,
                     ),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     PrimaryButton(
                       text: 'زر كامل العرض',
                       fullWidth: true,
@@ -85,7 +85,7 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                       child: const Row(
                         children: [
                           Icon(Icons.touch_app),
-                          SizedBox(width: AppTheme.spacingM),
+                          SizedBox(width: AppTheme.spacingS),
                           Text('بطاقة قابلة للنقر'),
                         ],
                       ),
@@ -100,8 +100,8 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
               _buildSection(
                 title: 'الشارات',
                 child: Wrap(
-                  spacing: AppTheme.spacingM,
-                  runSpacing: AppTheme.spacingM,
+                  spacing: AppTheme.spacingS,
+                  runSpacing: AppTheme.spacingS,
                   children: const [
                     StatusBadge(text: 'نشط', status: 'active'),
                     StatusBadge(text: 'في الانتظار', status: 'pending'),
@@ -120,11 +120,11 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                 child: Row(
                   children: const [
                     CustomAvatar(initials: 'أح'),
-                    SizedBox(width: AppTheme.spacingM),
+                    SizedBox(width: AppTheme.spacingS),
                     CustomAvatar(initials: 'مح'),
-                    SizedBox(width: AppTheme.spacingM),
+                    SizedBox(width: AppTheme.spacingS),
                     CustomAvatar(initials: 'سع'),
-                    SizedBox(width: AppTheme.spacingM),
+                    SizedBox(width: AppTheme.spacingS),
                     CustomAvatar(fallbackIcon: Icons.person),
                   ],
                 ),
@@ -142,14 +142,14 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                       hint: 'أدخل اسم المستخدم',
                       prefixIcon: Icon(Icons.person),
                     ),
-                    SizedBox(height: AppTheme.spacingM),
+                    SizedBox(height: AppTheme.spacingS),
                     ModernTextField(
                       label: 'البريد الإلكتروني',
                       hint: 'أدخل البريد الإلكتروني',
                       prefixIcon: Icon(Icons.email),
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    SizedBox(height: AppTheme.spacingM),
+                    SizedBox(height: AppTheme.spacingS),
                     ModernTextField(
                       label: 'كلمة المرور',
                       hint: 'أدخل كلمة المرور',
@@ -188,7 +188,7 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                             },
                           ),
                         ),
-                        const SizedBox(width: AppTheme.spacingM),
+                        const SizedBox(width: AppTheme.spacingS),
                         Expanded(
                           child: SecondaryButton(
                             text: 'تراجع',
@@ -216,17 +216,17 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                 child: Column(
                   children: const [
                     ModernAlert(message: 'هذه رسالة معلوماتية', type: 'info'),
-                    SizedBox(height: AppTheme.spacingM),
+                    SizedBox(height: AppTheme.spacingS),
                     ModernAlert(
                       message: 'تم حفظ البيانات بنجاح',
                       type: 'success',
                     ),
-                    SizedBox(height: AppTheme.spacingM),
+                    SizedBox(height: AppTheme.spacingS),
                     ModernAlert(
                       message: 'تحذير: تأكد من البيانات',
                       type: 'warning',
                     ),
-                    SizedBox(height: AppTheme.spacingM),
+                    SizedBox(height: AppTheme.spacingS),
                     ModernAlert(
                       message: 'خطأ: فشل في حفظ البيانات',
                       type: 'error',
@@ -245,11 +245,11 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                     const ModernLoadingIndicator(message: 'جاري التحميل...'),
                     const SizedBox(height: AppTheme.spacingL),
                     const LoadingSkeleton(width: double.infinity, height: 60),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     const Row(
                       children: [
                         LoadingSkeleton(width: 50, height: 50),
-                        SizedBox(width: AppTheme.spacingM),
+                        SizedBox(width: AppTheme.spacingS),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,7 +299,7 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                       },
                       child: const Text('عرض حالة فارغة'),
                     ),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     ElevatedButton(
                       onPressed: () {
                         showDialog(
@@ -330,7 +330,7 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
                       },
                       child: const Text('عرض حالة خطأ'),
                     ),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     ElevatedButton(
                       onPressed: () {
                         showDialog(
@@ -370,7 +370,7 @@ class _UIShowcasePageState extends State<UIShowcasePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: AppTheme.headingMedium),
-        const SizedBox(height: AppTheme.spacingM),
+        const SizedBox(height: AppTheme.spacingS),
         child,
       ],
     );

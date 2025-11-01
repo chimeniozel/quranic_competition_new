@@ -19,6 +19,7 @@ import 'package:quranic_competition/features/participant/pages/home/participant_
 import 'package:quranic_competition/features/participant/pages/home/participant_results_versions_page.dart';
 import 'package:quranic_competition/features/participant/pages/benefits/participant_benefits_page.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
+import 'package:quranic_competition/features/participant/pages/about/about_us_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
@@ -58,6 +59,12 @@ import '../features/participant/pages/participants/participant_detail_page.dart'
 import '../models/participant.dart';
 import '../features/admin/pages/media_management/new_competition_archives_page.dart';
 import '../features/admin/pages/media_management/new_competition_media_management_page.dart';
+import '../features/admin/pages/eid_management/eid_sessions_page.dart';
+import '../features/admin/pages/content_management/about_us_management_page.dart';
+import '../features/admin/pages/eid_management/eid_session_form_page.dart';
+import '../features/admin/pages/eid_management/eid_session_detail_page.dart';
+import '../features/participant/pages/eid/eid_session_page.dart';
+import '../models/eid_session.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -80,6 +87,8 @@ final GoRouter appRouter = GoRouter(
           '/participant/quiz',
           '/participant/quiz/result',
           '/participant/archives',
+          '/participant/eid-session',
+          '/participant/about-us',
           '/ui-showcase',
         ].contains(path) ||
         path.startsWith('/participant/quiz/level/') ||
@@ -105,7 +114,7 @@ final GoRouter appRouter = GoRouter(
     if (user != null && (path == '/' || path == '/login')) {
       switch (role) {
         case 'participant':
-          return '/participant/status';
+          return '/participant_home_page';
         case 'jury':
           return '/jury/home';
         case 'admin':
@@ -165,6 +174,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/participant/benefits',
       builder: (context, state) => const ParticipantBenefitsPage(),
+    ),
+    GoRoute(
+      path: '/participant/about-us',
+      builder: (context, state) => const AboutUsPage(),
     ),
     GoRoute(
       path: '/participant/tajweed',
@@ -285,6 +298,20 @@ final GoRouter appRouter = GoRouter(
         return participant_pages.ParticipantDetailPage(
           participant: participant,
         );
+      },
+    ),
+
+    // Session Eid pour participants
+    GoRoute(
+      path: '/participant/eid-session',
+      builder: (context, state) {
+        final session = state.extra as EidSession?;
+        if (session == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : session manquante')),
+          );
+        }
+        return EidSessionPage(session: session);
       },
     ),
 
@@ -415,6 +442,12 @@ final GoRouter appRouter = GoRouter(
         }
         return QuranicBenefitFormPage(benefitId: benefitId);
       },
+    ),
+
+    // About Us Management
+    GoRoute(
+      path: '/admin/about-us',
+      builder: (_, __) => const AboutUsManagementPage(),
     ),
 
     // Tajweed Rules Management
@@ -573,6 +606,43 @@ final GoRouter appRouter = GoRouter(
         return NewCompetitionMediaManagementPage(versionId: versionId);
       },
     ),
+    // Eid Sessions Management
+    GoRoute(
+      path: '/admin/eid-sessions',
+      builder: (context, state) => const EidSessionsPage(),
+    ),
+    GoRoute(
+      path: '/admin/eid-sessions/create',
+      builder: (context, state) {
+        final session = state.extra as EidSession?;
+        return EidSessionFormPage(session: session);
+      },
+    ),
+    GoRoute(
+      path: '/admin/eid-sessions/:id',
+      builder: (context, state) {
+        final session = state.extra as EidSession?;
+        if (session == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : session manquante')),
+          );
+        }
+        return EidSessionDetailPage(session: session);
+      },
+    ),
+    GoRoute(
+      path: '/admin/eid-sessions/:id/edit',
+      builder: (context, state) {
+        final session = state.extra as EidSession?;
+        if (session == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : session manquante')),
+          );
+        }
+        return EidSessionFormPage(session: session);
+      },
+    ),
+
     GoRoute(
       path: '/admin/participant/:participantId',
       name: 'participant-detail',

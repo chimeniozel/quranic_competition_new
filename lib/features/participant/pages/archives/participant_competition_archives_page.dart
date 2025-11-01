@@ -122,7 +122,7 @@ class _ParticipantCompetitionArchivesPageState
               children: [
                 if (title != null && title.isNotEmpty) ...[
                   Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingM),
+                    padding: const EdgeInsets.all(AppTheme.spacingS),
                     child: Text(
                       title,
                       style: AppTheme.labelLarge.copyWith(
@@ -145,7 +145,7 @@ class _ParticipantCompetitionArchivesPageState
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: PrimaryButton(
                     onPressed: () => Navigator.of(context).pop(),
                     text: 'إغلاق',
@@ -364,7 +364,7 @@ class _ParticipantCompetitionArchivesPageState
             // En-tête avec statistiques
             ModernCard(
               child: Padding(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 child: Column(
                   children: [
                     Row(
@@ -394,9 +394,9 @@ class _ParticipantCompetitionArchivesPageState
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                     Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       decoration: BoxDecoration(
                         color: AppTheme.successColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -435,7 +435,7 @@ class _ParticipantCompetitionArchivesPageState
             if (_allMedia.isNotEmpty) ...[
               ModernCard(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -466,7 +466,7 @@ class _ParticipantCompetitionArchivesPageState
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
                       Row(
                         children: [
                           Expanded(
@@ -509,7 +509,7 @@ class _ParticipantCompetitionArchivesPageState
             if (_filteredMedia.isNotEmpty) ...[
               ModernCard(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -546,7 +546,7 @@ class _ParticipantCompetitionArchivesPageState
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),

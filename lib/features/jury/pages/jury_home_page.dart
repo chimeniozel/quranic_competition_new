@@ -139,9 +139,6 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 case 'profile':
                   context.push('/profile');
                   break;
-                case 'security':
-                  context.push('/security-settings');
-                  break;
                 case 'logout':
                   _showLogoutConfirmation();
                   break;
@@ -160,20 +157,6 @@ class _JuryHomePageState extends State<JuryHomePage> {
                         ),
                         const SizedBox(width: AppTheme.spacingS),
                         const Text('الملف الشخصي'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'security',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.security,
-                          size: 20,
-                          color: AppTheme.primaryColor,
-                        ),
-                        const SizedBox(width: AppTheme.spacingS),
-                        const Text('الأمان'),
                       ],
                     ),
                   ),
@@ -206,7 +189,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
               : ModernPullToRefresh(
                 onRefresh: _loadData,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -245,14 +228,14 @@ class _JuryHomePageState extends State<JuryHomePage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),
                   ),
                   child: const Icon(Icons.gavel, color: Colors.white, size: 32),
                 ),
-                const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,7 +258,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 ),
               ],
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
             Text(
               'مرحباً بك في لوحة تحكيم مسابقة أهل القرآن',
               style: AppTheme.bodyMedium.copyWith(
@@ -298,7 +281,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
             color: AppTheme.textPrimaryColor,
           ),
         ),
-        const SizedBox(height: AppTheme.spacingM),
+        const SizedBox(height: AppTheme.spacingS),
         Row(
           children: [
             Expanded(
@@ -309,7 +292,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 AppTheme.infoColor,
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: _buildStatCard(
                 'النسخ النشطة',
@@ -332,7 +315,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
   ) {
     return ModernCard(
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
+        padding: const EdgeInsets.all(AppTheme.spacingS),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
@@ -351,7 +334,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
               ),
               child: Icon(icon, color: color, size: 28),
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            const SizedBox(height: AppTheme.spacingS),
             Text(
               value,
               style: AppTheme.headingMedium.copyWith(
@@ -393,7 +376,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
             ),
           ],
         ),
-        const SizedBox(height: AppTheme.spacingM),
+        const SizedBox(height: AppTheme.spacingS),
         if (_myVersions.isEmpty)
           EmptyState(
             icon: Icons.event_available,
@@ -415,7 +398,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
               () => context.push('/jury/version_detail_page', extra: version),
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
           child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Row(
               children: [
                 CircleAvatar(
@@ -433,7 +416,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +437,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingM,
+                    horizontal: AppTheme.spacingS,
                     vertical: AppTheme.spacingXS,
                   ),
                   decoration: BoxDecoration(
@@ -499,7 +482,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
             color: AppTheme.textPrimaryColor,
           ),
         ),
-        const SizedBox(height: AppTheme.spacingM),
+        const SizedBox(height: AppTheme.spacingS),
         Row(
           children: [
             Expanded(
@@ -510,7 +493,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 () => context.push('/jury/version_page'),
               ),
             ),
-            const SizedBox(width: AppTheme.spacingM),
+            const SizedBox(width: AppTheme.spacingS),
             Expanded(
               child: _buildActionCard(
                 'النتائج',
@@ -536,7 +519,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         child: Container(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
@@ -555,7 +538,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 ),
                 child: Icon(icon, color: color, size: 28),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               Text(
                 title,
                 style: AppTheme.labelMedium.copyWith(

@@ -36,7 +36,7 @@ class PrimaryButton extends StatelessWidget {
           elevation: AppTheme.elevationS,
           padding: const EdgeInsets.symmetric(
             horizontal: AppTheme.spacingL,
-            vertical: AppTheme.spacingM,
+            vertical: AppTheme.spacingS,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -56,11 +56,20 @@ class PrimaryButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    if (icon != null) ...[
+                      Icon(icon, size: 18, color: textColor ?? Colors.white),
+                      const SizedBox(width: AppTheme.spacingXS),
+                    ],
+                    Flexible(
+                      child: Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor ?? Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -105,7 +114,7 @@ class SecondaryButton extends StatelessWidget {
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppTheme.spacingL,
-            vertical: AppTheme.spacingM,
+            vertical: AppTheme.spacingS,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -127,11 +136,24 @@ class SecondaryButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    if (icon != null) ...[
+                      Icon(
+                        icon,
+                        size: 18,
+                        color: textColor ?? AppTheme.primaryColor,
+                      ),
+                      const SizedBox(width: AppTheme.spacingXS),
+                    ],
+                    Flexible(
+                      child: Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor ?? AppTheme.primaryColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -177,7 +199,7 @@ class ModernCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusM),
           child: Padding(
-            padding: padding ?? const EdgeInsets.all(AppTheme.spacingM),
+            padding: padding ?? const EdgeInsets.all(AppTheme.spacingS),
             child: child,
           ),
         ),
@@ -384,8 +406,8 @@ class ModernTextField extends StatelessWidget {
           borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingM,
-          vertical: AppTheme.spacingM,
+          horizontal: AppTheme.spacingS,
+          vertical: AppTheme.spacingS,
         ),
       ),
     );
@@ -451,7 +473,7 @@ class ModernDivider extends StatelessWidget {
           child: Divider(color: color ?? AppTheme.dividerColor, thickness: 1),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
           child: Text(text!, style: AppTheme.bodySmall),
         ),
         Expanded(
@@ -482,7 +504,7 @@ class ModernAlert extends StatelessWidget {
     final colors = _getColorsForType(type);
 
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       decoration: BoxDecoration(
         color: colors['background'],
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -491,7 +513,7 @@ class ModernAlert extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon ?? _getIconForType(type), color: colors['icon'], size: 20),
-          const SizedBox(width: AppTheme.spacingM),
+          const SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: Text(
               message,

@@ -586,7 +586,7 @@ class _NewCompetitionMediaManagementPageState
               : ModernPullToRefresh(
                 onRefresh: _loadCompetitionMedia,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -603,7 +603,7 @@ class _NewCompetitionMediaManagementPageState
                                 color: AppTheme.primaryColor,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Expanded(
                               child: StatCard(
                                 title: 'وسائط نشطة',
@@ -705,8 +705,8 @@ class _NewCompetitionMediaManagementPageState
                                   gridDelegate:
                                       const SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount: 2,
-                                        crossAxisSpacing: AppTheme.spacingM,
-                                        mainAxisSpacing: AppTheme.spacingM,
+                                        crossAxisSpacing: AppTheme.spacingS,
+                                        mainAxisSpacing: AppTheme.spacingS,
                                         childAspectRatio: 0.8,
                                       ),
                                   itemCount: _filteredMedia.length,

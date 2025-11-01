@@ -58,7 +58,7 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
               : ModernPullToRefresh(
                 onRefresh: _loadVersions,
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   itemCount: _versions.length,
                   itemBuilder: (context, index) {
                     final version = _versions[index];
@@ -77,7 +77,7 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
         },
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -99,7 +99,7 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: AppTheme.spacingM),
+                  const SizedBox(width: AppTheme.spacingS),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +122,7 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
                   // Badge de statut
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingM,
+                      horizontal: AppTheme.spacingS,
                       vertical: AppTheme.spacingXS,
                     ),
                     decoration: BoxDecoration(
@@ -151,7 +151,7 @@ class _JuryVersionPageState extends State<JuryVersionPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               // Informations détaillées
               Row(
                 children: [

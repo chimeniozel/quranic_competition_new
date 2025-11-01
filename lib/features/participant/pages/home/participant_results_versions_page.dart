@@ -65,7 +65,7 @@ class _ParticipantResultsVersionsPageState
                           subtitle: 'لم يتم إنشاء أي نسخة من المسابقة بعد',
                         )
                         : ListView.builder(
-                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
                           itemCount: _versions.length,
                           itemBuilder: (context, index) {
                             final version = _versions[index];
@@ -99,7 +99,7 @@ class _ParticipantResultsVersionsPageState
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
             ),
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -213,7 +213,7 @@ class _ParticipantResultsVersionsPageState
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 // Divider
                 Container(

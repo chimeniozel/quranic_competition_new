@@ -131,7 +131,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
 
                 // Header
                 Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Row(
                     children: [
                       Container(
@@ -146,7 +146,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
                           size: 20,
                         ),
                       ),
-                      const SizedBox(width: AppTheme.spacingM),
+                      const SizedBox(width: AppTheme.spacingS),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +183,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
                       final jury = availableJurys[index];
                       return Container(
                         margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingM,
+                          horizontal: AppTheme.spacingS,
                           vertical: AppTheme.spacingXS,
                         ),
                         child: ModernCard(
@@ -542,15 +542,13 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
 
         // Récupérer les participants acceptés pour ce round
         final participantsResponse = await supabase
-            .from('participant_versions')
-            .select('participant_id')
-            .eq('version_id', widget.version.id)
+            .from('participants')
+            .select('id')
+            .eq('competition_id', widget.version.id)
             .eq('is_accepted', true);
 
         final acceptedParticipants =
-            participantsResponse
-                .map((pv) => pv['participant_id'] as String)
-                .toSet();
+            participantsResponse.map((p) => p['id'] as String).toSet();
 
         if (acceptedParticipants.isEmpty) {
           print('✅ Round $roundNumber: Aucun participant accepté');
@@ -680,7 +678,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
                           AppTheme.primaryColor,
                         ),
                       ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
                       Text(
                         'جاري التحقق من التقييمات...',
                         style: AppTheme.labelMedium.copyWith(
@@ -751,7 +749,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
             // Header avec statistiques
             ModernCard(
               child: Padding(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 child: Row(
                   children: [
                     Container(
@@ -766,7 +764,7 @@ class _VersionJurysPageState extends State<VersionJurysPage> {
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: AppTheme.spacingM),
+                    const SizedBox(width: AppTheme.spacingS),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

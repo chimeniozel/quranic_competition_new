@@ -210,7 +210,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 // Nom complet
                                 Text(
@@ -225,7 +225,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                 // Groupe d'âge
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: AppTheme.spacingM,
+                                    horizontal: AppTheme.spacingS,
                                     vertical: AppTheme.spacingS,
                                   ),
                                   decoration: BoxDecoration(
@@ -272,13 +272,13 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
 
                                 // Numéro d'enregistrement
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(
-                                    AppTheme.spacingM,
+                                    AppTheme.spacingS,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -313,7 +313,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                           size: 20,
                                         ),
                                       ),
-                                      const SizedBox(width: AppTheme.spacingM),
+                                      const SizedBox(width: AppTheme.spacingS),
                                       Text(
                                         'رقم التسجيل',
                                         style: AppTheme.labelMedium,
@@ -341,7 +341,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                       if (!_isEditing)
                         ModernCard(
                           child: Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.centerLeft,
@@ -379,7 +379,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                               : Colors.red,
                                       size: 28,
                                     ),
-                                    const SizedBox(width: AppTheme.spacingM),
+                                    const SizedBox(width: AppTheme.spacingS),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -433,7 +433,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                       if (_isEditing)
                         ModernCard(
                           child: Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.centerLeft,
@@ -483,7 +483,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: AppTheme.spacingM),
+                                const SizedBox(height: AppTheme.spacingS),
                                 Row(
                                   children: [
                                     Expanded(
@@ -521,10 +521,10 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                       // Section informations personnelles
                       Container(
                         margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingM,
-                          vertical: AppTheme.spacingM,
+                          horizontal: AppTheme.spacingS,
+                          vertical: AppTheme.spacingS,
                         ),
-                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.centerLeft,
@@ -555,7 +555,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                 size: 20,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Text(
                               'المعلومات الشخصية',
                               style: AppTheme.headingSmall.copyWith(
@@ -668,10 +668,10 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                       // Section informations القرآنية
                       Container(
                         margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingM,
-                          vertical: AppTheme.spacingM,
+                          horizontal: AppTheme.spacingS,
+                          vertical: AppTheme.spacingS,
                         ),
-                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.centerLeft,
@@ -702,7 +702,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                 size: 20,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Text(
                               'المعلومات القرآنية',
                               style: AppTheme.headingSmall.copyWith(
@@ -793,10 +793,10 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                       // Section معلومات المسابقة
                       Container(
                         margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingM,
-                          vertical: AppTheme.spacingM,
+                          horizontal: AppTheme.spacingS,
+                          vertical: AppTheme.spacingS,
                         ),
-                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.centerLeft,
@@ -827,7 +827,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                 size: 20,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Text(
                               'معلومات المسابقة',
                               style: AppTheme.headingSmall.copyWith(
@@ -869,7 +869,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
 
                       // Actions d'édition
                       if (_isEditing) ...[
@@ -896,7 +896,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: AppTheme.spacingM),
+                      const SizedBox(height: AppTheme.spacingS),
                     ],
                   ),
                 ),
@@ -1059,7 +1059,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                 'هل أنت متأكد من إلغاء مشاركة ${widget.participant.fullName}؟',
                 style: AppTheme.bodyMedium,
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               Text(
                 'سبب الرفض (اختياري):',
                 style: AppTheme.labelMedium.copyWith(
@@ -1087,7 +1087,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                     borderRadius: BorderRadius.circular(AppTheme.radiusS),
                     borderSide: BorderSide(color: AppTheme.primaryColor),
                   ),
-                  contentPadding: const EdgeInsets.all(AppTheme.spacingM),
+                  contentPadding: const EdgeInsets.all(AppTheme.spacingS),
                 ),
               ),
             ],
@@ -1163,8 +1163,15 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Mettre à jour le statut et la raison de refus
       final supabase = Supabase.instance.client;
+
+      // 1. Supprimer les résultats du participant dans round_results
+      await supabase
+          .from('round_results')
+          .delete()
+          .eq('participant_id', widget.participant.id);
+
+      // 2. Mettre à jour le statut et la raison de refus
       await supabase
           .from('participants')
           .update({'is_accepted': false, 'rejection_reason': reason})
@@ -1177,7 +1184,9 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم إلغاء مشاركة ${widget.participant.fullName}'),
+            content: Text(
+              'تم إلغاء مشاركة ${widget.participant.fullName} وحذف نتائجه',
+            ),
             backgroundColor: AppTheme.warningColor,
           ),
         );

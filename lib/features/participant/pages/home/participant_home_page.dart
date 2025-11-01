@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/competition_version_service.dart';
+import '../../../../core/services/eid_session_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../models/competition_version.dart';
+import '../../../../models/eid_session.dart';
 
 class ParticipantHomePage extends StatefulWidget {
   const ParticipantHomePage({super.key});
@@ -23,12 +25,26 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   bool _adultsRegistrationOpen = true;
   bool _childrenRegistrationOpen = true;
   final _competitionService = CompetitionVersionService();
+  final _eidService = EidSessionService();
   StreamSubscription<List<CompetitionVersion>>? _competitionSubscription;
+  EidSession? _activeEidSession;
 
   @override
   void initState() {
     super.initState();
     _startListeningToCompetitionChanges();
+    _loadEidSession();
+  }
+
+  Future<void> _loadEidSession() async {
+    try {
+      final session = await _eidService.getActiveSession();
+      if (mounted) {
+        setState(() => _activeEidSession = session);
+      }
+    } catch (e) {
+      print('❌ Erreur lors du chargement de la session Eid: $e');
+    }
   }
 
   @override
@@ -177,6 +193,134 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Section session Eid (si active)
+                      if (_activeEidSession != null) ...[
+                        ModernCard(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.green.shade400,
+                                  Colors.green.shade600,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppTheme.spacingS),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(
+                                          AppTheme.spacingS,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusM,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.celebration,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppTheme.spacingS),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _activeEidSession!.name,
+                                              style: AppTheme.headingSmall
+                                                  .copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                            if (_activeEidSession!
+                                                    .description !=
+                                                null) ...[
+                                              const SizedBox(
+                                                height: AppTheme.spacingXS,
+                                              ),
+                                              Text(
+                                                _activeEidSession!.description!,
+                                                style: AppTheme.bodyMedium
+                                                    .copyWith(
+                                                      color: Colors.white
+                                                          .withOpacity(0.9),
+                                                    ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppTheme.spacingS),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        context.push(
+                                          '/participant/eid-session',
+                                          extra: _activeEidSession,
+                                        );
+                                      },
+                                      icon: Icon(
+                                        _activeEidSession!.isOpen
+                                            ? Icons.person_add
+                                            : Icons.emoji_events,
+                                        color: Colors.white,
+                                      ),
+                                      label: Text(
+                                        _activeEidSession!.isOpen
+                                            ? 'التسجيل في الفسحة أو الدورة'
+                                            : 'عرض الفائزين',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white
+                                            .withOpacity(0.2),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: AppTheme.spacingS,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusM,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Colors.white,
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingS),
+                      ],
+
                       // Section d'inscription
                       ModernCard(
                         child: Padding(
@@ -353,7 +497,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                         Text(
                                           _activeVersion == null
                                               ? 'لا توجد مسابقة نشطة حالياً'
-                                              : 'المسابقة الحالية مغلقة للتسجيل',
+                                              : 'المسابقة الحالية مغلقة',
                                           style: AppTheme.labelMedium.copyWith(
                                             color: Colors.orange[700],
                                           ),
@@ -427,7 +571,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // const SizedBox(height: AppTheme.spacingM),
+                              // const SizedBox(height: AppTheme.spacingS),
 
                               // Grille des services
                               Column(
@@ -494,84 +638,38 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   ),
                                   const SizedBox(height: AppTheme.spacingS),
 
-                                  // Ligne 3: قائمة المشاركين (toujours visible) - Pleine largeur
-                                  GestureDetector(
-                                    onTap: () {
-                                      // Utiliser une version par défaut ou la version active
-                                      final versionId =
-                                          _activeVersion?.id ?? 'default';
-                                      print(
-                                        '🚀 Navigation vers: /participant/list/$versionId',
-                                      );
-                                      print(
-                                        '🚀 Version active: $_activeVersion',
-                                      );
-                                      print('🚀 Version ID: $versionId');
-
-                                      try {
-                                        context.push(
-                                          '/participant/list/$versionId',
-                                        );
-                                        print('✅ Navigation réussie');
-                                      } catch (e) {
-                                        print('❌ Erreur de navigation: $e');
-                                      }
-                                    },
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingM,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                        border: Border.all(
-                                          color: Colors.blue.withValues(
-                                            alpha: 0.3,
-                                          ),
-                                          width: 1,
+                                  // Ligne 3: من نحن et قائمة المشاركين
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildServiceCard(
+                                          title: 'من نحن',
+                                          icon: Icons.info,
+                                          color: Colors.teal,
+                                          onTap: () {
+                                            context.push(
+                                              '/participant/about-us',
+                                            );
+                                          },
                                         ),
                                       ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(
-                                              AppTheme.spacingS,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue.withValues(
-                                                alpha: 0.2,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    AppTheme.radiusM,
-                                                  ),
-                                            ),
-                                            child: const Icon(
-                                              Icons.people,
-                                              color: Colors.blue,
-                                              size: 24,
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                            width: AppTheme.spacingM,
-                                          ),
-                                          Text(
-                                            'قائمة المشاركين',
-                                            style: AppTheme.labelLarge.copyWith(
-                                              color: Colors.blue,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
+                                      const SizedBox(width: AppTheme.spacingS),
+                                      Expanded(
+                                        child: _buildServiceCard(
+                                          title: 'قائمة المشاركين',
+                                          icon: Icons.people,
+                                          color: Colors.blue,
+                                          onTap: () {
+                                            // Utiliser une version par défaut ou la version active
+                                            final versionId =
+                                                _activeVersion?.id ?? 'default';
+                                            context.push(
+                                              '/participant/list/$versionId',
+                                            );
+                                          },
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
 
                                   // Ligne 4: Message informatif (si compétition active)

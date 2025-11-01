@@ -272,10 +272,10 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
   Widget _buildRuleCard(TajweedRule rule) {
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       onTap: () => context.push('/admin/tajweed-rules/edit/${rule.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,7 +303,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
                   size: 24,
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +358,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
           Row(
             children: [
               Container(
@@ -540,7 +540,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
               : ModernPullToRefresh(
                 onRefresh: () => _loadRules(reset: true),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -568,7 +568,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
                                     if (_isLoadingMore)
                                       const Padding(
                                         padding: EdgeInsets.all(
-                                          AppTheme.spacingM,
+                                          AppTheme.spacingS,
                                         ),
                                         child: CircularProgressIndicator(),
                                       ),

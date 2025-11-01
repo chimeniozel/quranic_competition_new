@@ -95,10 +95,6 @@ class ProfileMenuButton extends StatelessWidget {
             onProfileTap?.call();
             if (onProfileTap == null) context.push('/profile');
             break;
-          case 'security':
-            onSecurityTap?.call();
-            if (onSecurityTap == null) context.push('/security-settings');
-            break;
           case 'settings':
             onSettingsTap?.call();
             break;
@@ -113,7 +109,7 @@ class ProfileMenuButton extends StatelessWidget {
             PopupMenuItem<String>(
               enabled: false,
               child: Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -124,7 +120,7 @@ class ProfileMenuButton extends StatelessWidget {
                           initials: userName,
                           size: 32,
                         ),
-                        const SizedBox(width: AppTheme.spacingM),
+                        const SizedBox(width: AppTheme.spacingS),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,14 +157,6 @@ class ProfileMenuButton extends StatelessWidget {
               child: const ListTile(
                 leading: Icon(Icons.person, size: 20),
                 title: Text('الملف الشخصي'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: 'security',
-              child: const ListTile(
-                leading: Icon(Icons.security, size: 20),
-                title: Text('الأمان'),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -254,7 +242,7 @@ class ModernBottomNavigation extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.spacingM,
+            horizontal: AppTheme.spacingS,
             vertical: AppTheme.spacingS,
           ),
           child: Row(
@@ -269,7 +257,7 @@ class ModernBottomNavigation extends StatelessWidget {
                     onTap: () => onTap?.call(index),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingM,
+                        horizontal: AppTheme.spacingS,
                         vertical: AppTheme.spacingS,
                       ),
                       decoration: BoxDecoration(
@@ -382,9 +370,9 @@ class ModernDrawer extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(
         top: 48,
-        left: AppTheme.spacingM,
-        right: AppTheme.spacingM,
-        bottom: AppTheme.spacingM,
+        left: AppTheme.spacingS,
+        right: AppTheme.spacingS,
+        bottom: AppTheme.spacingS,
       ),
       decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
       child: SafeArea(
@@ -399,7 +387,7 @@ class ModernDrawer extends StatelessWidget {
                   backgroundColor: Colors.white,
                   textColor: AppTheme.primaryColor,
                 ),
-                const SizedBox(width: AppTheme.spacingM),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

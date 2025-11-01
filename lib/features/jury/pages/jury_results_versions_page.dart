@@ -64,7 +64,7 @@ class _JuryResultsVersionsPageState extends State<JuryResultsVersionsPage> {
                           subtitle: 'لم يتم إنشاء أي نسخة من المسابقة بعد',
                         )
                         : ListView.builder(
-                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
                           itemCount: _versions.length,
                           itemBuilder: (context, index) {
                             final version = _versions[index];
@@ -98,7 +98,7 @@ class _JuryResultsVersionsPageState extends State<JuryResultsVersionsPage> {
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
             ),
-            padding: const EdgeInsets.all(AppTheme.spacingM),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -212,7 +212,7 @@ class _JuryResultsVersionsPageState extends State<JuryResultsVersionsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
 
                 // Divider
                 Container(

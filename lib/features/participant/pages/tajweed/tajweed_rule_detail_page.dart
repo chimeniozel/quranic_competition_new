@@ -98,7 +98,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
             // Image principale
             if (rule.imageUrl != null && rule.imageUrl!.isNotEmpty)
               Container(
-                margin: const EdgeInsets.all(AppTheme.spacingM),
+                margin: const EdgeInsets.all(AppTheme.spacingS),
                 width: double.infinity,
                 height: 250,
                 child: ClipRRect(
@@ -120,14 +120,14 @@ class TajweedRuleDetailPage extends StatelessWidget {
               ),
 
             Padding(
-              padding: const EdgeInsets.all(AppTheme.spacingM),
+              padding: const EdgeInsets.all(AppTheme.spacingS),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Titre et type
                   ModernCard(
                     child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       child: Row(
                         children: [
                           Expanded(
@@ -142,7 +142,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: AppTheme.spacingM,
+                              horizontal: AppTheme.spacingS,
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
@@ -166,7 +166,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppTheme.spacingM),
+                  const SizedBox(height: AppTheme.spacingS),
 
                   // Vidéo si c'est une vidéo
                   if (rule.type == TajweedType.video &&
@@ -175,12 +175,12 @@ class TajweedRuleDetailPage extends StatelessWidget {
                       onTap: () => _launchVideo(rule.videoUrl!),
                       child: ModernCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingM),
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
                           child: Column(
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(
-                                  AppTheme.spacingM,
+                                  AppTheme.spacingS,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppTheme.errorColor,
@@ -192,7 +192,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                                   size: 40,
                                 ),
                               ),
-                              const SizedBox(height: AppTheme.spacingM),
+                              const SizedBox(height: AppTheme.spacingS),
                               Text(
                                 'مشاهدة الفيديو التعليمي',
                                 style: AppTheme.labelLarge.copyWith(
@@ -234,7 +234,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: AppTheme.spacingM),
+                    const SizedBox(height: AppTheme.spacingS),
                   ],
 
                   // Contenu principal
@@ -262,7 +262,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: AppTheme.spacingM),
+                          const SizedBox(height: AppTheme.spacingS),
                           Text(
                             rule.content,
                             style: AppTheme.labelMedium.copyWith(
@@ -274,12 +274,12 @@ class TajweedRuleDetailPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppTheme.spacingM),
+                  const SizedBox(height: AppTheme.spacingS),
 
                   // Informations sur la règle
                   ModernCard(
                     child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
                       child: Column(
                         children: [
                           Row(
@@ -341,7 +341,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppTheme.spacingM),
+                  const SizedBox(height: AppTheme.spacingS),
 
                   // Boutons d'action
                   Row(
@@ -352,7 +352,7 @@ class TajweedRuleDetailPage extends StatelessWidget {
                           text: 'العودة',
                         ),
                       ),
-                      const SizedBox(width: AppTheme.spacingM),
+                      const SizedBox(width: AppTheme.spacingS),
                       if (rule.type == TajweedType.video &&
                           rule.videoUrl != null)
                         Expanded(

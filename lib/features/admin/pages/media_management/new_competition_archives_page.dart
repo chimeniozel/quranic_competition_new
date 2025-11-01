@@ -125,10 +125,10 @@ class _NewCompetitionArchivesPageState
 
     return ModernCard(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
+        horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
       ),
-      padding: const EdgeInsets.all(AppTheme.spacingM),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
       onTap: () => context.push('/admin/archives/competition/${version.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +148,7 @@ class _NewCompetitionArchivesPageState
                   size: 24,
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingM),
+              const SizedBox(width: AppTheme.spacingS),
 
               Expanded(
                 child: Column(
@@ -205,7 +205,7 @@ class _NewCompetitionArchivesPageState
             ],
           ),
 
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
 
           // Statistiques des médias
           Row(
@@ -264,7 +264,7 @@ class _NewCompetitionArchivesPageState
             ],
           ),
 
-          const SizedBox(height: AppTheme.spacingM),
+          const SizedBox(height: AppTheme.spacingS),
 
           // Boutons d'action
           Row(
@@ -315,7 +315,7 @@ class _NewCompetitionArchivesPageState
               : ModernPullToRefresh(
                 onRefresh: _refreshData,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -333,7 +333,7 @@ class _NewCompetitionArchivesPageState
                                 color: AppTheme.primaryColor,
                               ),
                             ),
-                            const SizedBox(width: AppTheme.spacingM),
+                            const SizedBox(width: AppTheme.spacingS),
                             Expanded(
                               child: StatCard(
                                 title: 'إجمالي الوسائط',
@@ -417,7 +417,7 @@ class _NewCompetitionArchivesPageState
                                       (version) =>
                                           _buildCompetitionCard(version),
                                     ),
-                                    const SizedBox(height: AppTheme.spacingM),
+                                    const SizedBox(height: AppTheme.spacingS),
                                   ],
                                 ),
                       ),

@@ -112,7 +112,7 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
       ),
       child: ModernCard(
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -146,7 +146,7 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               if (benefit.imageUrl != null && benefit.imageUrl!.isNotEmpty) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -166,7 +166,7 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
                     },
                   ),
                 ),
-                const SizedBox(height: AppTheme.spacingM),
+                const SizedBox(height: AppTheme.spacingS),
               ],
               Text(
                 benefit.content,
@@ -175,9 +175,9 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
                   color: AppTheme.textPrimaryColor,
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              const SizedBox(height: AppTheme.spacingS),
               Container(
-                padding: const EdgeInsets.all(AppTheme.spacingM),
+                padding: const EdgeInsets.all(AppTheme.spacingS),
                 decoration: BoxDecoration(
                   color: AppTheme.backgroundColor,
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -259,12 +259,12 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
                     if (index == _benefits.length) {
                       return _isLoadingMore
                           ? const Padding(
-                            padding: EdgeInsets.all(AppTheme.spacingM),
+                            padding: EdgeInsets.all(AppTheme.spacingS),
                             child: Center(child: CircularProgressIndicator()),
                           )
                           : _hasMore
                           ? Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingM),
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: SizedBox(
                               width: double.infinity,
                               child: SecondaryButton(
