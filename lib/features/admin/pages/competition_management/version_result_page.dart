@@ -434,8 +434,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
         // مشاركة الملف
         await Share.shareXFiles(
           [XFile(tempFile.path)],
-          text:
-              'نتائج ${roundName} - ${versionName} ${widget.version.year}',
+          text: 'نتائج ${roundName} - ${versionName} ${widget.version.year}',
           subject: 'نتائج ${roundName}',
         );
       }
@@ -965,18 +964,19 @@ class _VersionResultPageState extends State<VersionResultPage> {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: _isExporting ? null : _exportResultsToExcel,
-                icon: _isExporting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
+                icon:
+                    _isExporting
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
-                        ),
-                      )
-                    : const Icon(Icons.file_download, color: Colors.white),
+                        )
+                        : const Icon(Icons.file_download, color: Colors.white),
                 label: const Text('تصدير النتائج'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.infoColor,
@@ -994,67 +994,79 @@ class _VersionResultPageState extends State<VersionResultPage> {
               ),
             ),
             const SizedBox(width: AppTheme.spacingS),
-            // Bouton de publication/dépublication
-            Expanded(
-              child: !_published && _hasResults
-                  ? ElevatedButton.icon(
-                      onPressed: _isPublishing ? null : _publishResults,
-                      icon: _isPublishing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Icon(Icons.publish, color: Colors.white),
-                      label: const Text('نشر النتائج'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.successColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingS,
-                          vertical: AppTheme.spacingS,
-                        ),
-                        minimumSize: const Size(0, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                        ),
-                        elevation: AppTheme.elevationS,
-                      ),
-                    )
-                  : _published
-                      ? OutlinedButton.icon(
-                          onPressed: _isPublishing ? null : _unpublishResults,
-                          icon: _isPublishing
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+            // Bouton de publication/dépublication (affiché seulement si la version est active)
+            if (widget.version.isActive)
+              Expanded(
+                child:
+                    !_published && _hasResults
+                        ? ElevatedButton.icon(
+                          onPressed: _isPublishing ? null : _publishResults,
+                          icon:
+                              _isPublishing
+                                  ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                  : const Icon(
+                                    Icons.publish,
+                                    color: Colors.white,
                                   ),
-                                )
-                              : const Icon(Icons.undo),
-                          label: const Text('إلغاء النشر'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.warningColor,
-                            side: const BorderSide(color: AppTheme.warningColor),
+                          label: const Text('نشر النتائج'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.successColor,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppTheme.spacingS,
                               vertical: AppTheme.spacingS,
                             ),
                             minimumSize: const Size(0, 48),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusM),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                            ),
+                            elevation: AppTheme.elevationS,
+                          ),
+                        )
+                        : _published
+                        ? OutlinedButton.icon(
+                          onPressed: _isPublishing ? null : _unpublishResults,
+                          icon:
+                              _isPublishing
+                                  ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : const Icon(Icons.undo),
+                          label: const Text('إلغاء النشر'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.warningColor,
+                            side: const BorderSide(
+                              color: AppTheme.warningColor,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.spacingS,
+                              vertical: AppTheme.spacingS,
+                            ),
+                            minimumSize: const Size(0, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
                             ),
                           ),
                         )
-                      : const SizedBox.shrink(),
-            ),
+                        : const SizedBox.shrink(),
+              ),
           ],
         ),
       ),

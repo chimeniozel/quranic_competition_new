@@ -536,7 +536,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                     width: double.infinity,
                     child: SecondaryButton(
                       onPressed: () => _deleteSession(_currentSession),
-                      text: 'حذف الفسحة أو الدورة',
+                      text: 'حذف الفسحة',
                       icon: Icons.delete,
                       borderColor: AppTheme.errorColor,
                       textColor: AppTheme.errorColor,

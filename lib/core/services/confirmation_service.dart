@@ -23,7 +23,9 @@ class ConfirmationService {
                     size: 28,
                   ),
                   const SizedBox(width: 8),
-                  Text(title),
+                  Expanded(
+                    child: Text(title),
+                  ),
                 ],
               ),
               content: Text(message),
@@ -96,7 +98,9 @@ class ConfirmationService {
                     size: 32,
                   ),
                   const SizedBox(width: 8),
-                  Text(title),
+                  Expanded(
+                    child: Text(title),
+                  ),
                 ],
               ),
               content: Column(
@@ -179,7 +183,9 @@ class ConfirmationService {
                 children: [
                   Icon(Icons.publish, color: Colors.green[600], size: 28),
                   const SizedBox(width: 8),
-                  const Text('تأكيد النشر'),
+                  const Expanded(
+                    child: Text('تأكيد النشر'),
+                  ),
                 ],
               ),
               content: Column(

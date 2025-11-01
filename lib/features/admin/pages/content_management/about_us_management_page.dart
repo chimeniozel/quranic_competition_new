@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:quranic_competition/core/services/about_us_service.dart';
+import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/about_us.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -18,6 +19,7 @@ class AboutUsManagementPage extends StatefulWidget {
 class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
   final AboutUsService _service = AboutUsService();
   final ImagePicker _imagePicker = ImagePicker();
+  final FilePermissionService _permissionService = FilePermissionService();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -92,6 +94,13 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
   }
 
   Future<void> _pickImageFromGallery() async {
+    // Demander la permission avant de charger l'image
+    final hasPermission =
+        await _permissionService.requestStoragePermission(context);
+    if (!hasPermission) {
+      return; // L'utilisateur n'a pas accordé la permission
+    }
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,

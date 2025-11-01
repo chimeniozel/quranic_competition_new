@@ -5,6 +5,7 @@ import 'dart:io';
 
 import '../../../../core/services/archive_media_service.dart';
 import '../../../../core/services/competition_version_service.dart';
+import '../../../../core/services/file_permission_service.dart';
 import '../../../../models/archive_media.dart';
 import '../../../../models/competition_version.dart';
 import '../../../../core/widgets/modern_navigation.dart';
@@ -24,6 +25,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
   final ArchiveMediaService _mediaService = ArchiveMediaService();
   final CompetitionVersionService _versionService = CompetitionVersionService();
   final ImagePicker _imagePicker = ImagePicker();
+  final FilePermissionService _permissionService = FilePermissionService();
 
   List<CompetitionVersion> _versions = [];
   CompetitionVersion? _selectedVersion;
@@ -98,6 +100,13 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
   }
 
   Future<void> _pickImagesFromGallery(int index) async {
+    // Demander la permission avant de charger les images
+    final hasPermission =
+        await _permissionService.requestStoragePermission(context);
+    if (!hasPermission) {
+      return; // L'utilisateur n'a pas accordé la permission
+    }
+
     try {
       final List<XFile> images = await _imagePicker.pickMultiImage();
       if (images.isNotEmpty) {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
+import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
 
 class TajweedRuleFormPage extends StatefulWidget {
@@ -23,6 +24,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
   final _imageUrlController = TextEditingController();
   final _ruleService = TajweedRuleService();
   final _imagePicker = ImagePicker();
+  final FilePermissionService _permissionService = FilePermissionService();
 
   TajweedType _selectedType = TajweedType.post;
   bool _isLoading = false;
@@ -74,6 +76,13 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
   }
 
   Future<void> _pickImage() async {
+    // Demander la permission avant de charger l'image
+    final hasPermission =
+        await _permissionService.requestStoragePermission(context);
+    if (!hasPermission) {
+      return; // L'utilisateur n'a pas accordé la permission
+    }
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
+import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/models/quiz_question.dart';
 
@@ -25,6 +26,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
   final _orderController = TextEditingController();
   final _quizService = QuizService();
   final _imagePicker = ImagePicker();
+  final FilePermissionService _permissionService = FilePermissionService();
 
   List<QuizLevel> _levels = [];
   QuizLevel? _selectedLevel;
@@ -186,6 +188,13 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
   }
 
   Future<void> _pickImage() async {
+    // Demander la permission avant de charger l'image
+    final hasPermission =
+        await _permissionService.requestStoragePermission(context);
+    if (!hasPermission) {
+      return; // L'utilisateur n'a pas accordé la permission
+    }
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,

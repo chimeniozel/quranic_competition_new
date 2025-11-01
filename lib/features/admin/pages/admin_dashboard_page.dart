@@ -76,42 +76,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
-  void _showQuickActions(BuildContext context) {
-    ModernContextMenu.show(
-      context: context,
-      title: 'إجراءات سريعة',
-      items: [
-        ContextMenuItem(
-          title: 'إضافة مستخدم',
-          icon: Icons.person_add,
-          color: AppTheme.primaryColor,
-          onTap: () {
-            Navigator.pop(context);
-            context.push('/admin/users');
-          },
-        ),
-        ContextMenuItem(
-          title: 'إنشاء مسابقة',
-          icon: Icons.add_box,
-          color: AppTheme.successColor,
-          onTap: () {
-            Navigator.pop(context);
-            context.push('/admin/versions');
-          },
-        ),
-        ContextMenuItem(
-          icon: Icons.upload_file,
-          title: 'رفع ملف',
-          color: AppTheme.infoColor,
-          onTap: () {
-            Navigator.pop(context);
-            // context.push('/admin/files/upload');
-          },
-        ),
-      ],
-    );
-  }
-
   List<Widget> _buildEvaluationProgressCards() {
     if (_evaluationStats.isEmpty) {
       // Afficher des cartes par défaut si aucune donnée n'est disponible
@@ -436,10 +400,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             ),
           ),
         ),
-      ),
-      floatingActionButton: ModernFAB(
-        onPressed: () => _showQuickActions(context),
-        icon: Icons.add,
       ),
     );
   }

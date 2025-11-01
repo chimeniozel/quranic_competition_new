@@ -29,6 +29,20 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   List<CompetitionVersion> _versions = [];
   bool _isLoading = false;
 
+  // Vérifier si une version est active
+  bool _hasActiveVersion() {
+    return _versions.any((v) => v.isActive);
+  }
+
+  // Obtenir la version active
+  CompetitionVersion? _getActiveVersion() {
+    try {
+      return _versions.firstWhere((v) => v.isActive);
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +56,40 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   }
 
   Future<void> _submitNewVersion() async {
+    // Vérifier si une version est active
+    if (_hasActiveVersion()) {
+      final activeVersion = _getActiveVersion();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion?.name}" نشطة. يجب إلغاء تفعيلها أولاً.',
+            ),
+            backgroundColor: AppTheme.warningColor,
+            duration: const Duration(seconds: 4),
+            action:
+                activeVersion != null
+                    ? SnackBarAction(
+                      label: 'الإعدادات',
+                      textColor: Colors.white,
+                      onPressed: () async {
+                        final result = await context.push<bool>(
+                          '/admin/version_update',
+                          extra: activeVersion,
+                        );
+                        if (result == true) {
+                          await _loadVersions();
+                          setState(() {});
+                        }
+                      },
+                    )
+                    : null,
+          ),
+        );
+      }
+      return;
+    }
+
     final name = _nameController.text.trim();
     final maxAdults = int.tryParse(_maxAdultsController.text.trim());
     final maxChildren = int.tryParse(_maxChildrenController.text.trim());
@@ -417,6 +465,40 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   }
 
   Future<void> showAddDialog() async {
+    // Vérifier si une version est active
+    if (_hasActiveVersion()) {
+      final activeVersion = _getActiveVersion();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion?.name}" نشطة. يجب إلغاء تفعيلها أولاً.',
+            ),
+            backgroundColor: AppTheme.warningColor,
+            duration: const Duration(seconds: 4),
+            action:
+                activeVersion != null
+                    ? SnackBarAction(
+                      label: 'الإعدادات',
+                      textColor: Colors.white,
+                      onPressed: () async {
+                        final result = await context.push<bool>(
+                          '/admin/version_update',
+                          extra: activeVersion,
+                        );
+                        if (result == true) {
+                          await _loadVersions();
+                          setState(() {});
+                        }
+                      },
+                    )
+                    : null,
+          ),
+        );
+      }
+      return;
+    }
+
     showDialog(
       context: context,
       builder:
@@ -842,13 +924,53 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
           ),
         ],
       ),
-      floatingActionButton: ModernFAB(
-        onPressed: () async {
-          await showAddDialog();
-          setState(() {});
-        },
-        icon: Icons.add,
-      ),
+      floatingActionButton:
+          _hasActiveVersion()
+              ? Tooltip(
+                message:
+                    'لا يمكن إضافة نسخة جديدة بينما توجد نسخة نشطة. يجب إلغاء تفعيل النسخة النشطة أولاً.',
+                child: Opacity(
+                  opacity: 0.5,
+                  child: ModernFAB(
+                    onPressed: () async {
+                      final activeVersion = _getActiveVersion();
+                      if (mounted && activeVersion != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion.name}" نشطة.',
+                            ),
+                            backgroundColor: AppTheme.warningColor,
+                            duration: const Duration(seconds: 4),
+                            action: SnackBarAction(
+                              label: 'الإعدادات',
+                              textColor: Colors.white,
+                              onPressed: () async {
+                                final result = await context.push<bool>(
+                                  '/admin/version_update',
+                                  extra: activeVersion,
+                                );
+                                if (result == true) {
+                                  await _loadVersions();
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: Icons.add,
+                  ),
+                ),
+              )
+              : ModernFAB(
+                onPressed: () async {
+                  await showAddDialog();
+                  setState(() {});
+                },
+                icon: Icons.add,
+              ),
       body:
           _isLoading
               ? const LoadingOverlay(child: SizedBox())

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../models/competition_version.dart';
 import '../../../../core/widgets/modern_navigation.dart';
@@ -32,6 +33,9 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
 
   bool _isLoading = false;
   bool _canEdit = false;
+  bool _isCheckingEditability = false;
+  bool _areResultsPublished = false;
+  bool _isLastVersion = false;
   Map<String, int> _participantCounts = {'adults': 0, 'children': 0};
 
   @override
@@ -41,6 +45,8 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     _initializeWithWidgetData();
     // Puis charger les données actuelles depuis la base de données
     _loadCurrentVersionData();
+    // Vérifier si la version peut être modifiée
+    _checkEditability();
   }
 
   Future<void> _loadCurrentVersionData() async {
@@ -66,9 +72,6 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
           _isRegistrationOpen = currentVersion.isRegistrationOpen;
           _juryEvaluationEnabled = currentVersion.juryEvaluationEnabled;
           _participantCounts = participantCounts;
-
-          // Vérifier si la compétition est active pour autoriser les modifications
-          _canEdit = currentVersion.isActive;
         });
       } else {
         // Fallback sur les données du widget si la version n'est pas trouvée
@@ -93,9 +96,6 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     _isActive = widget.version.isActive;
     _isRegistrationOpen = widget.version.isRegistrationOpen;
     _juryEvaluationEnabled = widget.version.juryEvaluationEnabled;
-
-    // Vérifier si la compétition est active pour autoriser les modifications
-    _canEdit = widget.version.isActive;
   }
 
   @override
@@ -113,6 +113,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     setState(() => _isLoading = true);
     try {
       await _loadCurrentVersionData();
+      await _checkEditability();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -137,12 +138,103 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     }
   }
 
+  /// Vérifie si la version peut être modifiée
+  /// Une version peut être modifiée si :
+  /// 1. Elle est active, OU
+  /// 2. Elle n'est pas active MAIS c'est la dernière version ET les résultats ne sont pas publiés
+  Future<void> _checkEditability() async {
+    setState(() => _isCheckingEditability = true);
+    try {
+      // Vérifier si la version est active
+      final currentVersion = await _service.getVersionById(widget.version.id);
+      if (currentVersion == null) {
+        setState(() {
+          _canEdit = false;
+          _isCheckingEditability = false;
+        });
+        return;
+      }
+
+      if (currentVersion.isActive) {
+        // Si la version est active, elle peut toujours être modifiée
+        setState(() {
+          _canEdit = true;
+          _isCheckingEditability = false;
+        });
+        return;
+      }
+
+      // Si la version n'est pas active, vérifier :
+      // 1. Si c'est la dernière version (créée la plus récemment)
+      // 2. Si les résultats ne sont pas publiés
+
+      // Vérifier si c'est la dernière version
+      final allVersions = await _service.fetchVersions();
+      if (allVersions.isEmpty) {
+        setState(() {
+          _canEdit = false;
+          _isCheckingEditability = false;
+        });
+        return;
+      }
+
+      // La première version dans la liste triée par created_at décroissant est la dernière
+      final lastVersion = allVersions.first;
+      _isLastVersion = lastVersion.id == widget.version.id;
+
+      // Vérifier si les résultats sont publiés
+      final supabase = Supabase.instance.client;
+      final roundsResponse = await supabase
+          .from('rounds')
+          .select('id, result_is_published')
+          .eq('version_id', widget.version.id);
+
+      // Vérifier si au moins un round a des résultats publiés
+      _areResultsPublished = roundsResponse.any(
+        (round) => round['result_is_published'] == true,
+      );
+
+      // La version peut être modifiée si :
+      // - Elle est la dernière version ET
+      // - Aucun résultat n'est publié
+      setState(() {
+        _canEdit = _isLastVersion && !_areResultsPublished;
+        _isCheckingEditability = false;
+      });
+    } catch (e) {
+      print('❌ Erreur lors de la vérification de la modification: $e');
+      setState(() {
+        _canEdit = false;
+        _isCheckingEditability = false;
+      });
+    }
+  }
+
+  /// Retourne un message expliquant pourquoi la version ne peut pas être modifiée
+  String _getEditabilityMessage() {
+    final currentVersion = widget.version;
+
+    if (currentVersion.isActive) {
+      return 'النسخة نشطة ويمكن تعديلها.';
+    }
+
+    if (!_isLastVersion) {
+      return 'لا يمكن تعديل النسخة غير النشطة إلا إذا كانت آخر نسخة تم إنشاؤها.';
+    }
+
+    if (_areResultsPublished) {
+      return 'لا يمكن تعديل النسخة غير النشطة إذا كانت نتائج جولاتها منشورة.';
+    }
+
+    return 'لا يمكن تعديل هذه النسخة.';
+  }
+
   Future<void> _submitUpdate() async {
     // Vérifier si les modifications sont autorisées
     if (!_canEdit) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لا يمكن تعديل النسخة غير النشطة'),
+        SnackBar(
+          content: Text(_getEditabilityMessage()),
           backgroundColor: Colors.orange,
         ),
       );
@@ -252,50 +344,81 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                   padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     children: [
-                      // Avertissement si la compétition n'est pas active
-                      if (!_canEdit)
+                      // Avertissement si la compétition ne peut pas être modifiée
+                      if (_isCheckingEditability)
                         ModernCard(
-                          backgroundColor: AppTheme.warningColor.withOpacity(
-                            0.1,
-                          ),
+                          backgroundColor: AppTheme.infoColor.withOpacity(0.1),
                           child: Padding(
                             padding: const EdgeInsets.all(AppTheme.spacingS),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.warning_outlined,
-                                  color: AppTheme.warningColor,
-                                  size: 28,
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppTheme.infoColor,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: AppTheme.spacingS),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'النسخة غير نشطة',
-                                        style: AppTheme.labelLarge.copyWith(
-                                          color: AppTheme.warningColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'لا يمكن تعديل النسخ غير النشطة. يجب تفعيل النسخة أولاً.',
-                                        style: AppTheme.bodyMedium.copyWith(
-                                          color: AppTheme.warningColor
-                                              .withOpacity(0.8),
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    'جاري التحقق من إمكانية التعديل...',
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: AppTheme.infoColor,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                      if (!_canEdit) const SizedBox(height: AppTheme.spacingS),
+                      if (!_isCheckingEditability && !_canEdit)
+                        ModernCard(
+                          backgroundColor: AppTheme.warningColor.withOpacity(
+                            0.1,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.warning_outlined,
+                                      color: AppTheme.warningColor,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Expanded(
+                                      child: Text(
+                                        'التعديل غير متاح',
+                                        style: AppTheme.labelLarge.copyWith(
+                                          color: AppTheme.warningColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppTheme.spacingS),
+                                Text(
+                                  _getEditabilityMessage(),
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.warningColor.withOpacity(
+                                      0.8,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (!_isCheckingEditability && !_canEdit)
+                        const SizedBox(height: AppTheme.spacingS),
 
                       // Header avec informations de la version
                       ModernCard(

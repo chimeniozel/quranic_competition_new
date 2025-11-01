@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/archive_media_service.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
+import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/archive_media.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
@@ -29,6 +30,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
   final ArchiveMediaService _mediaService = ArchiveMediaService();
   final CompetitionVersionService _versionService = CompetitionVersionService();
   final ImagePicker _imagePicker = ImagePicker();
+  final FilePermissionService _permissionService = FilePermissionService();
   bool _isLoading = false;
   File? _selectedImageFile;
   bool _useImageFile = false;
@@ -215,6 +217,13 @@ class _EditMediaPageState extends State<EditMediaPage> {
   }
 
   Future<void> _pickImageFromGallery() async {
+    // Demander la permission avant de charger l'image
+    final hasPermission =
+        await _permissionService.requestStoragePermission(context);
+    if (!hasPermission) {
+      return; // L'utilisateur n'a pas accordé la permission
+    }
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
