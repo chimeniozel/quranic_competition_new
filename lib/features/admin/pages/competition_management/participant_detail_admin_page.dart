@@ -27,6 +27,8 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
   final ParticipantService _participantService = ParticipantService();
   bool _isLoading = false;
   bool _isEditing = false;
+  bool _areResultsPublished = false;
+  bool _isCheckingResults = false;
 
   // Controllers pour l'édition
   final TextEditingController _nameController = TextEditingController();
@@ -48,6 +50,37 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
   void initState() {
     super.initState();
     _initializeControllers();
+    _checkResultsPublished();
+  }
+
+  Future<void> _checkResultsPublished() async {
+    setState(() => _isCheckingResults = true);
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Récupérer tous les rounds de cette version
+      final roundsResponse = await supabase
+          .from('rounds')
+          .select('id, result_is_published')
+          .eq('version_id', widget.version.id);
+
+      // Vérifier si au moins un round a des résultats publiés
+      final hasPublishedResults = roundsResponse.any(
+        (round) => round['result_is_published'] == true,
+      );
+
+      if (mounted) {
+        setState(() {
+          _areResultsPublished = hasPublishedResults;
+          _isCheckingResults = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la vérification des résultats publiés: $e');
+      if (mounted) {
+        setState(() => _isCheckingResults = false);
+      }
+    }
   }
 
   @override
@@ -89,6 +122,12 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
     _birthDate = widget.participant.birthDate;
   }
 
+  bool get _canEditParticipant {
+    return widget.version.isActive &&
+        !widget.version.juryEvaluationEnabled &&
+        !_areResultsPublished;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,19 +135,59 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
         title: 'تفاصيل المشارك',
         actions: [
           IconButton(
-            icon: Icon(
-              _isEditing ? Icons.close : Icons.edit,
-              color: AppTheme.surfaceColor,
-            ),
-            onPressed: () {
-              setState(() {
-                if (_isEditing) {
-                  _initializeControllers(); // Réinitialiser les valeurs
-                }
-                _isEditing = !_isEditing;
-              });
-            },
-            tooltip: _isEditing ? 'إلغاء التعديل' : 'تعديل',
+            icon:
+                _isCheckingResults
+                    ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.surfaceColor,
+                        ),
+                      ),
+                    )
+                    : Icon(
+                      _isEditing ? Icons.close : Icons.edit,
+                      color: AppTheme.surfaceColor,
+                    ),
+            onPressed:
+                _isCheckingResults
+                    ? null
+                    : (_canEditParticipant
+                        ? () {
+                          setState(() {
+                            if (_isEditing) {
+                              _initializeControllers(); // Réinitialiser les valeurs
+                            }
+                            _isEditing = !_isEditing;
+                          });
+                        }
+                        : () {
+                          String message;
+                          if (!widget.version.isActive) {
+                            message = 'لا يمكن التعديل: المسابقة غير نشطة';
+                          } else if (widget.version.juryEvaluationEnabled) {
+                            message =
+                                'لا يمكن التعديل أثناء تفعيل تقييم المحكمين';
+                          } else if (_areResultsPublished) {
+                            message = 'لا يمكن التعديل: نتائج الجولات منشورة';
+                          } else {
+                            message = 'لا يمكن التعديل';
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(message),
+                              backgroundColor: AppTheme.warningColor,
+                            ),
+                          );
+                        }),
+            tooltip:
+                _isCheckingResults
+                    ? 'جاري التحقق...'
+                    : (_canEditParticipant
+                        ? (_isEditing ? 'إلغاء التعديل' : 'تعديل')
+                        : 'التعديل غير متاح'),
           ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: AppTheme.surfaceColor),
@@ -430,7 +509,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                         ),
 
                       // Section changement de statut (en mode édition)
-                      if (_isEditing)
+                      if (_isEditing && _canEditParticipant)
                         ModernCard(
                           child: Container(
                             padding: const EdgeInsets.all(AppTheme.spacingS),
@@ -516,6 +595,50 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                             ),
                           ),
                         ),
+                      // Message d'information si l'édition n'est pas disponible
+                      if (!_canEditParticipant)
+                        ModernCard(
+                          child: Container(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            decoration: BoxDecoration(
+                              color: AppTheme.warningColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                              border: Border.all(
+                                color: AppTheme.warningColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: AppTheme.warningColor,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: AppTheme.spacingS),
+                                Expanded(
+                                  child: Text(
+                                    _isCheckingResults
+                                        ? 'جاري التحقق من حالة النتائج...'
+                                        : (!widget.version.isActive
+                                            ? 'لا يمكن تعديل معلومات المشارك: المسابقة غير نشطة'
+                                            : widget
+                                                .version
+                                                .juryEvaluationEnabled
+                                            ? 'لا يمكن تعديل معلومات المشارك أثناء تفعيل تقييم المحكمين'
+                                            : _areResultsPublished
+                                            ? 'لا يمكن تعديل معلومات المشارك: نتائج الجولات منشورة'
+                                            : 'لا يمكن تعديل معلومات المشارك'),
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: AppTheme.warningColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: AppTheme.spacingS),
 
                       // Section informations personnelles
@@ -573,7 +696,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _isEditing
+                              _isEditing && _canEditParticipant
                                   ? _buildEditableTextField(
                                     icon: Icons.person,
                                     label: 'الاسم الكامل',
@@ -614,7 +737,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                               ),
                               const SizedBox(height: AppTheme.spacingS),
 
-                              _isEditing
+                              _isEditing && _canEditParticipant
                                   ? _buildEditableTextField(
                                     icon: Icons.phone,
                                     label: 'رقم الهاتف',
@@ -627,7 +750,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                   ),
                               const SizedBox(height: AppTheme.spacingS),
 
-                              _isEditing
+                              _isEditing && _canEditParticipant
                                   ? _buildDropdownField(
                                     icon: Icons.location_on,
                                     label: 'مكان الإقامة',
@@ -651,14 +774,28 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                   ),
                               const SizedBox(height: AppTheme.spacingS),
 
-                              _buildInfoRow(
-                                icon:
-                                    widget.participant.ageGroup == 'كبار'
-                                        ? Icons.person
-                                        : Icons.person,
-                                label: 'الفئة العمرية',
-                                value: widget.participant.ageGroup,
-                              ),
+                              _isEditing && _canEditParticipant
+                                  ? _buildDropdownField(
+                                    icon: Icons.people,
+                                    label: 'الفئة العمرية',
+                                    value:
+                                        _selectedAgeGroup ??
+                                        widget.participant.ageGroup,
+                                    items: const ['كبار', 'صغار'],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedAgeGroup = value;
+                                      });
+                                    },
+                                  )
+                                  : _buildInfoRow(
+                                    icon:
+                                        widget.participant.ageGroup == 'كبار'
+                                            ? Icons.person
+                                            : Icons.person,
+                                    label: 'الفئة العمرية',
+                                    value: widget.participant.ageGroup,
+                                  ),
                             ],
                           ),
                         ),
@@ -720,7 +857,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _isEditing
+                              _isEditing && _canEditParticipant
                                   ? _buildDropdownField(
                                     icon: Icons.menu_book,
                                     label: 'كم حفظ من القرآن',
@@ -745,7 +882,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                   ),
                               const SizedBox(height: AppTheme.spacingS),
 
-                              _isEditing
+                              _isEditing && _canEditParticipant
                                   ? _buildDropdownField(
                                     icon: Icons.format_list_numbered,
                                     label: 'عدد الروايات',
@@ -1030,6 +1167,27 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
   }
 
   Future<void> _showRejectConfirmation() async {
+    // Vérifier les conditions avant de rejeter
+    if (!_canEditParticipant) {
+      String message;
+      if (!widget.version.isActive) {
+        message = 'لا يمكن إلغاء المشاركة: المسابقة غير نشطة';
+      } else if (widget.version.juryEvaluationEnabled) {
+        message = 'لا يمكن إلغاء المشاركة أثناء تفعيل تقييم المحكمين';
+      } else if (_areResultsPublished) {
+        message = 'لا يمكن إلغاء المشاركة: نتائج الجولات منشورة';
+      } else {
+        message = 'لا يمكن إلغاء المشاركة';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
     final TextEditingController reasonController = TextEditingController();
 
     final confirmed = await showDialog<bool>(
@@ -1211,6 +1369,27 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
   }
 
   Future<void> _acceptParticipant() async {
+    // Vérifier les conditions avant d'accepter
+    if (!_canEditParticipant) {
+      String message;
+      if (!widget.version.isActive) {
+        message = 'لا يمكن قبول المشارك: المسابقة غير نشطة';
+      } else if (widget.version.juryEvaluationEnabled) {
+        message = 'لا يمكن قبول المشارك أثناء تفعيل تقييم المحكمين';
+      } else if (_areResultsPublished) {
+        message = 'لا يمكن قبول المشارك: نتائج الجولات منشورة';
+      } else {
+        message = 'لا يمكن قبول المشارك';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -1312,6 +1491,27 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
   }
 
   Future<void> _saveChanges() async {
+    // Vérifier les conditions avant de sauvegarder
+    if (!_canEditParticipant) {
+      String message;
+      if (!widget.version.isActive) {
+        message = 'لا يمكن حفظ التعديلات: المسابقة غير نشطة';
+      } else if (widget.version.juryEvaluationEnabled) {
+        message = 'لا يمكن حفظ التعديلات أثناء تفعيل تقييم المحكمين';
+      } else if (_areResultsPublished) {
+        message = 'لا يمكن حفظ التعديلات: نتائج الجولات منشورة';
+      } else {
+        message = 'لا يمكن حفظ التعديلات';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -1333,6 +1533,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
         participatedBefore:
             _participatedBefore ?? widget.participant.participatedBefore,
         ageGroup: _selectedAgeGroup ?? widget.participant.ageGroup,
+        passedRound1: widget.participant.passedRound1,
         createdAt: widget.participant.createdAt,
         isAccepted: widget.participant.isAccepted,
         registrationNumber: widget.participant.registrationNumber,
@@ -1384,6 +1585,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
           'residence': updatedParticipant.residence,
           'quran_memorized': updatedParticipant.quranMemorized,
           'reading_methods': updatedParticipant.readingMethods,
+          'age_group': updatedParticipant.ageGroup,
         })
         .eq('id', updatedParticipant.id);
   }

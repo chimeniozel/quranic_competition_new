@@ -7,6 +7,12 @@ import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:excel/excel.dart' as xls;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
 
 class VersionResultPage extends StatefulWidget {
   final CompetitionVersion version;
@@ -35,6 +41,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
   String _selectedAgeGroup = 'كبار';
   late bool _published;
   bool get _hasResults => _allResults.isNotEmpty;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -254,6 +261,197 @@ class _VersionResultPageState extends State<VersionResultPage> {
     }
   }
 
+  Future<void> _exportResultsToExcel() async {
+    if (_isExporting || _allResults.isEmpty) return;
+    setState(() => _isExporting = true);
+
+    try {
+      // Préparer les listes selon les filtres
+      final List<RoundResult> adults =
+          _allResults.where((r) => r.ageGroup == 'كبار').toList();
+      final List<RoundResult> children =
+          _allResults.where((r) => r.ageGroup == 'صغار').toList();
+      final List<RoundResult> passed =
+          _allResults.where((r) => r.passed).toList();
+      final List<RoundResult> failed =
+          _allResults.where((r) => !r.passed).toList();
+
+      // Trier par score décroissant (meilleurs résultats en premier)
+      adults.sort((a, b) => b.score.compareTo(a.score));
+      children.sort((a, b) => b.score.compareTo(a.score));
+      passed.sort((a, b) => b.score.compareTo(a.score));
+      failed.sort((a, b) => b.score.compareTo(a.score));
+      final sortedAllResults = List<RoundResult>.from(_allResults)
+        ..sort((a, b) => b.score.compareTo(a.score));
+
+      final xls.Excel excel = xls.Excel.createExcel();
+
+      List<List<xls.CellValue?>> _buildRows(List<RoundResult> list) {
+        final rows = <List<xls.CellValue?>>[];
+        rows.add([
+          xls.TextCellValue('الترتيب'),
+          xls.TextCellValue('رقم التسجيل'),
+          xls.TextCellValue('الاسم الكامل'),
+          xls.TextCellValue('الجنس'),
+          xls.TextCellValue('الفئة'),
+          xls.TextCellValue('المعدل'),
+          xls.TextCellValue('الحالة'),
+          xls.TextCellValue('تاريخ النتيجة'),
+        ]);
+        int rank = 1;
+        for (final result in list) {
+          rows.add([
+            xls.IntCellValue(rank),
+            xls.TextCellValue(
+              (result.participant.registrationNumber ?? '').toString(),
+            ),
+            xls.TextCellValue(result.participant.fullName),
+            xls.TextCellValue(result.participant.gender),
+            xls.TextCellValue(result.ageGroup),
+            xls.DoubleCellValue(result.score),
+            xls.TextCellValue(result.passed ? 'نجح' : 'لم ينجح'),
+            xls.TextCellValue(result.createdAt.toIso8601String()),
+          ]);
+          rank++;
+        }
+        return rows;
+      }
+
+      void _addSheet(String name, List<RoundResult> list) {
+        final sheet = excel[name];
+        final rows = _buildRows(list);
+        for (final row in rows) {
+          sheet.appendRow(row);
+        }
+      }
+
+      // Remplir les feuilles
+      _addSheet('جميع النتائج', sortedAllResults);
+      _addSheet('الكبار', adults);
+      _addSheet('الصغار', children);
+      _addSheet('الناجحون', passed);
+      _addSheet('غير الناجحين', failed);
+
+      // Supprimer la feuille par défaut vide (Sheet1)
+      try {
+        final defaultSheet = excel.getDefaultSheet();
+        if (defaultSheet != null) {
+          excel.delete(defaultSheet);
+        }
+      } catch (e) {
+        debugPrint('Note: Impossible de supprimer la feuille par défaut: $e');
+      }
+
+      // Nom de fichier significatif بالعربية
+      final roundName = widget.round.name ?? 'الجولة_${widget.round.number}';
+      final versionName = widget.version.name.trim();
+      final fileName =
+          'نتائج_${roundName}_${versionName}_${widget.version.year}.xlsx';
+
+      final bytes = excel.save();
+      if (bytes == null) {
+        throw Exception('فشل توليد الملف');
+      }
+
+      // تحويل List<int> إلى Uint8List للمشاركة والحفظ
+      final uint8Bytes = Uint8List.fromList(bytes);
+
+      // حفظ مؤقت للسماح بالمشاركة
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsBytes(uint8Bytes, flush: true);
+
+      if (!mounted) return;
+
+      // عرض خيارات للمستخدم: حفظ أو مشاركة
+      final action = await showDialog<String>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('اختر الإجراء', style: AppTheme.headingSmall),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ما الذي تريد فعله بالملف؟', style: AppTheme.bodyMedium),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop('save'),
+                child: Text(
+                  'حفظ في الملفات',
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop('share'),
+                child: Text(
+                  'مشاركة',
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (action == 'save') {
+        // السماح للمستخدم باختيار موقع الحفظ
+        try {
+          final String? savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'اختر موقع الحفظ',
+            fileName: fileName,
+            type: FileType.custom,
+            allowedExtensions: ['xlsx'],
+            bytes: uint8Bytes, // مطلوب على Android و iOS
+          );
+
+          if (savePath != null) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('تم حفظ الملف بنجاح'),
+                backgroundColor: AppTheme.successColor,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('خطأ في حفظ الملف: $e'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+      } else if (action == 'share') {
+        // مشاركة الملف
+        await Share.shareXFiles(
+          [XFile(tempFile.path)],
+          text:
+              'نتائج ${roundName} - ${versionName} ${widget.version.year}',
+          subject: 'نتائج ${roundName}',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تعذر تصدير النتائج: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   List<RoundResult> get _filteredResults {
     if (_searchQuery.isEmpty) {
       return _results;
@@ -283,70 +481,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          if (!_published && _hasResults)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: AppTheme.spacingS),
-              child: ElevatedButton.icon(
-                onPressed: _isPublishing ? null : _publishResults,
-                icon:
-                    _isPublishing
-                        ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                        : const Icon(Icons.publish, color: Colors.white),
-                label: const Text('نشر النتائج'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.successColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingS,
-                  ),
-                  minimumSize: const Size(0, 36),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  ),
-                  elevation: AppTheme.elevationS,
-                ),
-              ),
-            )
-          else if (_published)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: AppTheme.spacingS),
-              child: OutlinedButton.icon(
-                onPressed: _isPublishing ? null : _unpublishResults,
-                icon:
-                    _isPublishing
-                        ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Icons.undo),
-                label: const Text('إلغاء النشر'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.warningColor,
-                  side: const BorderSide(color: AppTheme.warningColor),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingS,
-                  ),
-                  minimumSize: const Size(0, 36),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  ),
-                ),
-              ),
-            ),
-        ],
+        actions: [],
       ),
       body:
           _isLoading
@@ -406,25 +541,37 @@ class _VersionResultPageState extends State<VersionResultPage> {
                   ),
                 ),
               )
-              : ModernPullToRefresh(
-                onRefresh: () => _loadResults(reset: true),
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _buildRoundInfo(),
-                          const SizedBox(height: AppTheme.spacingS),
-                          _buildAgeGroupSelector(),
-                          _buildSearchBar(),
-                        ]),
+              : Column(
+                children: [
+                  Expanded(
+                    child: ModernPullToRefresh(
+                      onRefresh: () => _loadResults(reset: true),
+                      child: CustomScrollView(
+                        controller: _scrollController,
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            sliver: SliverList(
+                              delegate: SliverChildListDelegate([
+                                _buildRoundInfo(),
+                                const SizedBox(height: AppTheme.spacingS),
+                                _buildAgeGroupSelector(),
+                                _buildSearchBar(),
+                              ]),
+                            ),
+                          ),
+                          _buildResultsSliver(),
+                          // Espace en bas pour les boutons
+                          const SliverPadding(
+                            padding: EdgeInsets.only(bottom: 80),
+                          ),
+                        ],
                       ),
                     ),
-                    _buildResultsSliver(),
-                  ],
-                ),
+                  ),
+                  // Boutons en bas de la page
+                  if (_hasResults) _buildBottomActions(),
+                ],
               ),
     );
   }
@@ -793,6 +940,122 @@ class _VersionResultPageState extends State<VersionResultPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomActions() {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            // Bouton d'exportation vers Excel
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _isExporting ? null : _exportResultsToExcel,
+                icon: _isExporting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.file_download, color: Colors.white),
+                label: const Text('تصدير النتائج'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.infoColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingS,
+                  ),
+                  minimumSize: const Size(0, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  ),
+                  elevation: AppTheme.elevationS,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppTheme.spacingS),
+            // Bouton de publication/dépublication
+            Expanded(
+              child: !_published && _hasResults
+                  ? ElevatedButton.icon(
+                      onPressed: _isPublishing ? null : _publishResults,
+                      icon: _isPublishing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.publish, color: Colors.white),
+                      label: const Text('نشر النتائج'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.successColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingS,
+                          vertical: AppTheme.spacingS,
+                        ),
+                        minimumSize: const Size(0, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        ),
+                        elevation: AppTheme.elevationS,
+                      ),
+                    )
+                  : _published
+                      ? OutlinedButton.icon(
+                          onPressed: _isPublishing ? null : _unpublishResults,
+                          icon: _isPublishing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.undo),
+                          label: const Text('إلغاء النشر'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.warningColor,
+                            side: const BorderSide(color: AppTheme.warningColor),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.spacingS,
+                              vertical: AppTheme.spacingS,
+                            ),
+                            minimumSize: const Size(0, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusM),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
