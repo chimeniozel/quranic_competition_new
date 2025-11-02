@@ -150,7 +150,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
               },
             ),
             actions: [
-              TextButton(
+              SecondaryButton(
                 onPressed: () {
                   // Fermer le clavier
                   FocusScope.of(context).unfocus();
@@ -158,9 +158,9 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                   _numberOfWinnersController.clear();
                   Navigator.of(context).pop();
                 },
-                child: const Text('إلغاء'),
+                text: 'إلغاء',
               ),
-              ElevatedButton(
+              PrimaryButton(
                 onPressed: () async {
                   // Fermer le clavier
                   FocusScope.of(context).unfocus();
@@ -193,7 +193,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                     );
                   }
                 },
-                child: const Text('موافق'),
+                text: 'موافق',
               ),
             ],
           ),
@@ -272,9 +272,9 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                   ),
                 ),
                 actions: [
-                  TextButton(
+                  PrimaryButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('موافق'),
+                    text: 'موافق',
                   ),
                 ],
               ),
@@ -303,13 +303,13 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
               'هل أنت متأكد من إعادة تعيين الفائزين؟ يمكنك بعد ذلك إجراء قرعة جديدة.',
             ),
             actions: [
-              TextButton(
+              SecondaryButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
+                text: 'إلغاء',
               ),
-              ElevatedButton(
+              PrimaryButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('إعادة التعيين'),
+                text: 'إعادة التعيين',
               ),
             ],
           ),
@@ -348,16 +348,14 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
             title: const Text('تأكيد الحذف'),
             content: Text('هل أنت متأكد من حذف ${participant.fullName}؟'),
             actions: [
-              TextButton(
+              SecondaryButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
+                text: 'إلغاء',
               ),
-              ElevatedButton(
+              PrimaryButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.errorColor,
-                ),
-                child: const Text('حذف'),
+                text: 'حذف',
+                backgroundColor: AppTheme.errorColor,
               ),
             ],
           ),
@@ -396,7 +394,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
-            tooltip: 'تعديل الفسحة أو الدورة',
+            tooltip: 'تعديل الفسحة',
             onPressed: () async {
               final result = await context.push(
                 '/admin/eid-sessions/${_currentSession.id}/edit',
@@ -702,16 +700,14 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
               'هل أنت متأكد من حذف الفسحة أو الدورة "${session.name}"؟',
             ),
             actions: [
-              TextButton(
+              SecondaryButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
+                text: 'إلغاء',
               ),
-              ElevatedButton(
+              PrimaryButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.errorColor,
-                ),
-                child: const Text('حذف'),
+                text: 'حذف',
+                backgroundColor: AppTheme.errorColor,
               ),
             ],
           ),

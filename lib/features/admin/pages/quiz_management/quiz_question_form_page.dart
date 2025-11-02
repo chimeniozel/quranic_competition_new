@@ -7,6 +7,10 @@ import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/models/quiz_question.dart';
+import 'package:quranic_competition/core/theme/app_theme.dart';
+import 'package:quranic_competition/core/widgets/ui_components.dart';
+import 'package:quranic_competition/core/widgets/modern_navigation.dart';
+import 'package:quranic_competition/core/widgets/loading_states.dart';
 
 class QuizQuestionFormPage extends StatefulWidget {
   final String? questionId;
@@ -23,7 +27,6 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
   final _questionController = TextEditingController();
   final _imageUrlController = TextEditingController();
   final _pointsController = TextEditingController();
-  final _orderController = TextEditingController();
   final _quizService = QuizService();
   final _imagePicker = ImagePicker();
   final FilePermissionService _permissionService = FilePermissionService();
@@ -60,7 +63,6 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
     _questionController.dispose();
     _imageUrlController.dispose();
     _pointsController.dispose();
-    _orderController.dispose();
     for (final controller in _optionControllers) {
       controller.dispose();
     }
@@ -117,7 +119,6 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         _questionController.text = question.question;
         _imageUrlController.text = question.imageUrl ?? '';
         _pointsController.text = question.points.toString();
-        _orderController.text = question.order.toString();
 
         // Initialiser les options
         _optionControllers.clear();
@@ -161,36 +162,16 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
       _selectedLevel = _levels.first;
     }
 
-    // Initialiser avec 4 options vides
-    _optionControllers = List.generate(4, (index) => TextEditingController());
+    // Initialiser avec 2 options vides
+    _optionControllers = List.generate(2, (index) => TextEditingController());
     _pointsController.text = '1';
-
-    // Charger le prochain ordre
-    if (_selectedLevel != null) {
-      try {
-        final questions = await _quizService.getQuestionsByLevel(
-          _selectedLevel!.id,
-        );
-        final nextOrder =
-            questions.isEmpty
-                ? 1
-                : questions
-                        .map((q) => q.order)
-                        .reduce((a, b) => a > b ? a : b) +
-                    1;
-        _orderController.text = nextOrder.toString();
-      } catch (e) {
-        _orderController.text = '1';
-      }
-    } else {
-      _orderController.text = '1';
-    }
   }
 
   Future<void> _pickImage() async {
     // Demander la permission avant de charger l'image
-    final hasPermission =
-        await _permissionService.requestStoragePermission(context);
+    final hasPermission = await _permissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) {
       return; // L'utilisateur n'a pas accordé la permission
     }
@@ -224,6 +205,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
   void _removeSelectedImage() {
     setState(() {
       _selectedImage = null;
+      _imageUrlController.clear();
     });
   }
 
@@ -272,6 +254,56 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         }
       });
     }
+  }
+
+  List<Widget> _buildOptionFields() {
+    return _optionControllers.asMap().entries.map((entry) {
+      final index = entry.key;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppTheme.spacingS),
+        child: ModernCard(
+          padding: const EdgeInsets.all(AppTheme.spacingS),
+          child: Row(
+            children: [
+              Radio<int>(
+                value: index,
+                groupValue: _correctOptionIndex,
+                onChanged: (value) {
+                  setState(() {
+                    _correctOptionIndex = value!;
+                  });
+                },
+                activeColor: AppTheme.primaryColor,
+              ),
+              Expanded(
+                child: TextFormField(
+                  controller: _optionControllers[index],
+                  decoration: InputDecoration(
+                    labelText: 'الخيار ${index + 1}',
+                    suffixIcon:
+                        _optionControllers.length > 2
+                            ? IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: AppTheme.errorColor,
+                              ),
+                              onPressed: () => _removeOption(index),
+                            )
+                            : null,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'يرجى ملء هذا الخيار';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }).toList();
   }
 
   Future<void> _saveQuestion() async {
@@ -326,7 +358,29 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
       }
 
       final points = int.parse(_pointsController.text.trim());
-      final order = int.parse(_orderController.text.trim());
+
+      // Calculer l'ordre automatiquement
+      int order;
+      if (_isEditing && _existingQuestion != null) {
+        // Conserver l'ordre existant lors de la modification
+        order = _existingQuestion!.order;
+      } else {
+        // Calculer le prochain ordre pour une nouvelle question
+        try {
+          final questions = await _quizService.getQuestionsByLevel(
+            _selectedLevel!.id,
+          );
+          order =
+              questions.isEmpty
+                  ? 1
+                  : questions
+                          .map((q) => q.order)
+                          .reduce((a, b) => a > b ? a : b) +
+                      1;
+        } catch (e) {
+          order = 1;
+        }
+      }
 
       if (_isEditing && _existingQuestion != null) {
         // Mise à jour
@@ -394,8 +448,8 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'تعديل السؤال' : 'إضافة سؤال جديد'),
+      appBar: ModernAppBar(
+        title: _isEditing ? 'تعديل السؤال' : 'إضافة سؤال جديد',
         actions: [
           if (_isLoading)
             const Padding(
@@ -403,322 +457,267 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               ),
             ),
         ],
       ),
       body:
           _isLoading && _isEditing
-              ? const Center(child: CircularProgressIndicator())
+              ? const LoadingOverlay(child: SizedBox())
               : Form(
                 key: _formKey,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Sélection du niveau
-                      DropdownButtonFormField<QuizLevel>(
-                        value: _selectedLevel,
-                        decoration: const InputDecoration(
-                          labelText: 'المستوى',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.quiz),
+                      ModernCard(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        child: DropdownButtonFormField<QuizLevel>(
+                          value: _selectedLevel,
+                          decoration: InputDecoration(
+                            labelText: 'المستوى',
+                            prefixIcon: const Icon(Icons.quiz),
+                            filled: true,
+                            fillColor: AppTheme.surfaceColor,
+                          ),
+                          items:
+                              _levels.map((level) {
+                                return DropdownMenuItem(
+                                  value: level,
+                                  child: Text(level.name),
+                                );
+                              }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedLevel = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null) {
+                              return 'يرجى اختيار مستوى';
+                            }
+                            return null;
+                          },
                         ),
-                        items:
-                            _levels.map((level) {
-                              return DropdownMenuItem(
-                                value: level,
-                                child: Text(level.name),
-                              );
-                            }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedLevel = value;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'يرجى اختيار مستوى';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppTheme.spacingS),
 
                       // Question
-                      TextFormField(
-                        controller: _questionController,
-                        decoration: const InputDecoration(
-                          labelText: 'السؤال',
-                          hintText: 'اكتب السؤال هنا...',
-                          border: OutlineInputBorder(),
-                          alignLabelWithHint: true,
+                      ModernCard(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        child: TextFormField(
+                          controller: _questionController,
+                          decoration: const InputDecoration(
+                            labelText: 'السؤال',
+                            hintText: 'اكتب السؤال هنا...',
+                            alignLabelWithHint: true,
+                          ),
+                          maxLines: 3,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'يرجى إدخال السؤال';
+                            }
+                            return null;
+                          },
                         ),
-                        maxLines: 3,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال السؤال';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppTheme.spacingS),
 
                       // Section Image
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'صورة السؤال (اختياري)',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                      ModernCard(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'صورة السؤال (اختياري)',
+                              style: AppTheme.headingSmall.copyWith(
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            // Aperçu de l'image (nouvelle ou existante)
+                            if (_selectedImage != null ||
+                                (_imageUrlController.text.trim().isNotEmpty &&
+                                    _selectedImage == null)) ...[
+                              Container(
+                                width: double.infinity,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusM,
+                                  ),
+                                  border: Border.all(
+                                    color: AppTheme.dividerColor,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusM,
+                                  ),
+                                  child:
+                                      _selectedImage != null
+                                          ? Image.file(
+                                            _selectedImage!,
+                                            fit: BoxFit.cover,
+                                          )
+                                          : Image.network(
+                                            _imageUrlController.text.trim(),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (
+                                              context,
+                                              error,
+                                              stackTrace,
+                                            ) {
+                                              return Container(
+                                                color: AppTheme.surfaceColor,
+                                                child: Icon(
+                                                  Icons.image_not_supported,
+                                                  size: 50,
+                                                  color:
+                                                      AppTheme
+                                                          .textSecondaryColor,
+                                                ),
+                                              );
+                                            },
+                                            loadingBuilder: (
+                                              context,
+                                              child,
+                                              loadingProgress,
+                                            ) {
+                                              if (loadingProgress == null) {
+                                                return child;
+                                              }
+                                              return Center(
+                                                child: CircularProgressIndicator(
+                                                  value:
+                                                      loadingProgress
+                                                                  .expectedTotalBytes !=
+                                                              null
+                                                          ? loadingProgress
+                                                                  .cumulativeBytesLoaded /
+                                                              loadingProgress
+                                                                  .expectedTotalBytes!
+                                                          : null,
+                                                ),
+                                              );
+                                            },
+                                          ),
                                 ),
                               ),
-                              const SizedBox(height: 12),
-
-                              // Aperçu de l'image sélectionnée
-                              if (_selectedImage != null) ...[
-                                Container(
-                                  width: double.infinity,
-                                  height: 200,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.grey[300]!,
+                              const SizedBox(height: AppTheme.spacingXS),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SecondaryButton(
+                                      text: 'تغيير الصورة',
+                                      icon: Icons.edit,
+                                      onPressed: _pickImage,
+                                      fullWidth: true,
                                     ),
                                   ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(
-                                      _selectedImage!,
-                                      fit: BoxFit.cover,
+                                  const SizedBox(width: AppTheme.spacingXS),
+                                  Expanded(
+                                    child: SecondaryButton(
+                                      text: 'حذف',
+                                      icon: Icons.delete,
+                                      onPressed: _removeSelectedImage,
+                                      fullWidth: true,
+                                      textColor: AppTheme.errorColor,
+                                      borderColor: AppTheme.errorColor,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _pickImage,
-                                        icon: const Icon(Icons.edit),
-                                        label: const Text('تغيير الصورة'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _removeSelectedImage,
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.red,
-                                        ),
-                                        label: const Text(
-                                          'حذف',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                const Divider(),
-                                const SizedBox(height: 8),
-                              ],
-
-                              // Bouton pour choisir une image
-                              if (_selectedImage == null)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _pickImage,
-                                    icon: const Icon(Icons.photo_library),
-                                    label: const Text('اختيار صورة من المعرض'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue[50],
-                                      foregroundColor: Colors.blue[700],
-                                    ),
-                                  ),
-                                ),
-
-                              const SizedBox(height: 12),
-
-                              // URL de l'image (alternative)
-                              TextFormField(
-                                controller: _imageUrlController,
-                                decoration: const InputDecoration(
-                                  labelText: 'أو رابط الصورة',
-                                  hintText: 'https://example.com/image.jpg',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.link),
-                                ),
-                                keyboardType: TextInputType.url,
-                                onChanged: (value) {
-                                  if (value.isNotEmpty) {
-                                    setState(() {
-                                      _selectedImage = null;
-                                    });
-                                  }
-                                },
+                                ],
                               ),
+                              const SizedBox(height: AppTheme.spacingS),
+                              const Divider(),
+                              const SizedBox(height: AppTheme.spacingXS),
                             ],
-                          ),
+
+                            // Bouton pour choisir une image
+                            if (_selectedImage == null &&
+                                _imageUrlController.text.trim().isEmpty)
+                              PrimaryButton(
+                                text: 'اختيار صورة من المعرض',
+                                icon: Icons.photo_library,
+                                onPressed: _pickImage,
+                                fullWidth: true,
+                                backgroundColor: AppTheme.infoColor,
+                              ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppTheme.spacingS),
 
-                      // Points et ordre
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _pointsController,
-                              decoration: const InputDecoration(
-                                labelText: 'النقاط',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.stars),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'يرجى إدخال النقاط';
-                                }
-                                final points = int.tryParse(value.trim());
-                                if (points == null || points < 1) {
-                                  return 'يرجى إدخال رقم صحيح أكبر من 0';
-                                }
-                                return null;
-                              },
-                            ),
+                      // Points
+                      ModernCard(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        child: TextFormField(
+                          controller: _pointsController,
+                          decoration: const InputDecoration(
+                            labelText: 'النقاط',
+                            prefixIcon: Icon(Icons.stars),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _orderController,
-                              decoration: const InputDecoration(
-                                labelText: 'الترتيب',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.sort),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'يرجى إدخال الترتيب';
-                                }
-                                final order = int.tryParse(value.trim());
-                                if (order == null || order < 1) {
-                                  return 'يرجى إدخال رقم صحيح أكبر من 0';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'يرجى إدخال النقاط';
+                            }
+                            final points = int.tryParse(value.trim());
+                            if (points == null || points < 1) {
+                              return 'يرجى إدخال رقم صحيح أكبر من 0';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppTheme.spacingL),
 
                       // Options de réponses
-                      const Text(
-                        'خيارات الإجابة',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Text('خيارات الإجابة', style: AppTheme.headingSmall),
+                      const SizedBox(height: AppTheme.spacingS),
+
+                      // Options de réponses
+                      Column(
+                        children: [
+                          ..._buildOptionFields(),
+                          // Bouton pour ajouter une option
+                          if (_optionControllers.length < 6)
+                            SecondaryButton(
+                              text: 'إضافة خيار',
+                              icon: Icons.add,
+                              onPressed: _addOption,
+                              fullWidth: true,
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-
-                      ...List.generate(_optionControllers.length, (index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              Radio<int>(
-                                value: index,
-                                groupValue: _correctOptionIndex,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _correctOptionIndex = value!;
-                                  });
-                                },
-                              ),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _optionControllers[index],
-                                  decoration: InputDecoration(
-                                    labelText: 'الخيار ${index + 1}',
-                                    border: const OutlineInputBorder(),
-                                    suffixIcon:
-                                        _optionControllers.length > 2
-                                            ? IconButton(
-                                              icon: const Icon(
-                                                Icons.delete,
-                                                color: Colors.red,
-                                              ),
-                                              onPressed:
-                                                  () => _removeOption(index),
-                                            )
-                                            : null,
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return 'يرجى ملء هذا الخيار';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-
-                      // Bouton pour ajouter une option
-                      if (_optionControllers.length < 6)
-                        OutlinedButton.icon(
-                          onPressed: _addOption,
-                          icon: const Icon(Icons.add),
-                          label: const Text('إضافة خيار'),
-                        ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppTheme.spacingL),
 
                       // Boutons
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton(
+                            child: SecondaryButton(
+                              text: 'إلغاء',
                               onPressed:
                                   _isLoading ? null : () => context.pop(),
-                              child: const Text('إلغاء'),
+                              fullWidth: true,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: AppTheme.spacingS),
                           Expanded(
-                            child: ElevatedButton(
+                            child: PrimaryButton(
+                              text: _isEditing ? 'تحديث' : 'إنشاء',
                               onPressed: _isLoading ? null : _saveQuestion,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                              ),
-                              child:
-                                  _isLoading
-                                      ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
-                                              ),
-                                        ),
-                                      )
-                                      : Text(_isEditing ? 'تحديث' : 'إنشاء'),
+                              isLoading: _isLoading,
+                              fullWidth: true,
                             ),
                           ),
                         ],

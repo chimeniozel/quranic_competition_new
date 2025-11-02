@@ -53,14 +53,9 @@ class _EidSessionsPageState extends State<EidSessionsPage> {
         title: 'فسحة العيد',
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'إضافة فسحة جديدة أو دورة',
-            onPressed: () async {
-              final result = await context.push('/admin/eid-sessions/create');
-              if (result == true) {
-                _loadSessions();
-              }
-            },
+            icon: const Icon(Icons.refresh),
+            tooltip: 'تحديث',
+            onPressed: _loadSessions,
           ),
         ],
       ),
@@ -84,6 +79,16 @@ class _EidSessionsPageState extends State<EidSessionsPage> {
                   },
                 ),
               ),
+      floatingActionButton: ModernFAB(
+        onPressed: () async {
+          final result = await context.push('/admin/eid-sessions/create');
+          if (result == true) {
+            _loadSessions();
+          }
+        },
+        icon: Icons.add,
+        tooltip: 'إضافة فسحة جديدة أو دورة',
+      ),
     );
   }
 

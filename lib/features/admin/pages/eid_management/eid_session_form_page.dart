@@ -134,7 +134,9 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: widget.session == null ? 'إنشاء فسحة' : 'تعديل الفسحة',
+        title: widget.session == null
+            ? 'إنشاء فسحة'
+            : 'تعديل الفسحة',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.spacingS),
@@ -202,26 +204,22 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton.icon(
+                            child: SecondaryButton(
                               onPressed: () => _selectDate(context, true),
-                              icon: const Icon(Icons.calendar_today),
-                              label: Text(
-                                _startDate != null
-                                    ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                                    : 'تاريخ البداية',
-                              ),
+                              text: _startDate != null
+                                  ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
+                                  : 'تاريخ البداية',
+                              icon: Icons.calendar_today,
                             ),
                           ),
                           const SizedBox(width: AppTheme.spacingS),
                           Expanded(
-                            child: OutlinedButton.icon(
+                            child: SecondaryButton(
                               onPressed: () => _selectDate(context, false),
-                              icon: const Icon(Icons.event),
-                              label: Text(
-                                _endDate != null
-                                    ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                                    : 'تاريخ النهاية',
-                              ),
+                              text: _endDate != null
+                                  ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                                  : 'تاريخ النهاية',
+                              icon: Icons.event,
                             ),
                           ),
                         ],
