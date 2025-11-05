@@ -12,6 +12,9 @@ import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'package:quranic_competition/core/services/push_notification_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
 
 class BatchAddMediaPage extends StatefulWidget {
   const BatchAddMediaPage({super.key});
@@ -192,6 +195,8 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
 
     try {
       int successCount = 0;
+      int createdImages = 0;
+      int createdVideos = 0;
 
       for (int i = 0; i < _mediaItems.length; i++) {
         final item = _mediaItems[i];
@@ -221,6 +226,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
               );
 
               successCount++;
+              createdImages++;
             }
           } else {
             throw Exception('يرجى اختيار صورة للأرشيف ${i + 1}');
@@ -244,6 +250,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
           );
 
           successCount++;
+          createdVideos++;
         }
       }
 
@@ -254,6 +261,27 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
             backgroundColor: Colors.green,
           ),
         );
+
+        // Notification publique: إنشاء أرشيف صور/فيديو
+        try {
+          final push = PushNotificationService();
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          await push.sendNotification(
+            title: '📦 تمت إضافة أرشيف للمسابقة',
+            body:
+                'تمت إضافة ${createdImages > 0 ? '$createdImages صورة' : ''}${createdImages > 0 && createdVideos > 0 ? ' و ' : ''}${createdVideos > 0 ? '$createdVideos فيديو' : ''} في نسخة "${_selectedVersion!.name}"',
+            type: 'info',
+            payload: jsonEncode({
+              'type': 'archive_media_created',
+              'version_id': _selectedVersion!.id,
+              'version_name': _selectedVersion!.name,
+              'images': createdImages,
+              'videos': createdVideos,
+              'created_by': currentUserId,
+            }),
+            userId: null,
+          );
+        } catch (_) {}
         context.pop(true);
       }
     } catch (e) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import '../../../../core/services/competition_version_service.dart';
+import '../../../../core/services/push_notification_service.dart';
 import '../../../../models/competition_version.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
@@ -147,6 +149,25 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
       });
 
       await _loadVersions();
+
+      // Notifier tous les utilisateurs de la création d'une nouvelle version
+      try {
+        final pushNotificationService = PushNotificationService();
+        await pushNotificationService.sendNotification(
+          title: '🎉 نسخة جديدة',
+          body: 'تم إنشاء نسخة جديدة من المسابقة: $name',
+          type: 'success',
+          payload: jsonEncode({
+            'type': 'version_created',
+            'version_name': name,
+          }),
+          // userId = NULL pour notifier tous les utilisateurs
+        );
+        print('✅ Notification envoyée pour la nouvelle version: $name');
+      } catch (e) {
+        print('❌ Erreur lors de l\'envoi de la notification: $e');
+        // Ne pas bloquer l'opération si la notification échoue
+      }
     } catch (e) {
       setState(() {
         _isAddingLoad = false;

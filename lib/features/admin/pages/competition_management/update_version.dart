@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
 import '../../../../core/services/competition_version_service.dart';
+import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/services/user_service.dart';
 import '../../../../models/competition_version.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
@@ -18,6 +21,8 @@ class UpdateVersionPage extends StatefulWidget {
 
 class _UpdateVersionPageState extends State<UpdateVersionPage> {
   final _service = CompetitionVersionService();
+  final _pushNotificationService = PushNotificationService();
+  final _userService = UserService();
 
   TextEditingController _nameController = TextEditingController();
   TextEditingController _yearController = TextEditingController();
@@ -30,6 +35,10 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
   bool _isActive = true;
   bool _isRegistrationOpen = true;
   bool _juryEvaluationEnabled = false;
+
+  // Valeurs précédentes pour détecter les changements
+  bool _previousIsRegistrationOpen = false;
+  bool _previousJuryEvaluationEnabled = false;
 
   bool _isLoading = false;
   bool _canEdit = false;
@@ -69,6 +78,9 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
           _successAverageChildrenController.text =
               currentVersion.successAverageChildren.toString();
           _isActive = currentVersion.isActive;
+          // Stocker les valeurs précédentes avant de mettre à jour
+          _previousIsRegistrationOpen = _isRegistrationOpen;
+          _previousJuryEvaluationEnabled = _juryEvaluationEnabled;
           _isRegistrationOpen = currentVersion.isRegistrationOpen;
           _juryEvaluationEnabled = currentVersion.juryEvaluationEnabled;
           _participantCounts = participantCounts;
@@ -94,6 +106,8 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     _successAverageChildrenController.text =
         widget.version.successAverageChildren.toString();
     _isActive = widget.version.isActive;
+    _previousIsRegistrationOpen = widget.version.isRegistrationOpen;
+    _previousJuryEvaluationEnabled = widget.version.juryEvaluationEnabled;
     _isRegistrationOpen = widget.version.isRegistrationOpen;
     _juryEvaluationEnabled = widget.version.juryEvaluationEnabled;
   }
@@ -229,6 +243,76 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     return 'لا يمكن تعديل هذه النسخة.';
   }
 
+  /// Envoie une notification à tous les utilisateurs pour l'ouverture de l'inscription
+  Future<void> _sendRegistrationOpenedNotification() async {
+    try {
+      final payload = jsonEncode({
+        'type': 'registration_opened',
+        'version_id': widget.version.id,
+        'version_name': widget.version.name,
+      });
+
+      // Envoyer à tous les utilisateurs (user_id = null)
+      await _pushNotificationService.sendNotification(
+        title: 'تم فتح التسجيل',
+        body:
+            'تم فتح التسجيل للنسخة "${widget.version.name}". يمكنك الآن التسجيل في المسابقة.',
+        type: 'info',
+        payload: payload,
+        userId: null, // null = tous les utilisateurs
+      );
+
+      print('✅ Notification d\'ouverture de l\'inscription envoyée');
+    } catch (e) {
+      print('❌ Erreur lors de l\'envoi de la notification d\'inscription: $e');
+      // Ne pas bloquer la mise à jour en cas d'erreur de notification
+    }
+  }
+
+  /// Envoie une notification à tous les jurys pour l'ouverture de l'évaluation
+  Future<void> _sendJuryEvaluationOpenedNotification() async {
+    try {
+      // Récupérer tous les jurys assignés à cette version
+      final jurys = await _userService.getJurysByVersion(widget.version.id);
+
+      if (jurys.isEmpty) {
+        print('⚠️ Aucun jury assigné à cette version, aucune notification envoyée');
+        return;
+      }
+
+      final payload = jsonEncode({
+        'type': 'jury_evaluation_opened',
+        'version_id': widget.version.id,
+        'version_name': widget.version.name,
+      });
+
+      // Envoyer une notification à chaque jury
+      for (final jury in jurys) {
+        try {
+          await _pushNotificationService.sendNotification(
+            title: 'تم فتح تقييم المحكمين',
+            body:
+                'تم فتح تقييم المحكمين للنسخة "${widget.version.name}". يمكنك الآن تقييم المشاركين.',
+            type: 'info',
+            payload: payload,
+            userId: jury.id,
+          );
+        } catch (e) {
+          print(
+            '❌ Erreur lors de l\'envoi de la notification au jury ${jury.id}: $e',
+          );
+        }
+      }
+
+      print('✅ Notification d\'ouverture de l\'évaluation envoyée à ${jurys.length} jurys');
+    } catch (e) {
+      print(
+        '❌ Erreur lors de l\'envoi de la notification d\'évaluation: $e',
+      );
+      // Ne pas bloquer la mise à jour en cas d'erreur de notification
+    }
+  }
+
   Future<void> _submitUpdate() async {
     // Vérifier si les modifications sont autorisées
     if (!_canEdit) {
@@ -278,6 +362,12 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Détecter les changements avant la mise à jour
+      final registrationJustOpened =
+          !_previousIsRegistrationOpen && _isRegistrationOpen;
+      final juryEvaluationJustOpened =
+          !_previousJuryEvaluationEnabled && _juryEvaluationEnabled;
+
       await _service.updateVersion(
         id: widget.version.id,
         name: name,
@@ -290,6 +380,21 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         successAverageAdults: successAverageAdults,
         successAverageChildren: successAverageChildren,
       );
+
+      // Envoyer les notifications si nécessaire
+      if (registrationJustOpened) {
+        await _sendRegistrationOpenedNotification();
+      }
+
+      if (juryEvaluationJustOpened) {
+        await _sendJuryEvaluationOpenedNotification();
+      }
+
+      // Mettre à jour les valeurs précédentes après la sauvegarde réussie
+      setState(() {
+        _previousIsRegistrationOpen = _isRegistrationOpen;
+        _previousJuryEvaluationEnabled = _juryEvaluationEnabled;
+      });
 
       ScaffoldMessenger.of(
         context,

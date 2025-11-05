@@ -32,7 +32,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     try {
       await _supabase.auth.resetPasswordForEmail(
         _emailController.text.trim(),
-        redirectTo: 'com.example.quranic_competition://reset-password',
+        redirectTo: 'com.coranehel.quranicCompetition://reset-password',
       );
 
       setState(() {

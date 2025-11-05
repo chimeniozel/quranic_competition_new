@@ -265,6 +265,8 @@ class CompetitionVersionService {
         'result_is_published': false,
       },
     ]);
+    
+    // Note: La notification est envoyée dans version_management_page.dart après la création
   }
 
   /// Appelle la fonction stockée PostgreSQL via RPC

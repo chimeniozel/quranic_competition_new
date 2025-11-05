@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/user_service.dart';
 import 'package:quranic_competition/core/services/round_jury_service.dart';
 import 'package:quranic_competition/core/services/evaluation_service.dart';
+import 'package:quranic_competition/core/services/push_notification_service.dart';
 import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/round.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
@@ -30,6 +32,8 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
   final UserService _userService = UserService();
   final RoundJuryService _roundJuryService = RoundJuryService();
   final EvaluationService _evaluationService = EvaluationService();
+  final PushNotificationService _pushNotificationService =
+      PushNotificationService();
 
   Map<String, List<AppUser>> _jurysByRound = {};
   List<Round> _rounds = [];
@@ -272,6 +276,33 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
 
         // Recharger la liste des jurys pour ce round
         await _refreshRoundJurys(round.id);
+
+        // Envoyer une notification au jury
+        try {
+          final roundName = round.name ?? 'الجولة ${round.number}';
+          final payload = jsonEncode({
+            'type': 'jury_assigned_to_round',
+            'round_id': round.id,
+            'round_name': roundName,
+            'round_number': round.number,
+            'version_id': widget.version.id,
+            'version_name': widget.version.name,
+          });
+
+          await _pushNotificationService.sendNotification(
+            title: 'تم تعيينك كمصحح',
+            body:
+                'تم تعيينك كمصحح للجولة ${round.number} في النسخة "${widget.version.name}". يمكنك الآن البدء في التقييم.',
+            type: 'info',
+            payload: payload,
+            userId: jury.id,
+          );
+
+          print('✅ Notification envoyée au jury ${jury.fullName}');
+        } catch (e) {
+          print('⚠️ Erreur lors de l\'envoi de la notification au jury: $e');
+          // Ne pas bloquer le succès de l'ajout si la notification échoue
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

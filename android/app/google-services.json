@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "251765097007",
+    "project_id": "quranic-competition-supabase",
+    "storage_bucket": "quranic-competition-supabase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:251765097007:android:9201b1ac54f67e5e6bbcda",
+        "android_client_info": {
+          "package_name": "com.coranehel.quranicCompetition"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "112014794375906575701",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs0sbtJe1RAhbUSu5WRfMIky2DxpFJ3bk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "112014794375906575701",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

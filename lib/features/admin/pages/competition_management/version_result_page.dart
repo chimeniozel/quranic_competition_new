@@ -7,6 +7,8 @@ import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:quranic_competition/core/services/push_notification_service.dart';
+import 'dart:convert';
 import 'package:excel/excel.dart' as xls;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -163,6 +165,31 @@ class _VersionResultPageState extends State<VersionResultPage> {
           .from('rounds')
           .update({'result_is_published': true})
           .eq('id', widget.round.id);
+
+      // Envoyer une notification publique de publication des résultats
+      try {
+        final push = PushNotificationService();
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        await push.sendNotification(
+          title: '📣 تم نشر نتائج الجولة',
+          body:
+              'تم نشر نتائج ${widget.round.name ?? 'الجولة ${widget.round.number}'} في نسخة "${widget.version.name}".',
+          type: 'info',
+          payload: jsonEncode({
+            'type': 'results_published',
+            'version_id': widget.version.id,
+            'version_name': widget.version.name,
+            'round_id': widget.round.id,
+            'round_name': widget.round.name,
+            'round_number': widget.round.number,
+            'created_by': currentUserId,
+          }),
+          userId: null, // à tous les utilisateurs
+        );
+      } catch (e) {
+        // Ne pas bloquer l'UI si la notification échoue
+        // print silencieux pour éviter le spam
+      }
 
       if (mounted) Navigator.of(context).pop();
       if (mounted) {

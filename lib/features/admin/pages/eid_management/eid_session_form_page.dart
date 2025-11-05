@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/eid_session_service.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
+import 'package:quranic_competition/core/services/push_notification_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../models/eid_session.dart';
@@ -85,6 +88,23 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
           isActive: _isActive,
           isOpen: _isOpen,
         );
+
+        // Notification publique de création
+        try {
+          final push = PushNotificationService();
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          await push.sendNotification(
+            title: '🎉 تم إنشاء فعالية جديدة',
+            body: _nameController.text.trim(),
+            type: 'info',
+            payload: jsonEncode({
+              'type': 'eid_session_created',
+              'name': _nameController.text.trim(),
+              'created_by': currentUserId,
+            }),
+            userId: null,
+          );
+        } catch (_) {}
       } else {
         // Mettre à jour la session existante
         await _service.updateSession(

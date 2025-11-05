@@ -8,6 +8,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
+import 'package:quranic_competition/core/services/push_notification_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
 
 class EidSessionDetailPage extends StatefulWidget {
   final EidSession session;
@@ -279,6 +282,25 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                 ],
               ),
         );
+
+        // Notification publique: تم اختيار الفائزين
+        try {
+          final push = PushNotificationService();
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          await push.sendNotification(
+            title: '🏆 تم اختيار الفائزين',
+            body: 'تم اختيار الفائزين في فعالية "${_currentSession.name}"',
+            type: 'success',
+            payload: jsonEncode({
+              'type': 'eid_winners_selected',
+              'session_id': _currentSession.id,
+              'session_name': _currentSession.name,
+              'winners_count': winners.length,
+              'created_by': currentUserId,
+            }),
+            userId: null,
+          );
+        } catch (_) {}
       }
     } catch (e) {
       if (mounted) {
@@ -677,6 +699,27 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
             backgroundColor: AppTheme.successColor,
           ),
         );
+
+        // Notification publique à l'ouverture فقط
+        if (updatedSession.isOpen) {
+          try {
+            final push = PushNotificationService();
+            final currentUserId =
+                Supabase.instance.client.auth.currentUser?.id;
+            await push.sendNotification(
+              title: '📝 تم فتح التسجيل',
+              body: 'تم فتح التسجيل لفعالية "${updatedSession.name}"',
+              type: 'info',
+              payload: jsonEncode({
+                'type': 'eid_registration_opened',
+                'session_id': updatedSession.id,
+                'session_name': updatedSession.name,
+                'created_by': currentUserId,
+              }),
+              userId: null,
+            );
+          } catch (_) {}
+        }
       }
     } catch (e) {
       if (mounted) {

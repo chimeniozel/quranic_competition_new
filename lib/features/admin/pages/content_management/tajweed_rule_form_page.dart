@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
+import 'package:quranic_competition/core/services/push_notification_service.dart';
+import 'dart:convert';
 
 class TajweedRuleFormPage extends StatefulWidget {
   final String? ruleId;
@@ -229,6 +231,23 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
           authorId: user.id,
           authorName: user.userMetadata?['full_name'] ?? 'الإدارة',
         );
+
+        // Notification publique à la création
+        try {
+          final push = PushNotificationService();
+          await push.sendNotification(
+            title: '📚 قاعدة تجويد جديدة',
+            body: _titleController.text.trim(),
+            type: 'info',
+            payload: jsonEncode({
+              'type': 'tajweed_rule_created',
+              'title': _titleController.text.trim(),
+              'content_type': _selectedType.name,
+              'created_by': user.id,
+            }),
+            userId: null,
+          );
+        } catch (_) {}
       }
 
       if (mounted) {

@@ -14,7 +14,7 @@ echo "2. Sélectionnez le target 'Runner'"
 echo "3. Allez dans l'onglet 'Signing & Capabilities'"
 echo "4. Cochez 'Automatically manage signing'"
 echo "5. Sélectionnez votre Team: Q323GMD657"
-echo "6. Vérifiez que le Bundle Identifier est: com.example.quranicCompetition"
+echo "6. Vérifiez que le Bundle Identifier est: com.coranehel.quranicCompetition"
 echo ""
 echo "Xcode générera automatiquement les profils de provisioning nécessaires."
 
