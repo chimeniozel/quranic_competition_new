@@ -317,6 +317,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         onTap: () => context.push('/admin/tajweed-rules'),
                       ),
                       QuickAction(
+                        title: 'إدارة الفوائد القرآنية',
+                        icon: Icons.library_books,
+                        color: Colors.deepOrange,
+                        onTap: () => context.push('/admin/quranic-benefits'),
+                      ),
+                      QuickAction(
                         title: 'مسابقات التجويد',
                         icon: Icons.quiz,
                         color: AppTheme.infoColor,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
@@ -16,6 +17,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _authService = AuthService();
   final _errorService = ErrorService();
 
+  final _countryCodeController = TextEditingController(text: '222');
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -31,6 +33,7 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     final error = await _authService.signUp(
+      countryCode: _countryCodeController.text.trim(),
       phone: _phoneController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -132,16 +135,34 @@ class _SignUpPageState extends State<SignUpPage> {
     return null;
   }
 
+  String? _validateCountryCode(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+    }
+
+    final code = value.trim();
+    if (code.length < 1 || code.length > 4) {
+      return 'رمز الدولة غير صالح';
+    }
+    if (!RegExp(r'^\d+$').hasMatch(code)) {
+      return 'رمز الدولة يجب أن يحتوي على أرقام فقط';
+    }
+
+    return null;
+  }
+
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
   bool _isValidPhone(String phone) {
-    return RegExp(r'^\+?[\d\s\-\(\)]{8,15}$').hasMatch(phone);
+    final cleanedPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+    return cleanedPhone.length >= 6 && cleanedPhone.length <= 12;
   }
 
   @override
   void dispose() {
+    _countryCodeController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -223,22 +244,79 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 16),
 
-              // Téléphone
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(
-                  labelText: 'رقم الهاتف',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  hintText: '+2222020202020',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              // Phone fields (country code + number)
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      height: 58,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.public, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '+',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _countryCodeController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                LengthLimitingTextInputFormatter(4),
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textDirection: TextDirection.ltr,
+                              textAlign: TextAlign.left,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                hintText: '222',
+                              ),
+                              validator: _validateCountryCode,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-                validator: _validatePhone,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 5,
+                    child: TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(12),
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(
+                        labelText: 'رقم الهاتف',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        hintText: '20202020',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                      validator: _validatePhone,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 

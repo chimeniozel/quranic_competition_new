@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:quranic_competition/core/services/participant_service.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/models/participant.dart';
@@ -30,6 +31,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
 
   // Controllers
   final _fullNameController = TextEditingController();
+  final _countryCodeController = TextEditingController(text: '222');
   final _phoneController = TextEditingController();
   final _birthDateController = TextEditingController();
 
@@ -303,6 +305,33 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       return;
     }
 
+    final int age = _calculateAge(_selectedBirthDate!);
+    if (widget.ageGroup == 'صغار') {
+      if (age < 6 || age > 12) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'يجب أن يتراوح عمر المشاركين في فرع الصغار بين 6 و 12 سنة',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    } else if (widget.ageGroup == 'كبار') {
+      if (age < 13) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'يجب أن يكون عمر المشاركين في فرع الكبار 13 سنة أو أكثر',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     // Validation que tous les champs requis sont remplis
     if (_gender == null || _gender!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -344,13 +373,6 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       return;
     }
 
-    // Règle métier 2 : Si wonPreviousRanks == true, alors participatedBefore doit être automatiquement true
-    if (_wonPreviousRanks && !_participatedBefore) {
-      setState(() {
-        _participatedBefore = true;
-      });
-    }
-
     setState(() {
       _isLoading = true;
       print('🔄 Loading démarré: $_isLoading');
@@ -362,6 +384,10 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       setState(() => _isLoading = false);
       return;
     }
+
+    final countryCodeDigits = _countryCodeController.text.trim();
+    final phoneDigits = _phoneController.text.trim();
+    final fullPhone = '+$countryCodeDigits$phoneDigits';
 
     // Déterminer si le participant doit être automatiquement refusé
     final bool isOutsideCountry = _residence == 'خارج موريتانيا';
@@ -387,7 +413,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       fullName: _fullNameController.text.trim(),
       gender: _gender!,
       birthDate: _selectedBirthDate!,
-      phone: _phoneController.text.trim(),
+      phone: fullPhone,
       quranMemorized: _quranMemorized!,
       readingMethods: _readingMethods!,
       residence: _residence!,
@@ -509,6 +535,8 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
         backgroundColor = Colors.orange; // Orange car l'inscription a réussi
       } else if (e.toString().contains('التسجيل غير متاح لهذه المسابقة')) {
         errorMessage = 'التسجيل غير متاح لهذه المسابقة';
+      } else if (e.toString().contains('رقم الهاتف')) {
+        errorMessage = 'هذا الرقم مسجل بالفعل في هذه النسخة.';
       } else if (e.toString().contains('network') ||
           e.toString().contains('connection')) {
         errorMessage = 'خطأ في الاتصال، تحقق من اتصال الإنترنت';
@@ -722,22 +750,94 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                 ),
                                 const SizedBox(height: AppTheme.spacingS),
 
-                                TextFormField(
-                                  controller: _phoneController,
-                                  keyboardType: TextInputType.phone,
-                                  decoration: InputDecoration(
-                                    labelText: 'رقم الهاتف',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: Container(
+                                        height: 58,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppTheme.spacingS,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.surfaceColor,
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusM,
+                                          ),
+                                          border: Border.all(
+                                            color: AppTheme.dividerColor,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.public,
+                                              color: Colors.grey,
+                                            ),
+                                            const SizedBox(
+                                              width: AppTheme.spacingXS,
+                                            ),
+                                            const Text(
+                                              '+',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              width: AppTheme.spacingXS,
+                                            ),
+                                            Expanded(
+                                              child: TextFormField(
+                                                controller:
+                                                    _countryCodeController,
+                                                keyboardType:
+                                                    TextInputType.number,
+                                                inputFormatters: [
+                                                  LengthLimitingTextInputFormatter(
+                                                    4,
+                                                  ),
+                                                  FilteringTextInputFormatter
+                                                      .digitsOnly,
+                                                ],
+                                                decoration:
+                                                    const InputDecoration(
+                                                      border: InputBorder.none,
+                                                      isDense: true,
+                                                      contentPadding:
+                                                          EdgeInsets.zero,
+                                                      hintText: '222',
+                                                    ),
+                                                validator: _validateCountryCode,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  validator:
-                                      (v) =>
-                                          v == null || v.isEmpty
-                                              ? 'هذا الحقل مطلوب'
-                                              : null,
+                                    const SizedBox(width: AppTheme.spacingS),
+                                    Expanded(
+                                      flex: 5,
+                                      child: TextFormField(
+                                        controller: _phoneController,
+                                        keyboardType: TextInputType.phone,
+                                        inputFormatters: [
+                                          LengthLimitingTextInputFormatter(12),
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                        ],
+                                        decoration: InputDecoration(
+                                          labelText: 'رقم الهاتف',
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
+                                            ),
+                                          ),
+                                        ),
+                                        validator: _validatePhone,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -973,10 +1073,6 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                   onChanged: (v) {
                                     setState(() {
                                       _wonPreviousRanks = v;
-                                      // Règle métier 2 : Si wonPreviousRanks devient true, participatedBefore devient automatiquement true
-                                      if (v) {
-                                        _participatedBefore = true;
-                                      }
                                     });
                                   },
                                 ),
@@ -1048,6 +1144,30 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     );
   }
 
+  String? _validateCountryCode(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'رمز الدولة مطلوب';
+    }
+
+    if (!RegExp(r'^\d{1,4}$').hasMatch(value.trim())) {
+      return 'رمز الدولة غير صالح';
+    }
+
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'رقم الهاتف مطلوب';
+    }
+
+    if (!RegExp(r'^\d{6,12}$').hasMatch(value.trim())) {
+      return 'رقم الهاتف غير صالح';
+    }
+
+    return null;
+  }
+
   // Fonction pour convertir les chiffres arabes en français
   String _convertToFrenchNumbers(String text) {
     const Map<String, String> arabicToFrench = {
@@ -1068,5 +1188,15 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       result = result.replaceAll(arabic, french);
     });
     return result;
+  }
+
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age;
   }
 }

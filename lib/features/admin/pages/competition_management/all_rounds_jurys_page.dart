@@ -133,12 +133,20 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
     try {
       // Récupérer tous les utilisateurs avec le rôle "jury"
       final allJurys = await _userService.getAllJurys();
+      final juryOnly =
+          allJurys
+              .where(
+                (jury) =>
+                    jury.role.trim().toLowerCase() == 'jury' ||
+                    jury.role.trim().toLowerCase().contains('jury'),
+              )
+              .toList();
 
       // Filtrer les jurys déjà assignés à ce round
       final assignedJuryIds =
           _jurysByRound[round.id]?.map((j) => j.id).toSet() ?? {};
       final availableJurys =
-          allJurys.where((j) => !assignedJuryIds.contains(j.id)).toList();
+          juryOnly.where((j) => !assignedJuryIds.contains(j.id)).toList();
 
       if (availableJurys.isEmpty) {
         if (!mounted) return;

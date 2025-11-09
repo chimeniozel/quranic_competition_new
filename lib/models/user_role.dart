@@ -86,4 +86,32 @@ class UserPermissions {
         );
     }
   }
+
+  static UserPermissions withOverrides(
+    UserPermissions base,
+    Map<String, dynamic> overrides,
+  ) {
+    bool resolve(String key, bool fallback) {
+      final value = overrides[key];
+      if (value is bool) return value;
+      if (value is int) return value != 0;
+      return fallback;
+    }
+
+    return UserPermissions(
+      canCreateVersions:
+          resolve('can_create_versions', base.canCreateVersions),
+      canPublishContent:
+          resolve('can_publish_content', base.canPublishContent),
+      canValidateAccounts:
+          resolve('can_validate_accounts', base.canValidateAccounts),
+      canDelete: resolve('can_delete', base.canDelete),
+      canModify: resolve('can_modify', base.canModify),
+      canModifyVersions:
+          resolve('can_modify_versions', base.canModifyVersions),
+      canAssignRoles:
+          resolve('can_assign_roles', base.canAssignRoles),
+      canViewContent: resolve('can_view_content', base.canViewContent),
+    );
+  }
 }

@@ -203,10 +203,6 @@ class _JuryHomePageState extends State<JuryHomePage> {
 
                       // Versions assignées
                       _buildVersionsSection(),
-                      const SizedBox(height: AppTheme.spacingL),
-
-                      // Actions rapides
-                      _buildQuickActionsSection(),
                     ],
                   ),
                 ),
@@ -466,88 +462,6 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'الإجراءات السريعة',
-          style: AppTheme.headingSmall.copyWith(
-            color: AppTheme.textPrimaryColor,
-          ),
-        ),
-        const SizedBox(height: AppTheme.spacingS),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                'النسخ المحكمة',
-                Icons.event,
-                AppTheme.primaryColor,
-                () => context.push('/jury/version_page'),
-              ),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
-            Expanded(
-              child: _buildActionCard(
-                'النتائج',
-                Icons.assessment,
-                AppTheme.warningColor,
-                () => context.push('/jury/results'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionCard(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return ModernCard(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        child: Container(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacingS),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-              Text(
-                title,
-                style: AppTheme.labelMedium.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
           ),
         ),
       ),

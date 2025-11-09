@@ -86,8 +86,21 @@ class UserManagementService {
       // Rafraîchir les permissions de l'utilisateur actuel si c'est lui-même
       final currentUser = _supabase.auth.currentUser;
       if (currentUser != null && currentUser.id == userId) {
+        final profile = await _supabase
+            .from('profiles')
+            .select(
+              'role, can_create_versions, can_publish_content, '
+              'can_validate_accounts, can_delete, can_modify, '
+              'can_modify_versions, can_assign_roles, can_view_content',
+            )
+            .eq('id', userId)
+            .single();
+
+        final base = UserPermissions.forRole(newRole);
+        final custom = UserPermissions.withOverrides(base, profile);
+
         final permissionService = PermissionService();
-        permissionService.setUserRole(newRole);
+        permissionService.setUserRole(newRole, customPermissions: custom);
       }
     } catch (e) {
       throw Exception('Erreur lors de la mise à jour du rôle: $e');
@@ -111,27 +124,52 @@ class UserManagementService {
   // Obtenir les permissions d'un utilisateur
   Future<Map<String, bool>?> getUserPermissions(String userId) async {
     try {
-      final response = await _supabase.rpc(
-        'get_user_permissions',
-        params: {'user_id': userId},
-      );
+      final response = await _supabase
+          .from('profiles')
+          .select(
+            'can_create_versions, can_publish_content, can_validate_accounts, '
+            'can_delete, can_modify, can_modify_versions, can_assign_roles, '
+            'can_view_content',
+          )
+          .eq('id', userId)
+          .single();
 
-      if (response != null && response is List && response.isNotEmpty) {
-        final permissions = response.first as Map<String, dynamic>;
-        return {
-          'can_create_versions': permissions['can_create_versions'] as bool,
-          'can_publish_content': permissions['can_publish_content'] as bool,
-          'can_validate_accounts': permissions['can_validate_accounts'] as bool,
-          'can_delete': permissions['can_delete'] as bool,
-          'can_modify': permissions['can_modify'] as bool,
-          'can_modify_versions': permissions['can_modify_versions'] as bool,
-          'can_assign_roles': permissions['can_assign_roles'] as bool,
-          'can_view_content': permissions['can_view_content'] as bool,
-        };
-      }
-      return null;
+      return {
+        'can_create_versions': (response['can_create_versions'] as bool?) ??
+            false,
+        'can_publish_content': (response['can_publish_content'] as bool?) ??
+            false,
+        'can_validate_accounts':
+            (response['can_validate_accounts'] as bool?) ?? false,
+        'can_delete': (response['can_delete'] as bool?) ?? false,
+        'can_modify': (response['can_modify'] as bool?) ?? false,
+        'can_modify_versions':
+            (response['can_modify_versions'] as bool?) ?? false,
+        'can_assign_roles': (response['can_assign_roles'] as bool?) ?? false,
+        'can_view_content': (response['can_view_content'] as bool?) ?? false,
+      };
     } catch (e) {
       return null;
+    }
+  }
+
+  Future<void> updateUserPermissions(
+    String userId,
+    Map<String, bool> permissions,
+  ) async {
+    try {
+      await _supabase.from('profiles').update({
+        'can_create_versions': permissions['can_create_versions'],
+        'can_publish_content': permissions['can_publish_content'],
+        'can_validate_accounts': permissions['can_validate_accounts'],
+        'can_delete': permissions['can_delete'],
+        'can_modify': permissions['can_modify'],
+        'can_modify_versions': permissions['can_modify_versions'],
+        'can_assign_roles': permissions['can_assign_roles'],
+        'can_view_content': permissions['can_view_content'],
+      }).eq('id', userId);
+    } catch (e) {
+      throw Exception('Erreur lors de la mise à jour des permissions: $e');
     }
   }
 

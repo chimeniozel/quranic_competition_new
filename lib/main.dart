@@ -13,7 +13,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 /// Handler top-level pour les notifications FCM quand l'app est fermée
 /// Cette fonction DOIT être top-level (pas dans une classe) pour fonctionner
-/// 
+///
 /// IMPORTANT: Quand l'app est fermée, FCM affiche automatiquement la notification
 /// si le champ `notification` est présent dans le message. Ce handler est appelé
 /// APRÈS que le système ait déjà affiché la notification, donc on ne doit PAS
@@ -21,11 +21,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialiser Firebase dans le isolate background
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  print('📬 Notification FCM reçue en background (app fermée): ${message.notification?.title}');
+  print(
+    '📬 Notification FCM reçue en background (app fermée): ${message.notification?.title}',
+  );
   print('📬 Data: ${message.data}');
 
   // Note: Le système affiche automatiquement la notification grâce au champ `notification`
@@ -34,7 +34,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // - Marquer la notification comme lue dans la base de données
   // - Traiter les données de la notification
   // - Préparer la navigation quand l'utilisateur ouvre l'app depuis la notification
-  
+
   // Ici, on peut traiter la notification (par exemple, marquer comme lue)
   // mais on ne doit PAS afficher de notification locale car le système l'a déjà fait
 }
@@ -151,6 +151,16 @@ class _MyAppState extends State<MyApp> {
             foregroundColor: Colors.white,
           ),
         ),
+        builder: (context, child) {
+          if (child == null) return const SizedBox.shrink();
+          return SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            bottom: true,
+            child: child,
+          );
+        },
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/user_management_service.dart';
 import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/core/services/confirmation_service.dart';
@@ -12,6 +13,363 @@ class UserManagementPage extends StatefulWidget {
 
   @override
   State<UserManagementPage> createState() => _UserManagementPageState();
+}
+
+class UserPermissionsBottomSheet extends StatefulWidget {
+  const UserPermissionsBottomSheet({
+    super.key,
+    required this.userId,
+    required this.email,
+    required this.fullName,
+    required this.role,
+    required this.userService,
+  });
+
+  final String userId;
+  final String email;
+  final String fullName;
+  final UserRole role;
+  final UserManagementService userService;
+
+  @override
+  State<UserPermissionsBottomSheet> createState() =>
+      _UserPermissionsBottomSheetState();
+}
+
+class _UserPermissionsBottomSheetState
+    extends State<UserPermissionsBottomSheet> {
+  bool _isLoading = true;
+  bool _isSaving = false;
+  late Map<String, bool> _permissions;
+  late Map<String, bool> _initialPermissions;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPermissions();
+  }
+
+  Future<void> _loadPermissions() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final fetched = await widget.userService.getUserPermissions(
+        widget.userId,
+      );
+      final base = UserPermissions.forRole(widget.role);
+      final defaults = _permissionsFromUserPermissions(base);
+
+      if (fetched != null) {
+        _permissions = {
+          for (final entry in defaults.entries)
+            entry.key: fetched[entry.key] ?? entry.value,
+        };
+      } else {
+        _permissions = defaults;
+      }
+
+      _initialPermissions = Map<String, bool>.from(_permissions);
+    } catch (e) {
+      _permissions = _permissionsFromUserPermissions(
+        UserPermissions.forRole(widget.role),
+      );
+      _initialPermissions = Map<String, bool>.from(_permissions);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تعذر تحميل الصلاحيات: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  bool get _hasChanges {
+    for (final entry in _permissions.entries) {
+      if (_initialPermissions[entry.key] != entry.value) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Map<String, bool> _permissionsFromUserPermissions(
+    UserPermissions permissions,
+  ) {
+    return {
+      'can_create_versions': permissions.canCreateVersions,
+      'can_publish_content': permissions.canPublishContent,
+      'can_validate_accounts': permissions.canValidateAccounts,
+      'can_delete': permissions.canDelete,
+      'can_modify': permissions.canModify,
+      'can_modify_versions': permissions.canModifyVersions,
+      'can_assign_roles': permissions.canAssignRoles,
+      'can_view_content': permissions.canViewContent,
+    };
+  }
+
+  Future<void> _resetToDefaults() async {
+    final defaults = _permissionsFromUserPermissions(
+      UserPermissions.forRole(widget.role),
+    );
+    setState(() {
+      _permissions = defaults;
+    });
+  }
+
+  Future<void> _savePermissions() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      await widget.userService.updateUserPermissions(
+        widget.userId,
+        _permissions,
+      );
+
+      _initialPermissions = Map<String, bool>.from(_permissions);
+
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ أثناء حفظ الصلاحيات: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(AppTheme.radiusXL),
+            topRight: Radius.circular(AppTheme.radiusXL),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingL),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        ),
+                        child: const Icon(Icons.tune, color: Colors.white),
+                      ),
+                      const SizedBox(width: AppTheme.spacingS),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'إدارة صلاحيات المستخدم',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: AppTheme.spacingXS),
+                            Text(
+                              widget.fullName.isNotEmpty
+                                  ? '${widget.fullName}\n${widget.email}'
+                                  : widget.email,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: AppTheme.spacingS),
+
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    Column(
+                      children: [
+                        ..._buildPermissionSwitches(theme),
+                        const SizedBox(height: AppTheme.spacingS),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed:
+                                    _isSaving ? null : () => _resetToDefaults(),
+                                child: const Text(
+                                  'استعادة الصلاحيات الافتراضية',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppTheme.spacingS),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed:
+                                    _isSaving || !_hasChanges
+                                        ? null
+                                        : _savePermissions,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppTheme.spacingS,
+                                  ),
+                                ),
+                                child:
+                                    _isSaving
+                                        ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                          ),
+                                        )
+                                        : const Text('حفظ التغييرات'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildPermissionSwitches(ThemeData theme) {
+    const permissionDefinitions = [
+      (
+        key: 'can_create_versions',
+        title: 'إنشاء نسخ جديدة',
+        description: 'السماح بإنشاء نسخ جديدة من المسابقة وإدارتها.',
+      ),
+      (
+        key: 'can_modify_versions',
+        title: 'تعديل النسخ',
+        description: 'السماح بتعديل إعدادات النسخ الحالية وقواعدها.',
+      ),
+      (
+        key: 'can_publish_content',
+        title: 'نشر المحتوى',
+        description: 'إدارة ونشر الفوائد القرآنية، قواعد التجويد، والأرشيف.',
+      ),
+      (
+        key: 'can_validate_accounts',
+        title: 'توثيق الحسابات',
+        description: 'الموافقة على حسابات المستخدمين الجدد وتوثيقهم.',
+      ),
+      (
+        key: 'can_assign_roles',
+        title: 'تعيين الأدوار',
+        description: 'تغيير دور المستخدمين الآخرين (مدير، محكم...).',
+      ),
+      (
+        key: 'can_delete',
+        title: 'حذف العناصر',
+        description: 'السماح بحذف البيانات أو المحتوى من لوحة الإدارة.',
+      ),
+      (
+        key: 'can_modify',
+        title: 'تعديل العناصر',
+        description: 'تعديل بيانات المشاركين، المحتوى، أو الإعدادات.',
+      ),
+      (
+        key: 'can_view_content',
+        title: 'عرض المحتوى الإداري',
+        description: 'الوصول إلى صفحات الإدارة دون القدرة على التعديل.',
+      ),
+    ];
+
+    return permissionDefinitions.map((definition) {
+      final value = _permissions[definition.key] ?? false;
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
+        decoration: BoxDecoration(
+          color: AppTheme.backgroundColor,
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          border: Border.all(color: AppTheme.dividerColor.withOpacity(0.6)),
+        ),
+        child: SwitchListTile.adaptive(
+          value: value,
+          onChanged: (newValue) {
+            setState(() {
+              _permissions[definition.key] = newValue;
+            });
+          },
+          title: Text(
+            definition.title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimaryColor,
+            ),
+          ),
+          subtitle: Text(
+            definition.description,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          activeColor: AppTheme.primaryColor,
+        ),
+      );
+    }).toList();
+  }
 }
 
 class _UserManagementPageState extends State<UserManagementPage> {
@@ -137,52 +495,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
     }
   }
 
-  Future<void> _toggleVerificationStatus(Map<String, dynamic> user) async {
-    final currentStatus = user['is_validated'] == true;
-    final newStatus = !currentStatus;
-
-    final confirmed = await ConfirmationService.showCriticalActionConfirmation(
-      context,
-      title: 'تغيير حالة التحقق',
-      message:
-          'هل أنت متأكد من ${newStatus ? 'تحقق' : 'إلغاء تحقق'} المستخدم ${user['email']}؟',
-      actionType: 'تغيير حالة التحقق',
-    );
-
-    if (confirmed) {
-      try {
-        await _userService.updateUserVerificationStatus(user['id'], newStatus);
-
-        // Mettre à jour localement sans recharger la page
-        setState(() {
-          final userIndex = _users.indexWhere((u) => u['id'] == user['id']);
-          if (userIndex != -1) {
-            _users[userIndex]['is_validated'] = newStatus;
-          }
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'تم ${newStatus ? 'تحقق' : 'إلغاء تحقق'} المستخدم بنجاح',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          debugPrint('خطأ في تغيير حالة التحقق: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('خطأ في تغيير حالة التحقق: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
+  Future<void> _openPermissionsManager(Map<String, dynamic> user) async {
+    if (!mounted) return;
+    context.push('/admin/users/${user['id']}/roles');
   }
 
   Widget _buildUserCard(Map<String, dynamic> user) {
@@ -194,344 +509,234 @@ class _UserManagementPageState extends State<UserManagementPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          gradient: LinearGradient(
-            colors: [AppTheme.cardColor, AppTheme.cardColor.withOpacity(0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        onTap: () => _openPermissionsManager(user),
+        child: Container(
+          padding: const EdgeInsets.all(AppTheme.spacingS),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            gradient: LinearGradient(
+              colors: [AppTheme.cardColor, AppTheme.cardColor.withOpacity(0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // Avatar avec gradient
-                Container(
-                  width: 45,
-                  height: 45,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _getRoleColor(role),
-                        _getRoleColor(role).withOpacity(0.7),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Avatar avec gradient
+                  Container(
+                    width: 45,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          _getRoleColor(role),
+                          _getRoleColor(role).withOpacity(0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _getRoleColor(role).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusL),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _getRoleColor(role).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    child: Icon(
+                      _getRoleIcon(role),
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    _getRoleIcon(role),
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
+                  const SizedBox(width: AppTheme.spacingS),
 
-                // User Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user['full_name'] ?? user['email'],
-                        style: AppTheme.bodyLarge.copyWith(
-                          color: AppTheme.textPrimaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppTheme.spacingXS),
-                      Text(
-                        user['email'],
-                        style: AppTheme.bodySmall.copyWith(
-                          color: AppTheme.textSecondaryColor,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppTheme.spacingXS),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingXS,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                          border: Border.all(
-                            color: AppTheme.dividerColor,
-                            width: 1,
+                  // User Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user['full_name'] ?? user['email'],
+                          style: AppTheme.bodyLarge.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        child: Text(
-                          'تم الإنشاء: ${_formatDate(user['created_at'])}',
-                          style: AppTheme.labelSmall.copyWith(
+                        const SizedBox(height: AppTheme.spacingXS),
+                        Text(
+                          user['email'],
+                          style: AppTheme.bodySmall.copyWith(
                             color: AppTheme.textSecondaryColor,
-                            fontSize: 10,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppTheme.spacingXS),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.spacingXS,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.backgroundColor,
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusS,
+                            ),
+                            border: Border.all(
+                              color: AppTheme.dividerColor,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            'تم الإنشاء: ${_formatDate(user['created_at'])}',
+                            style: AppTheme.labelSmall.copyWith(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 10,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Statut de vérification Badge moderne
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingXS,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors:
-                          user['is_validated'] == true
-                              ? [
-                                AppTheme.successColor.withOpacity(0.1),
-                                AppTheme.successColor.withOpacity(0.05),
-                              ]
-                              : [
-                                AppTheme.warningColor.withOpacity(0.1),
-                                AppTheme.warningColor.withOpacity(0.05),
-                              ],
-                    ),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    border: Border.all(
-                      color:
-                          user['is_validated'] == true
-                              ? AppTheme.successColor.withOpacity(0.3)
-                              : AppTheme.warningColor.withOpacity(0.3),
-                      width: 1,
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        user['is_validated'] == true
-                            ? Icons.verified
-                            : Icons.pending,
-                        color:
-                            user['is_validated'] == true
-                                ? AppTheme.successColor
-                                : AppTheme.warningColor,
-                        size: 14,
-                      ),
-                      const SizedBox(width: AppTheme.spacingXS),
-                      Text(
-                        user['is_validated'] == true ? 'محقق' : 'غير محقق',
-                        style: AppTheme.labelSmall.copyWith(
-                          color:
-                              user['is_validated'] == true
-                                  ? AppTheme.successColor
-                                  : AppTheme.warningColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingS),
 
-            // Séparateur
-            Container(
-              height: 1,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.dividerColor,
-                    AppTheme.dividerColor.withOpacity(0.5),
-                    AppTheme.dividerColor,
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-
-            // Role Change Dropdown moderne
-            CanAssignRolesGuard(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  border: Border.all(color: AppTheme.dividerColor, width: 1),
-                ),
-                child: DropdownButtonFormField<UserRole>(
-                  value: role,
-                  decoration: InputDecoration(
-                    labelText: 'تغيير الدور',
-                    labelStyle: AppTheme.labelSmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                      fontSize: 11,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
+                  // Statut de vérification Badge moderne
+                  Container(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: AppTheme.spacingS,
                       vertical: AppTheme.spacingXS,
                     ),
-                  ),
-                  items:
-                      UserRole.values.map((role) {
-                        return DropdownMenuItem<UserRole>(
-                          value: role,
-                          child: Row(
-                            children: [
-                              Icon(
-                                _getRoleIcon(role),
-                                color: _getRoleColor(role),
-                                size: 16,
-                              ),
-                              const SizedBox(width: AppTheme.spacingXS),
-                              Text(
-                                role.displayName,
-                                style: AppTheme.bodySmall.copyWith(
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                  onChanged: (newRole) {
-                    if (newRole != null && newRole != role) {
-                      _updateUserRole(user, newRole);
-                    }
-                  },
-                ),
-              ),
-            ),
-
-            const SizedBox(height: AppTheme.spacingS),
-
-            // Statut de vérification
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.dividerColor, width: 1),
-              ),
-              child: Row(
-                children: [
-                  // Icône du statut
-                  Container(
-                    margin: const EdgeInsets.all(AppTheme.spacingXS),
-                    padding: const EdgeInsets.all(AppTheme.spacingXS),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors:
                             user['is_validated'] == true
                                 ? [
-                                  AppTheme.successColor,
-                                  AppTheme.successColor.withOpacity(0.7),
+                                  AppTheme.successColor.withOpacity(0.1),
+                                  AppTheme.successColor.withOpacity(0.05),
                                 ]
                                 : [
-                                  AppTheme.warningColor,
-                                  AppTheme.warningColor.withOpacity(0.7),
+                                  AppTheme.warningColor.withOpacity(0.1),
+                                  AppTheme.warningColor.withOpacity(0.05),
                                 ],
                       ),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                      boxShadow: AppTheme.shadowS,
-                    ),
-                    child: Icon(
-                      user['is_validated'] == true
-                          ? Icons.verified
-                          : Icons.pending,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-
-                  // Texte du statut
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingS,
-                        vertical: AppTheme.spacingXS,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'حالة التحقق',
-                            style: AppTheme.labelSmall.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            user['is_validated'] == true ? 'محقق' : 'غير محقق',
-                            style: AppTheme.bodySmall.copyWith(
-                              color:
-                                  user['is_validated'] == true
-                                      ? AppTheme.successColor
-                                      : AppTheme.warningColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      border: Border.all(
+                        color:
+                            user['is_validated'] == true
+                                ? AppTheme.successColor.withOpacity(0.3)
+                                : AppTheme.warningColor.withOpacity(0.3),
+                        width: 1,
                       ),
                     ),
-                  ),
-
-                  // Bouton de changement de statut
-                  Container(
-                    margin: const EdgeInsets.all(AppTheme.spacingXS),
-                    child: ElevatedButton(
-                      onPressed: () => _toggleVerificationStatus(user),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            user['is_validated'] == true
-                                ? AppTheme.warningColor.withOpacity(0.1)
-                                : AppTheme.successColor.withOpacity(0.1),
-                        foregroundColor:
-                            user['is_validated'] == true
-                                ? AppTheme.warningColor
-                                : AppTheme.successColor,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingS,
-                          vertical: AppTheme.spacingXS,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          user['is_validated'] == true
+                              ? Icons.verified
+                              : Icons.pending,
+                          color:
+                              user['is_validated'] == true
+                                  ? AppTheme.successColor
+                                  : AppTheme.warningColor,
+                          size: 14,
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                          side: BorderSide(
+                        const SizedBox(width: AppTheme.spacingXS),
+                        Text(
+                          user['is_validated'] == true ? 'محقق' : 'غير محقق',
+                          style: AppTheme.labelSmall.copyWith(
                             color:
                                 user['is_validated'] == true
-                                    ? AppTheme.warningColor.withOpacity(0.3)
-                                    : AppTheme.successColor.withOpacity(0.3),
-                            width: 1,
+                                    ? AppTheme.successColor
+                                    : AppTheme.warningColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
                           ),
                         ),
-                      ),
-                      child: Text(
-                        user['is_validated'] == true ? 'إلغاء التحقق' : 'تحقق',
-                        style: AppTheme.labelSmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: AppTheme.spacingS),
+
+              // Séparateur
+              Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.dividerColor,
+                      AppTheme.dividerColor.withOpacity(0.5),
+                      AppTheme.dividerColor,
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacingS),
+
+              // Role Change Dropdown moderne
+              CanAssignRolesGuard(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.backgroundColor,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    border: Border.all(color: AppTheme.dividerColor, width: 1),
+                  ),
+                  child: DropdownButtonFormField<UserRole>(
+                    value: role,
+                    decoration: InputDecoration(
+                      labelText: 'تغيير الدور',
+                      labelStyle: AppTheme.labelSmall.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 11,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingS,
+                        vertical: AppTheme.spacingXS,
+                      ),
+                    ),
+                    items:
+                        UserRole.values.map((role) {
+                          return DropdownMenuItem<UserRole>(
+                            value: role,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _getRoleIcon(role),
+                                  color: _getRoleColor(role),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: AppTheme.spacingXS),
+                                Text(
+                                  role.displayName,
+                                  style: AppTheme.bodySmall.copyWith(
+                                    color: AppTheme.textPrimaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                    onChanged: (newRole) {
+                      if (newRole != null && newRole != role) {
+                        _updateUserRole(user, newRole);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

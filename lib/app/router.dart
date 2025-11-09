@@ -18,8 +18,10 @@ import 'package:quranic_competition/features/participant/pages/home/participant_
 import 'package:quranic_competition/features/participant/pages/home/participant_result_page.dart';
 import 'package:quranic_competition/features/participant/pages/home/participant_results_versions_page.dart';
 import 'package:quranic_competition/features/participant/pages/benefits/participant_benefits_page.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
 import 'package:quranic_competition/features/participant/pages/about/about_us_page.dart';
+import 'package:quranic_competition/features/shared/pages/access_denied_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
@@ -28,6 +30,7 @@ import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/forgot_password_page.dart';
+import '../features/auth/pages/reset_password_page.dart';
 import '../features/auth/pages/change_password_page.dart';
 import '../features/auth/pages/waiting_verification_page.dart';
 import '../features/shared/pages/user_profile_page.dart';
@@ -38,6 +41,7 @@ import '../features/jury/pages/jury_home_page.dart';
 import '../features/jury/pages/jury_evaluation_page.dart';
 import '../features/admin/pages/admin_dashboard_page.dart';
 import '../features/admin/pages/user_management/user_management_page.dart';
+import '../features/admin/pages/user_management/user_role_management_page.dart';
 import '../features/admin/pages/competition_management/version_management_page.dart';
 import '../features/admin/pages/content_management/quranic_benefits_page.dart';
 import '../features/admin/pages/content_management/quranic_benefit_form_page.dart';
@@ -66,6 +70,53 @@ import '../features/admin/pages/eid_management/eid_session_detail_page.dart';
 import '../features/participant/pages/eid/eid_session_page.dart';
 import '../models/eid_session.dart';
 
+String _normalizeRole(String? rawRole) {
+  if (rawRole == null || rawRole.isEmpty) {
+    return 'guest';
+  }
+
+  final normalized = rawRole.trim().toLowerCase().replaceAll(
+    RegExp(r'[\s\-]+'),
+    '_',
+  );
+
+  if (normalized.contains('super')) {
+    return 'super_admin';
+  }
+
+  if (normalized == 'admin') {
+    return 'admin';
+  }
+
+  if (normalized.contains('jury')) {
+    return 'jury';
+  }
+
+  if (normalized.contains('participant') ||
+      normalized.contains('member') ||
+      normalized.contains('membre')) {
+    return 'membre';
+  }
+
+  return 'guest';
+}
+
+bool _pathStartsWith(String path, String prefix) {
+  return path == prefix || path.startsWith('$prefix/');
+}
+
+bool _isAdminPath(String path) {
+  return _pathStartsWith(path, '/admin');
+}
+
+bool _isJuryPath(String path) {
+  return _pathStartsWith(path, '/jury');
+}
+
+bool _isMemberRole(String role) {
+  return role == 'membre';
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   redirect: (context, state) {
@@ -78,6 +129,7 @@ final GoRouter appRouter = GoRouter(
           '/login',
           '/register',
           '/forgot-password',
+          '/reset-password',
           '/participant/register',
           '/participant_home_page',
           '/participant_result_page',
@@ -89,6 +141,7 @@ final GoRouter appRouter = GoRouter(
           '/participant/archives',
           '/participant/eid-session',
           '/participant/about-us',
+          '/access-denied',
           '/ui-showcase',
         ].contains(path) ||
         path.startsWith('/participant/quiz/level/') ||
@@ -98,22 +151,27 @@ final GoRouter appRouter = GoRouter(
         path.startsWith('/participant/results/');
 
     if (user == null && !isPublicRoute) {
-      return '/participant_home_page'; // redirige les utilisateurs non connectés
+      if (_isAdminPath(path) || _isJuryPath(path)) {
+        return '/login';
+      }
+      return '/participant_home_page';
     }
 
-    // 2. 📄 Métadonnées
-    final role = user?.userMetadata?['role'] as String?;
+    // 2. 📄 Métadonnées et rôle normalisé
+    final metadataRole = user?.userMetadata?['role'] as String?;
+    final fallbackRole = PermissionService().currentUserRole?.code;
+    final normalizedRole = _normalizeRole(metadataRole ?? fallbackRole);
     final isVerified = user?.userMetadata?['email_verified'] == true;
 
     // 3. ⏳ Redirection si email non vérifié (sauf participants)
-    if (user != null && !isVerified && role != 'participant') {
+    if (user != null && !isVerified && !_isMemberRole(normalizedRole)) {
       return '/waiting-verification';
     }
 
     // 4. 🧭 Redirection initiale en fonction du rôle
     if (user != null && (path == '/' || path == '/login')) {
-      switch (role) {
-        case 'participant':
+      switch (normalizedRole) {
+        case 'membre':
           return '/participant_home_page';
         case 'jury':
           return '/jury/home';
@@ -122,6 +180,14 @@ final GoRouter appRouter = GoRouter(
           return '/admin/dashboard';
         default:
           return '/login';
+      }
+    }
+
+    if (user != null) {
+      final isAccessDeniedRoute = path == '/access-denied';
+
+      if (_isJuryPath(path) && normalizedRole != 'jury') {
+        return isAccessDeniedRoute ? null : '/access-denied';
       }
     }
 
@@ -136,6 +202,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/forgot-password',
       builder: (context, state) => ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const ResetPasswordPage(),
     ),
     GoRoute(
       path: '/change-password',
@@ -153,6 +223,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/waiting-verification',
       builder: (context, state) => WaitingVerificationPage(),
+    ),
+    GoRoute(
+      path: '/access-denied',
+      builder: (context, state) => const AccessDeniedPage(),
     ),
 
     // Participant
@@ -369,6 +443,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/admin/dashboard', builder: (_, __) => AdminDashboardPage()),
     GoRoute(path: '/admin/users', builder: (_, __) => UserManagementPage()),
     GoRoute(
+      path: '/admin/users/:userId/roles',
+      builder: (context, state) {
+        final userId = state.pathParameters['userId'];
+        if (userId == null) {
+          return const AccessDeniedPage();
+        }
+        return UserRoleManagementPage(userId: userId);
+      },
+    ),
+    GoRoute(
       path: '/admin/versions',
       builder: (_, __) => VersionManagementPage(),
     ),
@@ -401,6 +485,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final version = state.extra as CompetitionVersion;
         return VersionRoundResultPage(version: version);
+      },
+    ),
+    GoRoute(
+      name: 'admin-version-jurys',
+      path: '/admin/version_jurys',
+      builder: (context, state) {
+        final version = state.extra as CompetitionVersion?;
+        if (version == null) {
+          return const Scaffold(
+            body: Center(child: Text('Erreur : version manquante')),
+          );
+        }
+        return AllRoundsJurysPage(version: version);
       },
     ),
     GoRoute(

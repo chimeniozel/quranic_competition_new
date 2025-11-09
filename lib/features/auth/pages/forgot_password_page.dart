@@ -30,9 +30,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Utiliser une URL HTTPS factice car Supabase requiert HTTP/HTTPS
+      // Le token sera extrait de l'URL dans l'email et traité manuellement
+      // L'utilisateur devra copier le lien depuis l'email ou l'ouvrir dans l'app
       await _supabase.auth.resetPasswordForEmail(
         _emailController.text.trim(),
-        redirectTo: 'com.coranehel.quranicCompetition://reset-password',
+        redirectTo:
+            'https://slwgmpqpevsodtctpmwz.supabase.co/auth/reset-password',
       );
 
       setState(() {

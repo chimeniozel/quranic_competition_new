@@ -126,11 +126,20 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
 
     // Appliquer la recherche
     if (_searchQuery.isNotEmpty) {
-      int? searchTerm = int.tryParse(_searchQuery.trim());
-      if (searchTerm != null) {
-        filtered =
-            filtered.where((p) => p.registrationNumber == searchTerm).toList();
-      }
+      final query = _searchQuery.trim();
+      final queryLower = query.toLowerCase();
+      final queryDigits = query.replaceAll(RegExp(r'\s+'), '');
+      final searchNumber = int.tryParse(queryDigits);
+
+      filtered =
+          filtered.where((p) {
+            final nameMatches = p.fullName.toLowerCase().contains(queryLower);
+            final phoneNormalized = p.phone.replaceAll(RegExp(r'\s+'), '');
+            final phoneMatches = phoneNormalized.contains(queryDigits);
+            final registrationMatches =
+                searchNumber != null && p.registrationNumber == searchNumber;
+            return nameMatches || phoneMatches || registrationMatches;
+          }).toList();
     }
 
     // Calculer la pagination
@@ -610,7 +619,7 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
           ),
           IconButton(
             onPressed: () {
-              context.pushNamed('jury-version-jurys', extra: widget.version);
+              context.pushNamed('admin-version-jurys', extra: widget.version);
             },
             icon: Icon(Icons.groups, color: AppTheme.surfaceColor),
             tooltip: 'لجنة التحكيم',
@@ -938,10 +947,12 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
                                 ),
                                 child: TextField(
                                   controller: _searchController,
-                                  keyboardType: TextInputType.number,
+                                  keyboardType: TextInputType.text,
+                                  textInputAction: TextInputAction.search,
                                   style: AppTheme.bodyMedium,
                                   decoration: InputDecoration(
-                                    hintText: 'ابحث برقم التسجيل...',
+                                    hintText:
+                                        'ابحث بالاسم، رقم الهاتف أو رقم التسجيل...',
                                     hintStyle: AppTheme.labelMedium.copyWith(
                                       color: AppTheme.textSecondaryColor,
                                     ),

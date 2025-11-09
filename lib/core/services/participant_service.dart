@@ -67,7 +67,19 @@ class ParticipantService {
           );
         }
 
-        // 0.2. Générer le numéro d'enregistrement pour cette compétition
+        // 0.2. Vérifier qu'aucun participant n'existe déjà avec le même téléphone pour cette compétition
+        final existingParticipants = await _supabase
+            .from('participants')
+            .select('id')
+            .eq('competition_id', versionId)
+            .eq('phone', participant.phone)
+            .limit(1);
+
+        if (existingParticipants.isNotEmpty) {
+          throw Exception('يوجد مشارك بنفس رقم الهاتف في هذه النسخة.');
+        }
+
+        // 0.3. Générer le numéro d'enregistrement pour cette compétition
         final nextRegistrationNumber = await _getNextRegistrationNumber(
           versionId,
         );
@@ -121,18 +133,39 @@ class ParticipantService {
           '⚠️ Tentative d\'inscription $retryCount/$maxRetries échouée: $e',
         );
 
-        // Si c'est une erreur de contrainte unique (numéro dupliqué), réessayer
-        if (e.toString().contains('duplicate key') ||
-            e.toString().contains('unique constraint') ||
-            e.toString().contains('registration_number')) {
-          if (retryCount < maxRetries) {
-            print('🔄 Conflit de numéro détecté, nouvelle tentative...');
-            await Future.delayed(Duration(milliseconds: 100 * retryCount));
-            continue;
+        if (e is PostgrestException) {
+          final errorMessage =
+              '${e.message} ${e.details ?? ''} ${e.hint ?? ''}';
+
+          if (errorMessage.contains('competition_id, phone')) {
+            throw Exception('يوجد مشارك بنفس رقم الهاتف في هذه النسخة.');
+          }
+
+          if (errorMessage.contains('registration_number')) {
+            if (retryCount < maxRetries) {
+              print('🔄 Conflit de numéro détecté, nouvelle tentative...');
+              await Future.delayed(Duration(milliseconds: 100 * retryCount));
+              continue;
+            }
+          }
+        } else {
+          final errorString = e.toString();
+
+          if (errorString.contains('competition_id, phone')) {
+            throw Exception('يوجد مشارك بنفس رقم الهاتف في هذه النسخة.');
+          }
+
+          if (errorString.contains('registration_number') ||
+              errorString.contains('duplicate key') ||
+              errorString.contains('unique constraint')) {
+            if (retryCount < maxRetries) {
+              print('🔄 Conflit de numéro détecté, nouvelle tentative...');
+              await Future.delayed(Duration(milliseconds: 100 * retryCount));
+              continue;
+            }
           }
         }
 
-        // Si ce n'est pas une erreur de conflit ou si on a épuisé les tentatives
         print('❌ Erreur lors de l\'inscription: $e');
         throw Exception('Erreur lors de l\'inscription: $e');
       }
@@ -322,11 +355,11 @@ class ParticipantService {
           '🔍 Round 1 ou pas de round: Récupération ${includeRejected ? 'de tous les participants' : 'des participants acceptés'}',
         );
         var query = _supabase.from('participants').select('*');
-        
+
         if (!includeRejected) {
           query = query.eq('is_accepted', true);
         }
-        
+
         final response = await query;
 
         final participants =

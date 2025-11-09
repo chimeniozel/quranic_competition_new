@@ -113,47 +113,150 @@ class _ParticipantCompetitionArchivesPageState
   }
 
   void _showImageDialog(String imageUrl, String? title) {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder:
-          (context) => Dialog(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (title != null && title.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingS),
-                    child: Text(
-                      title,
-                      style: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
+      barrierDismissible: true,
+      barrierLabel: 'image_viewer',
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        final mediaQuery = MediaQuery.of(context);
+        final dialogWidth = mediaQuery.size.width * 0.9;
+        final dialogHeight = mediaQuery.size.height * 0.8;
+
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: dialogWidth,
+              height: dialogHeight,
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingL,
+                      vertical: AppTheme.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor,
+                          AppTheme.primaryColor.withValues(alpha: 0.85),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title?.trim().isNotEmpty == true
+                                ? title!.trim()
+                                : 'عرض الصورة',
+                            style: AppTheme.headingSmall.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      color: AppTheme.backgroundColor,
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        child: InteractiveViewer(
+                          clipBehavior: Clip.none,
+                          minScale: 0.8,
+                          maxScale: 4.0,
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: progress.expectedTotalBytes != null
+                                      ? progress.cumulativeBytesLoaded /
+                                          progress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: Icon(Icons.image_not_supported, size: 64),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ],
-                Flexible(
-                  child: InteractiveViewer(
-                    child: Image.network(
-                      imageUrl,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Icon(Icons.error, size: 50, color: Colors.red),
-                        );
-                      },
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingL,
+                      vertical: AppTheme.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor,
+                      border: Border(
+                        top: BorderSide(
+                          color: AppTheme.dividerColor.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon:
+                              const Icon(Icons.close, color: AppTheme.textPrimaryColor),
+                          label: Text(
+                            'إغلاق',
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  child: PrimaryButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    text: 'إغلاق',
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+        );
+      },
     );
   }
 

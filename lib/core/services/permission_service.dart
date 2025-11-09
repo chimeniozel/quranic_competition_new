@@ -9,9 +9,13 @@ class PermissionService {
   UserPermissions? _currentPermissions;
 
   // Initialiser le rôle de l'utilisateur actuel
-  void setUserRole(UserRole role) {
+  void setUserRole(UserRole role, {UserPermissions? customPermissions}) {
     _currentUserRole = role;
-    _currentPermissions = UserPermissions.forRole(role);
+    _currentPermissions = customPermissions ?? UserPermissions.forRole(role);
+  }
+
+  void updatePermissions(UserPermissions permissions) {
+    _currentPermissions = permissions;
   }
 
   // Récupérer le rôle actuel

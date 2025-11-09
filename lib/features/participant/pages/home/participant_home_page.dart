@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../core/services/eid_session_service.dart';
@@ -173,7 +174,14 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
           IconButton(
             icon: const Icon(Icons.login),
             tooltip: 'تسجيل الدخول',
-            onPressed: () {
+            onPressed: () async {
+              // Déconnexion si connecté, sinon aller sur login
+              final user = Supabase.instance.client.auth.currentUser;
+              if (user != null) {
+                await Supabase.instance.client.auth.signOut();
+                // Nettoyer les permissions si besoin, par exemple :
+                // PermissionService().clearPermissions();
+              }
               context.push('/login');
             },
           ),

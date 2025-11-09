@@ -13,6 +13,7 @@ class AuthService {
 
   /// Inscription d'un nouvel utilisateur avec téléphone, mot de passe, nom complet et rôle.
   Future<String?> signUp({
+    required String countryCode,
     required String phone,
     required String email,
     required String password,
@@ -20,14 +21,39 @@ class AuthService {
     required String role, // ex: jury, admin
   }) async {
     try {
+      final normalizedCountryCode = countryCode.trim();
+      final countryDigits =
+          normalizedCountryCode.replaceAll(RegExp(r'[^\d]'), '');
+      if (countryDigits.isEmpty) {
+        return 'رمز الدولة غير صالح';
+      }
+
+      final cleanedPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+      if (cleanedPhone.isEmpty) {
+        return 'رقم الهاتف غير صالح';
+      }
+
+      final fullPhone = '+$countryDigits$cleanedPhone';
+
       // Validation préliminaire
       final validationError = _validateSignUpData(
         email,
         password,
-        phone,
+        fullPhone,
         fullName,
       );
       if (validationError != null) return validationError;
+
+      final existingPhone =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('phone', fullPhone)
+              .maybeSingle();
+
+      if (existingPhone != null) {
+        return 'رقم الهاتف مستخدم مسبقاً';
+      }
 
       final res = await _supabase.auth.signUp(
         email: email,
@@ -48,7 +74,7 @@ class AuthService {
             .from('profiles')
             .update({
               'full_name': fullName,
-              'phone': phone,
+              'phone': fullPhone,
               'role': role,
               'is_validated': false,
             })
@@ -113,13 +139,40 @@ class AuthService {
       final response =
           await _supabase
               .from('profiles')
-              .select('role')
+              .select(
+                'role, can_create_versions, can_publish_content, '
+                'can_validate_accounts, can_delete, can_modify, '
+                'can_modify_versions, can_assign_roles, can_view_content',
+              )
               .eq('id', userId)
               .single();
 
-      if (response['role'] != null) {
-        final userRole = UserRole.fromString(response['role']);
-        PermissionService().setUserRole(userRole);
+      final roleCode = response['role'] as String?;
+      if (roleCode != null) {
+        final userRole = UserRole.fromString(roleCode);
+        final basePermissions = UserPermissions.forRole(userRole);
+        final customPermissions =
+            UserPermissions.withOverrides(basePermissions, response);
+
+        PermissionService().setUserRole(
+          userRole,
+          customPermissions: customPermissions,
+        );
+
+        // Mettre à jour les métadonnées Supabase pour conserver le rôle côté client
+        final currentUser = _supabase.auth.currentUser;
+        if (currentUser != null) {
+          final currentMetaRole = currentUser.userMetadata?['role'];
+          if (currentMetaRole != userRole.code) {
+            try {
+              await _supabase.auth.updateUser(
+                UserAttributes(data: {'role': userRole.code}),
+              );
+            } catch (e) {
+              debugPrint('⚠️ Impossible de mettre à jour les métadonnées: $e');
+            }
+          }
+        }
 
         debugPrint('🔐 Permissions initialisées pour ${userRole.displayName}');
       } else {
@@ -211,7 +264,21 @@ class AuthService {
 
   /// Valide un numéro de téléphone
   bool _isValidPhone(String phone) {
-    return RegExp(r'^\+?[\d\s\-\(\)]{8,15}$').hasMatch(phone);
+    final normalized = phone.trim();
+    if (!normalized.startsWith('+')) {
+      return false;
+    }
+
+    final digits = normalized.substring(1);
+    if (digits.isEmpty || digits.length < 7 || digits.length > 15) {
+      return false;
+    }
+
+    if (!RegExp(r'^\d+$').hasMatch(digits)) {
+      return false;
+    }
+
+    return true;
   }
 
   /// Valide un mot de passe

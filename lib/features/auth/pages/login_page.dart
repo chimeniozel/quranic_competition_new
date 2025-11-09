@@ -68,6 +68,9 @@ class _LoginPageState extends State<LoginPage> {
                 context.go('/jury/home');
                 break;
               case 'membre':
+              case 'membre_ordinaire':
+              case 'participant':
+              case 'member':
                 context.go('/participant_home_page');
                 break;
               default:

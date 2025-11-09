@@ -58,6 +58,9 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   }
 
   Future<void> _submitNewVersion() async {
+    if (_isAddingLoad) {
+      return;
+    }
     // Vérifier si une version est active
     if (_hasActiveVersion()) {
       final activeVersion = _getActiveVersion();

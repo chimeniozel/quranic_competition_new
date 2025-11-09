@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/auth_service.dart';
+import 'package:quranic_competition/app/router.dart' as router;
 
 class AuthInitializer extends StatefulWidget {
   final Widget child;
@@ -19,6 +20,27 @@ class _AuthInitializerState extends State<AuthInitializer> {
   void initState() {
     super.initState();
     _initializeAuth();
+    _listenToAuthChanges();
+  }
+
+  void _listenToAuthChanges() {
+    // Écouter les changements d'authentification pour gérer les deep links
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      final session = data.session;
+
+      debugPrint('🔐 Auth state changed: $event');
+
+      // Gérer la réinitialisation de mot de passe
+      if (event == AuthChangeEvent.passwordRecovery && session != null) {
+        // Naviguer vers la page de réinitialisation
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            router.appRouter.go('/reset-password');
+          }
+        });
+      }
+    });
   }
 
   Future<void> _initializeAuth() async {
