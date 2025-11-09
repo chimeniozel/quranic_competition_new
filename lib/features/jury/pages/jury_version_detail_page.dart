@@ -709,7 +709,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                           borderRadius: BorderRadius.circular(
                                             AppTheme.radiusM,
                                           ),
-                                          onTap: () {
+                                          onTap: () async {
                                             // Vérifier si l'évaluation est autorisée
                                             if (!widget
                                                 .version
@@ -754,7 +754,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                                   _selectedRound!
                                                       .resultIsPublished;
 
-                                              context.push(
+                                              final result = await context.push(
                                                 '/jury/participant',
                                                 extra: JuryEvaluationArgs(
                                                   participant: participant,
@@ -764,6 +764,16 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                                                   round: _selectedRound!,
                                                 ),
                                               );
+
+                                              if (!mounted) return;
+
+                                              if (result == true) {
+                                                if (_selectedRound != null) {
+                                                  await _loadParticipantsForSelectedRound();
+                                                } else {
+                                                  await _loadParticipantsWithEvaluationStatus();
+                                                }
+                                              }
                                             }
                                           },
                                           child: Padding(

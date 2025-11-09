@@ -183,7 +183,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
           context,
         ).showSnackBar(const SnackBar(content: Text('تم تعديل التقييم بنجاح')));
       }
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
