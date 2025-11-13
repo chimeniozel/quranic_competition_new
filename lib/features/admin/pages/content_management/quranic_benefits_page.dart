@@ -134,14 +134,27 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
   }
 
   Future<void> _deleteBenefit(QuranicBenefit benefit) async {
-    
+    // Vérifier الصلاحيات
+    final canDelete = await PermissionService().canDelete();
+    if (!canDelete) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('ليس لديك صلاحية حذف الفوائد القرآنية'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
           (context) => AlertDialog(
             title: const Text('تأكيد الحذف'),
             content: Text(
-              'هل أنت متأكد من حذف الفائدة القرآنية "${benefit.title}"؟',
+              'هل أنت متأكد من حذف الفائدة القرآنية "${benefit.title}"؟ لا يمكن التراجع عن هذه العملية.',
             ),
             actions: [
               TextButton(
@@ -157,25 +170,38 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
     );
 
     if (confirmed == true) {
-      final success = await _benefitService.deleteBenefit(benefit.id);
-      if (success) {
-        setState(() {
-          _benefits.removeWhere((b) => b.id == benefit.id);
-          _totalCount--;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم حذف الفائدة القرآنية بنجاح'),
-              backgroundColor: Colors.green,
-            ),
-          );
+      try {
+        // Utiliser permanentDeleteBenefit pour supprimer définitivement
+        final success = await _benefitService.permanentDeleteBenefit(benefit.id);
+        if (success) {
+          setState(() {
+            _benefits.removeWhere((b) => b.id == benefit.id);
+            _totalCount--;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم حذف الفائدة القرآنية بنجاح'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('خطأ في حذف الفائدة القرآنية'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
-      } else {
+      } catch (e) {
+        print('❌ Erreur lors de la suppression: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('خطأ في حذف الفائدة القرآنية'),
+            SnackBar(
+              content: Text('خطأ في حذف الفائدة القرآنية: $e'),
               backgroundColor: Colors.red,
             ),
           );

@@ -48,6 +48,8 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
   bool _areResultsPublished = false;
   bool _isLastVersion = false;
   Map<String, int> _participantCounts = {'adults': 0, 'children': 0};
+  bool _canDelete = false;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -58,6 +60,15 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     _loadCurrentVersionData();
     // Vérifier si la version peut être modifiée
     _checkEditability();
+    // Vérifier الصلاحيات للحذف
+    _checkDeletePermission();
+  }
+
+  Future<void> _checkDeletePermission() async {
+    final canDelete = await _permissionService.canDelete();
+    setState(() {
+      _canDelete = canDelete;
+    });
   }
 
   Future<void> _loadCurrentVersionData() async {
@@ -421,6 +432,316 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
       ).showSnackBar(SnackBar(content: Text('فشل التحديث: $e')));
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  IconData _getIconForTable(String tableName) {
+    switch (tableName) {
+      case 'participants':
+        return Icons.people;
+      case 'rounds':
+        return Icons.emoji_events;
+      case 'evaluations':
+        return Icons.rate_review;
+      case 'juryAssignments':
+        return Icons.gavel;
+      case 'results':
+        return Icons.assessment;
+      default:
+        return Icons.data_object;
+    }
+  }
+
+  String _getLabelForTable(String tableName) {
+    switch (tableName) {
+      case 'participants':
+        return 'المشاركين';
+      case 'rounds':
+        return 'الجولات';
+      case 'evaluations':
+        return 'التقييمات';
+      case 'juryAssignments':
+        return 'تعيينات المحكمين';
+      case 'results':
+        return 'النتائج';
+      default:
+        return tableName;
+    }
+  }
+
+  Future<void> _showDeleteConfirmation() async {
+    try {
+      // Vérifier الصلاحيات
+      if (!_canDelete) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('ليس لديك صلاحية حذف النسخ'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+      
+      // Vérifier si la compétition est active
+      if (_isActive) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'لا يمكن حذف النسخة النشطة "${widget.version.name}". يجب إلغاء تفعيلها أولاً.',
+            ),
+            backgroundColor: AppTheme.warningColor,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      // Récupérer les statistiques des éléments liés
+      final counts = await _service.getVersionRelatedCounts(widget.version.id);
+
+      // Calculer le total des éléments qui seront supprimés
+      final totalElements =
+          counts['participants']! +
+          counts['rounds']! +
+          counts['evaluations']! +
+          counts['juryAssignments']! +
+          counts['results']!;
+
+      if (!mounted) return;
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.warning, color: AppTheme.errorColor, size: 28),
+                  const SizedBox(width: AppTheme.spacingS),
+                  Text(
+                    'تأكيد الحذف',
+                    style: AppTheme.headingMedium.copyWith(
+                      color: AppTheme.errorColor,
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'هل تريد حذف النسخة "${widget.version.name}"؟',
+                      style: AppTheme.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+
+                    // Avertissement sur la suppression en cascade
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        border: Border.all(
+                          color: AppTheme.errorColor.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: AppTheme.errorColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppTheme.spacingS),
+                              Text(
+                                'تحذير: هذا الإجراء غير قابل للإلغاء',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: AppTheme.errorColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          Text(
+                            'سيتم حذف جميع البيانات المرتبطة بهذه النسخة:',
+                            style: AppTheme.bodySmall.copyWith(
+                              color: AppTheme.errorColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+
+                    // Statistiques des éléments à supprimer
+                    if (totalElements > 0) ...[
+                      Text(
+                        'العناصر التي سيتم حذفها:',
+                        style: AppTheme.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingS),
+
+                      // Liste des statistiques
+                      ...counts.entries.map((entry) {
+                        if (entry.value > 0) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppTheme.spacingXS,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _getIconForTable(entry.key),
+                                  size: 16,
+                                  color: AppTheme.textSecondaryColor,
+                                ),
+                                const SizedBox(width: AppTheme.spacingS),
+                                Text(
+                                  _getLabelForTable(entry.key),
+                                  style: AppTheme.bodyMedium,
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${entry.value}',
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.errorColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }).toList(),
+
+                      const SizedBox(height: AppTheme.spacingS),
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        decoration: BoxDecoration(
+                          color: AppTheme.errorColor.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calculate,
+                              size: 16,
+                              color: AppTheme.errorColor,
+                            ),
+                            const SizedBox(width: AppTheme.spacingS),
+                            Text(
+                              'إجمالي العناصر: ',
+                              style: AppTheme.bodyMedium,
+                            ),
+                            Text(
+                              '$totalElements',
+                              style: AppTheme.bodyMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.errorColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                          border: Border.all(
+                            color: AppTheme.successColor.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: AppTheme.successColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: AppTheme.spacingS),
+                            Text(
+                              'لا توجد بيانات مرتبطة بهذه النسخة',
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: AppTheme.successColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                SecondaryButton(
+                  text: 'إلغاء',
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                PrimaryButton(
+                  text: 'حذف نهائياً',
+                  onPressed: () => Navigator.of(context).pop(true),
+                  backgroundColor: AppTheme.errorColor,
+                ),
+              ],
+            ),
+      );
+
+      if (confirmed == true) {
+        setState(() => _isDeleting = true);
+        try {
+          await _service.deleteVersion(widget.version.id);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'تم حذف النسخة "${widget.version.name}" وجميع البيانات المرتبطة بها',
+                ),
+                backgroundColor: AppTheme.successColor,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+            // Retourner à la page précédente avec succès
+            Navigator.of(context).pop(true);
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('فشل الحذف: $e'),
+                backgroundColor: AppTheme.errorColor,
+              ),
+            );
+          }
+        } finally {
+          if (mounted) {
+            setState(() => _isDeleting = false);
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في تحميل البيانات: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
     }
   }
 
@@ -1384,6 +1705,21 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                         ),
                       ),
                       const SizedBox(height: AppTheme.spacingS),
+
+                      // Bouton de suppression (seulement si non active et avec الصلاحيات)
+                      if (!_isActive && _canDelete) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: SecondaryButton(
+                            onPressed: _isDeleting ? null : () => _showDeleteConfirmation(),
+                            text: _isDeleting ? 'جاري الحذف...' : 'حذف النسخة',
+                            icon: Icons.delete,
+                            borderColor: AppTheme.errorColor,
+                            textColor: AppTheme.errorColor,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingS),
+                      ],
                     ],
                   ),
                 ),

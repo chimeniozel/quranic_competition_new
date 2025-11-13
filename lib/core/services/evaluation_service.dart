@@ -20,12 +20,24 @@ class EvaluationService {
               ? evaluation.noteModel.toMapAdult()
               : evaluation.noteModel.toMapChild();
 
+      if (notesJson == null) {
+        throw Exception('خطأ: لا يمكن إنشاء notes_json - تأكد من ملء جميع الحقول');
+      }
+
+      print('📝 Données à insérer:');
+      print('  - participant_id: ${evaluation.participantId}');
+      print('  - jury_id: ${evaluation.juryId}');
+      print('  - version_id: ${evaluation.versionId}');
+      print('  - round_id: ${evaluation.roundId}');
+      print('  - total_score: ${evaluation.totalScore}');
+      print('  - notes_json: $notesJson');
+
       final response =
           await _supabase.from('evaluations').insert({
             'participant_id': evaluation.participantId,
             'jury_id': evaluation.juryId,
             'version_id': evaluation.versionId,
-            'round_id': evaluation.roundId, // ✅ هذا هو الصحيح
+            'round_id': evaluation.roundId,
             'total_score': evaluation.totalScore,
             'notes': evaluation.notes,
             'notes_json': notesJson,
@@ -34,8 +46,9 @@ class EvaluationService {
 
       print("✅ Évaluation enregistrée : $response");
     } catch (e) {
-      print('❌ Erreur lors de l’enregistrement de l’évaluation : $e');
-      throw Exception('Échec d’enregistrement de l’évaluation');
+      print('❌ Erreur lors de l\'enregistrement de l\'évaluation : $e');
+      print('❌ Stack trace: ${StackTrace.current}');
+      throw Exception('فشل في إرسال التقييم: $e');
     }
   }
 

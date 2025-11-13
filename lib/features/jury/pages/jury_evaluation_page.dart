@@ -148,6 +148,33 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
 
     if (!_formKey.currentState!.validate() || _activeRound == null) return;
 
+    // Vérifier que toutes les notes sont remplies
+    final isAdult = widget.args.participant.ageGroup == 'كبار';
+    bool allNotesFilled = false;
+
+    if (isAdult) {
+      allNotesFilled =
+          _noteModel.noteTajwid != null &&
+          _noteModel.noteHousnSawtt != null &&
+          _noteModel.noteOu4oubetSawtt != null &&
+          _noteModel.noteWaqfAndIbtidaa != null;
+    } else {
+      allNotesFilled =
+          _noteModel.noteTajwid != null &&
+          _noteModel.noteHousnSawtt != null &&
+          _noteModel.noteIltizamRiwaya != null;
+    }
+
+    if (!allNotesFilled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى ملء جميع الحقول المطلوبة'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final evaluation = Evaluation(
@@ -185,9 +212,16 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('خطأ أثناء إرسال التقييم: $e')));
+      print('❌ Erreur lors de la soumission de l\'évaluation: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ أثناء إرسال التقييم: $e'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

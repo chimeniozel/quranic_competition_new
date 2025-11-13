@@ -34,7 +34,6 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   List<CompetitionVersion> _versions = [];
   bool _isLoading = false;
   bool _canCreateVersions = false;
-  bool _canDelete = false;
   bool _permissionsLoaded = false;
 
   // Vérifier si une version est active
@@ -60,11 +59,9 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
 
   Future<void> _checkPermissions() async {
     final canCreate = await _permissionService.canCreateVersions();
-    final canDelete = await _permissionService.canDelete();
     if (mounted) {
       setState(() {
         _canCreateVersions = canCreate;
-        _canDelete = canDelete;
         _permissionsLoaded = true;
       });
     }
@@ -80,7 +77,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
     if (_isAddingLoad) {
       return;
     }
-    
+
     // Vérifier الصلاحيات
     if (!_canCreateVersions) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -91,7 +88,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
       );
       return;
     }
-    
+
     // Vérifier si une version est active
     if (_hasActiveVersion()) {
       final activeVersion = _getActiveVersion();
@@ -212,324 +209,6 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
     }
   }
 
-  Future<void> _showDeleteConfirmation(CompetitionVersion version) async {
-    try {
-      // Vérifier الصلاحيات
-      if (!_canDelete) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('ليس لديك صلاحية حذف النسخ'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-        return;
-      }
-      
-      // Vérifier si la compétition est active
-      if (version.isActive) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'لا يمكن حذف النسخة النشطة "${version.name}". يجب إلغاء تفعيلها أولاً.',
-            ),
-            backgroundColor: AppTheme.warningColor,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'الإعدادات',
-              textColor: Colors.white,
-              onPressed: () async {
-                final result = await context.push<bool>(
-                  '/admin/version_update',
-                  extra: version,
-                );
-                if (result == true) {
-                  await _loadVersions();
-                  setState(() {});
-                }
-              },
-            ),
-          ),
-        );
-        return;
-      }
-
-      // Récupérer les statistiques des éléments liés
-      final counts = await _service.getVersionRelatedCounts(version.id);
-
-      // Calculer le total des éléments qui seront supprimés
-      final totalElements =
-          counts['participants']! +
-          counts['rounds']! +
-          counts['evaluations']! +
-          counts['juryAssignments']! +
-          counts['results']!;
-
-      if (!mounted) return;
-
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.warning, color: AppTheme.errorColor, size: 28),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Text(
-                    'تأكيد الحذف',
-                    style: AppTheme.headingMedium.copyWith(
-                      color: AppTheme.errorColor,
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'هل تريد حذف النسخة "${version.name}"؟',
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingS),
-
-                    // Avertissement sur la suppression en cascade
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                        border: Border.all(
-                          color: AppTheme.errorColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: AppTheme.errorColor,
-                                size: 20,
-                              ),
-                              const SizedBox(width: AppTheme.spacingS),
-                              Text(
-                                'تحذير: هذا الإجراء غير قابل للإلغاء',
-                                style: AppTheme.bodyMedium.copyWith(
-                                  color: AppTheme.errorColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppTheme.spacingS),
-                          Text(
-                            'سيتم حذف جميع البيانات المرتبطة بهذه النسخة:',
-                            style: AppTheme.bodySmall.copyWith(
-                              color: AppTheme.errorColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingS),
-
-                    // Statistiques des éléments à supprimer
-                    if (totalElements > 0) ...[
-                      Text(
-                        'العناصر التي سيتم حذفها:',
-                        style: AppTheme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Liste des statistiques
-                      ...counts.entries.map((entry) {
-                        if (entry.value > 0) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppTheme.spacingXS,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _getIconForTable(entry.key),
-                                  size: 16,
-                                  color: AppTheme.textSecondaryColor,
-                                ),
-                                const SizedBox(width: AppTheme.spacingS),
-                                Text(
-                                  _getLabelForTable(entry.key),
-                                  style: AppTheme.bodyMedium,
-                                ),
-                                const Spacer(),
-                                Text(
-                                  '${entry.value}',
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.errorColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }).toList(),
-
-                      const SizedBox(height: AppTheme.spacingS),
-                      Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          color: AppTheme.errorColor.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calculate,
-                              size: 16,
-                              color: AppTheme.errorColor,
-                            ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'إجمالي العناصر: ',
-                              style: AppTheme.bodyMedium,
-                            ),
-                            Text(
-                              '$totalElements',
-                              style: AppTheme.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.errorColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          color: AppTheme.successColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          border: Border.all(
-                            color: AppTheme.successColor.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: AppTheme.successColor,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'لا توجد بيانات مرتبطة بهذه النسخة',
-                              style: AppTheme.bodyMedium.copyWith(
-                                color: AppTheme.successColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                SecondaryButton(
-                  text: 'إلغاء',
-                  onPressed: () => Navigator.of(context).pop(false),
-                ),
-                PrimaryButton(
-                  text: 'حذف نهائياً',
-                  onPressed: () => Navigator.of(context).pop(true),
-                  backgroundColor: AppTheme.errorColor,
-                ),
-              ],
-            ),
-      );
-
-      if (confirmed == true) {
-        try {
-          await _service.deleteVersion(version.id);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'تم حذف النسخة "${version.name}" وجميع البيانات المرتبطة بها',
-                ),
-                backgroundColor: AppTheme.successColor,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-            await _loadVersions();
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('فشل الحذف: $e'),
-                backgroundColor: AppTheme.errorColor,
-              ),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    }
-  }
-
-  IconData _getIconForTable(String tableName) {
-    switch (tableName) {
-      case 'participants':
-        return Icons.people;
-      case 'rounds':
-        return Icons.emoji_events;
-      case 'evaluations':
-        return Icons.rate_review;
-      case 'juryAssignments':
-        return Icons.gavel;
-      case 'results':
-        return Icons.assessment;
-      default:
-        return Icons.data_object;
-    }
-  }
-
-  String _getLabelForTable(String tableName) {
-    switch (tableName) {
-      case 'participants':
-        return 'المشاركين';
-      case 'rounds':
-        return 'الجولات';
-      case 'evaluations':
-        return 'التقييمات';
-      case 'juryAssignments':
-        return 'تعيينات المحكمين';
-      case 'results':
-        return 'النتائج';
-      default:
-        return tableName;
-    }
-  }
-
   Future<void> showAddDialog() async {
     // Vérifier الصلاحيات
     if (!_canCreateVersions) {
@@ -541,7 +220,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
       );
       return;
     }
-    
+
     // Vérifier si une version est active
     if (_hasActiveVersion()) {
       final activeVersion = _getActiveVersion();
@@ -938,43 +617,26 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
               ),
               const SizedBox(height: AppTheme.spacingS),
 
-              // Boutons d'action
-              Row(
-                children: [
-                  Expanded(
-                    child: CanModifyVersionsGuard(
-                      child: SecondaryButton(
-                        onPressed: () async {
-                          final result = await context.push<bool>(
-                            '/admin/version_update',
-                            extra: version,
-                          );
+              // Bouton d'action
+              CanModifyVersionsGuard(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: SecondaryButton(
+                    onPressed: () async {
+                      final result = await context.push<bool>(
+                        '/admin/version_update',
+                        extra: version,
+                      );
 
-                          if (result == true) {
-                            await _loadVersions();
-                            setState(() {});
-                          }
-                        },
-                        text: 'الإعدادات',
-                        icon: Icons.settings,
-                      ),
-                    ),
+                      if (result == true) {
+                        await _loadVersions();
+                        setState(() {});
+                      }
+                    },
+                    text: 'الإعدادات',
+                    icon: Icons.settings,
                   ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: CanDeleteGuard(
-                      child: SecondaryButton(
-                        onPressed: version.isActive ? null : () async {
-                          await _showDeleteConfirmation(version);
-                        },
-                        text: version.isActive ? 'حذف (غير متاح)' : 'حذف',
-                        icon: Icons.delete,
-                        borderColor: version.isActive ? AppTheme.textDisabledColor : AppTheme.errorColor,
-                        textColor: version.isActive ? AppTheme.textDisabledColor : AppTheme.errorColor,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -996,52 +658,54 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
           ),
         ],
       ),
-      floatingActionButton: _hasActiveVersion()
-          ? Tooltip(
-            message: 'لا يمكن إضافة نسخة جديدة بينما توجد نسخة نشطة. يجب إلغاء تفعيل النسخة النشطة أولاً.',
-            child: Opacity(
-              opacity: 0.5,
-              child: ModernFAB(
+      floatingActionButton:
+          _hasActiveVersion()
+              ? Tooltip(
+                message:
+                    'لا يمكن إضافة نسخة جديدة بينما توجد نسخة نشطة. يجب إلغاء تفعيل النسخة النشطة أولاً.',
+                child: Opacity(
+                  opacity: 0.5,
+                  child: ModernFAB(
+                    onPressed: () async {
+                      final activeVersion = _getActiveVersion();
+                      if (mounted && activeVersion != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion.name}" نشطة.',
+                            ),
+                            backgroundColor: AppTheme.warningColor,
+                            duration: const Duration(seconds: 4),
+                            action: SnackBarAction(
+                              label: 'الإعدادات',
+                              textColor: Colors.white,
+                              onPressed: () async {
+                                final result = await context.push<bool>(
+                                  '/admin/version_update',
+                                  extra: activeVersion,
+                                );
+                                if (result == true) {
+                                  await _loadVersions();
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: Icons.add,
+                  ),
+                ),
+              )
+              : (_permissionsLoaded && _canCreateVersions)
+              ? ModernFAB(
                 onPressed: () async {
-                  final activeVersion = _getActiveVersion();
-                  if (mounted && activeVersion != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion.name}" نشطة.',
-                        ),
-                        backgroundColor: AppTheme.warningColor,
-                        duration: const Duration(seconds: 4),
-                        action: SnackBarAction(
-                          label: 'الإعدادات',
-                          textColor: Colors.white,
-                          onPressed: () async {
-                            final result = await context.push<bool>(
-                              '/admin/version_update',
-                              extra: activeVersion,
-                            );
-                            if (result == true) {
-                              await _loadVersions();
-                              setState(() {});
-                            }
-                          },
-                        ),
-                      ),
-                    );
-                  }
+                  await showAddDialog();
+                  setState(() {});
                 },
                 icon: Icons.add,
-              ),
-            ),
-          )
-          : (_permissionsLoaded && _canCreateVersions)
-              ? ModernFAB(
-                  onPressed: () async {
-                    await showAddDialog();
-                    setState(() {});
-                  },
-                  icon: Icons.add,
-                )
+              )
               : null,
       body:
           _isLoading

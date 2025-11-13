@@ -117,28 +117,58 @@ class RoundJuryService {
         '🔍 Récupération des rounds pour le jury $juryId dans la version $versionId',
       );
 
-      final response = await _supabase
-          .from('jury_round_assignments_view')
-          .select('round_id, round_number, round_name, version_id')
-          .eq('jury_id', juryId)
+      // 1. Récupérer tous les rounds de cette version
+      final roundsForVersion = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId);
+
+      if (roundsForVersion.isEmpty) {
+        print('⚠️ Aucun round trouvé pour cette version');
+        return [];
+      }
+
+      final roundIds = roundsForVersion
+          .map<String>((round) => round['id'] as String)
+          .toList();
+
+      print('📋 ${roundIds.length} rounds trouvés pour la version');
+
+      // 2. Récupérer les IDs des rounds assignés au jury depuis round_jury_assignments
+      final assignmentsResponse = await _supabase
+          .from('round_jury_assignments')
+          .select('round_id')
+          .eq('user_id', juryId)
+          .inFilter('round_id', roundIds);
+
+      if (assignmentsResponse.isEmpty) {
+        print('⚠️ Aucun round assigné à ce jury pour cette version');
+        return [];
+      }
+
+      final assignedRoundIds = assignmentsResponse
+          .map<String>((item) => item['round_id'] as String)
+          .toSet()
+          .toList();
+
+      print('📋 ${assignedRoundIds.length} rounds assignés trouvés pour ce jury');
+
+      // 3. Récupérer les détails complets des rounds assignés depuis la table rounds
+      final roundsResponse = await _supabase
+          .from('rounds')
+          .select()
+          .inFilter('id', assignedRoundIds)
           .eq('version_id', versionId)
-          .order('round_number');
+          .order('number');
 
-      print('📋 ${response.length} rounds trouvés pour ce jury');
+      print('✅ ${roundsResponse.length} rounds récupérés avec détails complets');
 
-      return response
-          .map<Round>(
-            (item) => Round(
-              id: item['round_id'] as String,
-              versionId: item['version_id'] as String,
-              number: item['round_number'] as int,
-              name: item['round_name'] as String?,
-              resultIsPublished: false, // Par défaut
-            ),
-          )
+      return roundsResponse
+          .map<Round>((item) => Round.fromMap(item))
           .toList();
     } catch (e) {
       print('❌ Erreur lors de la récupération des rounds du jury: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       return [];
     }
   }

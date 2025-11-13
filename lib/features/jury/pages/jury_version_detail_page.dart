@@ -4,6 +4,7 @@ import 'package:quranic_competition/core/services/auth_service.dart';
 import 'package:quranic_competition/core/services/evaluation_service.dart';
 import 'package:quranic_competition/core/services/participant_service.dart';
 import 'package:quranic_competition/core/services/round_service.dart';
+import 'package:quranic_competition/core/services/round_jury_service.dart';
 import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/round.dart';
@@ -26,6 +27,7 @@ class JuryVersionDetailPage extends StatefulWidget {
 class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   final ParticipantService _participantService = ParticipantService();
   final EvaluationService _evaluationService = EvaluationService();
+  final RoundJuryService _roundJuryService = RoundJuryService();
   final TextEditingController _searchController = TextEditingController();
 
   List<Participant> _allParticipants = [];
@@ -54,18 +56,71 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   Future<void> _loadParticipantsWithEvaluationStatus() async {
     setState(() => _isLoading = true);
 
-    // Récupérer tous les rounds pour cette version de compétition
+    AuthService authService = AuthService();
+    AppUser? user = await authService.getUserProfile();
+    if (user == null) {
+      // Gérer erreur utilisateur non connecté
+      setState(() => _isLoading = false);
+      return;
+    }
+    setState(() {
+      appUser = user;
+    });
+    final versionId = widget.version.id;
+    final juryId = user.id;
+
+    // Récupérer uniquement les rounds assignés à ce jury pour cette version
     try {
-      _allRounds = await RoundService().getRoundsByVersion(widget.version.id);
-      print(
-        '🔍 Rounds trouvés pour la version ${widget.version.name}: ${_allRounds.length}',
+      _allRounds = await _roundJuryService.getRoundsByJuryAndVersion(
+        juryId,
+        versionId,
       );
+      print(
+        '🔍 Rounds assignés au jury pour la version ${widget.version.name}: ${_allRounds.length}',
+      );
+
+      // Si aucun round n'est assigné, afficher un message et retourner
+      if (_allRounds.isEmpty) {
+        print('⚠️ Aucun round assigné à ce jury pour cette version');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('ليس لديك صلاحية للوصول إلى هذه النسخة'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              context.pop();
+            }
+          });
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
     } catch (e) {
-      print('❌ Erreur lors du chargement des rounds: $e');
+      print('❌ Erreur lors du chargement des rounds assignés: $e');
       _allRounds = [];
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('خطأ في تحميل الجولات المعيّنة'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            context.pop();
+          }
+        });
+      }
+      setState(() => _isLoading = false);
+      return;
     }
 
-    // Initialiser le round sélectionné avec le premier round disponible de cette version
+    // Initialiser le round sélectionné avec le premier round disponible assigné au jury
     Round? initialSelectedRound;
     if (_allRounds.isNotEmpty) {
       // Trier les rounds par numéro pour avoir Round 1 en premier
@@ -76,31 +131,36 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       );
     }
 
-    // Déterminer le round actif pour affichage (optionnel)
+    // Déterminer le round actif parmi les rounds assignés au jury
     Round? activeRound;
-    try {
-      activeRound = await RoundService().getActiveRound(widget.version.id);
-      print('🔍 Round actif détecté: ${activeRound?.name}');
-    } catch (e) {
-      print('⚠️ Pas de round actif détecté');
+    if (_allRounds.isNotEmpty) {
+      try {
+        final allRoundsForVersion = await RoundService().getRoundsByVersion(
+          versionId,
+        );
+        final activeRoundForVersion = allRoundsForVersion.firstWhere(
+          (r) => r.isActive,
+          orElse: () => allRoundsForVersion.first,
+        );
+
+        // Vérifier si le round actif est assigné au jury
+        if (_allRounds.any((r) => r.id == activeRoundForVersion.id)) {
+          activeRound = _allRounds.firstWhere(
+            (r) => r.id == activeRoundForVersion.id,
+          );
+          print(
+            '🔍 Round actif détecté parmi les rounds assignés: ${activeRound.name}',
+          );
+        }
+      } catch (e) {
+        print('⚠️ Pas de round actif détecté parmi les rounds assignés');
+      }
     }
 
     setState(() {
       this.activeRound = activeRound;
       _selectedRound = initialSelectedRound;
     });
-
-    AuthService authService = AuthService();
-    AppUser? user = await authService.getUserProfile();
-    if (user == null) {
-      // Gérer erreur utilisateur non connecté
-      return;
-    }
-    setState(() {
-      appUser = user;
-    });
-    final versionId = widget.version.id;
-    final juryId = user.id;
     print(
       'RoundId sélectionné (normalisé): "${_selectedRound?.id.trim().toLowerCase()}"',
     );
@@ -201,13 +261,33 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   }
 
   Future<void> _loadParticipantsForSelectedRound() async {
-    if (_selectedRound == null) return;
+    if (_selectedRound == null || appUser == null) return;
 
-    setState(() => _isLoading = true);
+    // Ne pas afficher le loading indicator pour un changement rapide de round
+    // setState(() => _isLoading = true);
 
     try {
       final versionId = widget.version.id;
-      final juryId = appUser?.id ?? '';
+      final juryId = appUser!.id;
+
+      // Vérifier que le round sélectionné est bien assigné au jury (vérification rapide)
+      // On peut sauter cette vérification car on sait déjà que _allRounds contient seulement les rounds assignés
+      // final isAssigned = await _roundJuryService.isJuryAssignedToRound(
+      //   juryId,
+      //   _selectedRound!.id,
+      // );
+
+      // if (!isAssigned) {
+      //   print('⚠️ Le round sélectionné n\'est pas assigné à ce jury');
+      //   setState(() => _isLoading = false);
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(
+      //       content: Text('ليس لديك صلاحية للوصول إلى هذه الجولة'),
+      //       backgroundColor: Colors.red,
+      //     ),
+      //   );
+      //   return;
+      // }
 
       // Récupérer participants pour le round sélectionné
       var participants = await _participantService
@@ -231,9 +311,9 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
         );
       }
 
-      // Récupérer évaluations du jury pour cette version
+      // Récupérer évaluations du jury pour cette version (seulement pour le round sélectionné)
       print(
-        '🔍 JuryVersionDetailPage - Rechargement des évaluations pour jury: $juryId, version: $versionId',
+        '🔍 JuryVersionDetailPage - Rechargement des évaluations pour jury: $juryId, version: $versionId, round: ${_selectedRound!.id}',
       );
       final evaluationsResponse = await _evaluationService
           .getEvaluationsByJuryInVersion(juryId: juryId, versionId: versionId);
@@ -264,13 +344,19 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       setState(() {
         _allParticipants = participantsWithStatus;
         _applyFilter();
-        _isLoading = false;
+        // Ne pas mettre _isLoading = false car on ne l'a pas mis à true
       });
 
       print('🔍 Participants rechargés pour le round: ${_selectedRound?.name}');
     } catch (e) {
-      setState(() => _isLoading = false);
+      // Ne pas mettre _isLoading = false car on ne l'a pas mis à true
       print('❌ Erreur lors du rechargement des participants: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ في تحميل المشاركين: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -380,7 +466,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
       appBar: ModernAppBar(
         title:
             activeRound != null
-                ? '${widget.version.name} - ${activeRound!.name}'
+                ? '${widget.version.name} - ${_selectedRound!.name}'
                 : widget.version.name,
       ),
       /*FloatingActionButton(
@@ -413,7 +499,10 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                   child: Column(
                     children: [
                       // Message d'autorisation d'évaluation
-                      if (!widget.version.juryEvaluationEnabled)
+                      // Afficher seulement si l'évaluation n'est pas activée ET que les résultats ne sont pas publiés
+                      if (!widget.version.juryEvaluationEnabled &&
+                          (_selectedRound == null ||
+                              !_selectedRound!.resultIsPublished))
                         ModernCard(
                           backgroundColor: AppTheme.errorColor.withOpacity(0.1),
                           child: Row(
