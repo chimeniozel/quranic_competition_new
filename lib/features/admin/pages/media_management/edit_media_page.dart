@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/archive_media_service.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/archive_media.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
@@ -31,6 +32,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
   final CompetitionVersionService _versionService = CompetitionVersionService();
   final ImagePicker _imagePicker = ImagePicker();
   final FilePermissionService _permissionService = FilePermissionService();
+  final PermissionService _permissionCheckService = PermissionService();
   bool _isLoading = false;
   File? _selectedImageFile;
   bool _useImageFile = false;
@@ -81,6 +83,18 @@ class _EditMediaPageState extends State<EditMediaPage> {
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Vérifier الصلاحيات
+    final canModify = await _permissionCheckService.canModify();
+    if (!canModify) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية تعديل الوسائط'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
 
     // Vérifier qu'une version est sélectionnée si nécessaire
     if (_needsVersionSelection && _selectedVersion == null) {

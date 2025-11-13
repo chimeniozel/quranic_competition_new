@@ -19,6 +19,7 @@ import 'package:quranic_competition/features/participant/pages/home/participant_
 import 'package:quranic_competition/features/participant/pages/home/participant_results_versions_page.dart';
 import 'package:quranic_competition/features/participant/pages/benefits/participant_benefits_page.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
+import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
 import 'package:quranic_competition/features/participant/pages/about/about_us_page.dart';
 import 'package:quranic_competition/features/shared/pages/access_denied_page.dart';
@@ -117,9 +118,31 @@ bool _isMemberRole(String role) {
   return role == 'membre';
 }
 
+/// Récupère le rôle de l'utilisateur depuis la table profiles (source de vérité)
+/// Toujours récupéré depuis la base de données pour garantir la cohérence
+Future<String?> _getUserRoleFromProfiles(String userId) async {
+  try {
+    // Toujours récupérer depuis la base de données (pas de cache)
+    final response =
+        await Supabase.instance.client
+            .from('profiles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle();
+
+    if (response != null) {
+      return response['role'] as String?;
+    }
+    return null;
+  } catch (e) {
+    print('Erreur lors de la récupération du rôle: $e');
+    return null;
+  }
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
-  redirect: (context, state) {
+  redirect: (context, state) async {
     final user = Supabase.instance.client.auth.currentUser;
     final path = state.matchedLocation;
 
@@ -157,10 +180,31 @@ final GoRouter appRouter = GoRouter(
       return '/participant_home_page';
     }
 
-    // 2. 📄 Métadonnées et rôle normalisé
-    final metadataRole = user?.userMetadata?['role'] as String?;
-    final fallbackRole = PermissionService().currentUserRole?.code;
-    final normalizedRole = _normalizeRole(metadataRole ?? fallbackRole);
+    // 2. 📄 Récupérer le rôle (استخدام metadata أولاً للسرعة)
+    String? userRole;
+    if (user != null) {
+      // استخدام metadata أولاً (متوفر فوراً، لا يحتاج انتظار)
+      userRole = user.userMetadata?['role'] as String?;
+      
+      // إذا لم يكن متوفراً في metadata، استخدام cache
+      if (userRole == null) {
+        final cachedRole = PermissionService().currentUserRoleSync;
+        userRole = cachedRole?.code;
+      }
+      
+      // تحديث cache من قاعدة البيانات في الخلفية (للاستخدام المستقبلي)
+      // هذا لا يمنع عرض الصفحة
+      _getUserRoleFromProfiles(user.id).then((role) {
+        if (role != null && role != userRole) {
+          final permissionService = PermissionService();
+          permissionService.setUserRole(UserRole.fromString(role));
+        }
+      }).catchError((e) {
+        // تجاهل الأخطاء في التحديث الخلفي
+      });
+    }
+
+    final normalizedRole = _normalizeRole(userRole);
     final isVerified = user?.userMetadata?['email_verified'] == true;
 
     // 3. ⏳ Redirection si email non vérifié (sauf participants)
@@ -186,7 +230,12 @@ final GoRouter appRouter = GoRouter(
     if (user != null) {
       final isAccessDeniedRoute = path == '/access-denied';
 
-      if (_isJuryPath(path) && normalizedRole != 'jury') {
+      final canAccessJurySection =
+          normalizedRole == 'jury' ||
+          normalizedRole == 'admin' ||
+          normalizedRole == 'super_admin';
+
+      if (_isJuryPath(path) && !canAccessJurySection) {
         return isAccessDeniedRoute ? null : '/access-denied';
       }
     }
@@ -443,7 +492,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/admin/dashboard', builder: (_, __) => AdminDashboardPage()),
     GoRoute(path: '/admin/users', builder: (_, __) => UserManagementPage()),
     GoRoute(
-      path: '/admin/users/:userId/roles',
+      path: '/admin/users/:userId/manage',
       builder: (context, state) {
         final userId = state.pathParameters['userId'];
         if (userId == null) {

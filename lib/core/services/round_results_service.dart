@@ -100,23 +100,58 @@ class RoundResultsService {
       List<Map<String, dynamic>> response;
 
       if (round.number == 1) {
-        // Round 1: participants acceptés uniquement
+        // Round 1: participants acceptés uniquement pour cette version
         response = await _supabase
             .from('participants')
             .select()
+            .eq('competition_id', round.versionId)
             .eq('is_accepted', true);
-      } else if (round.number == 2) {
-        // Round 2: participants acceptés ET ayant passé le round 1
-        response = await _supabase
-            .from('participants')
-            .select()
-            .eq('is_accepted', true)
-            .eq('passed_round1', true);
-      } else {
-        throw Exception('Round non supporté: ${round.number}');
+
+        return response.map((record) => Participant.fromMap(record)).toList();
       }
 
-      return response.map((record) => Participant.fromMap(record)).toList();
+      // Rounds >= 2: participants qui ont passé le round précédent
+      final previousRoundNumber = round.number - 1;
+      final previousRoundResponse = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', round.versionId)
+          .eq('number', previousRoundNumber)
+          .maybeSingle();
+
+      if (previousRoundResponse == null) {
+        throw Exception(
+          'Impossible de trouver le round précédent (${round.number - 1}) pour la version ${round.versionId}',
+        );
+      }
+
+      final previousRoundId = previousRoundResponse['id'] as String;
+      final qualifiedResponse = await _supabase
+          .from('round_results')
+          .select('participants(*)')
+          .eq('version_id', round.versionId)
+          .eq('round_id', previousRoundId)
+          .eq('passed', true);
+
+      if (qualifiedResponse.isEmpty) {
+        // Fallback de compatibilité : utiliser le flag passed_round1 si présent
+        response = await _supabase
+            .from('participants')
+            .select()
+            .eq('competition_id', round.versionId)
+            .eq('is_accepted', true)
+            .eq('passed_round1', true);
+
+        return response.map((record) => Participant.fromMap(record)).toList();
+      }
+
+      return qualifiedResponse
+          .map((row) {
+            final participantMap =
+                row['participants'] as Map<String, dynamic>? ?? {};
+            return Participant.fromMap(participantMap);
+          })
+          .toList();
     } catch (e) {
       print('❌ Erreur lors de la récupération des participants éligibles: $e');
       return [];
@@ -306,6 +341,7 @@ class RoundResultsService {
   }
 
   /// Marque le round comme ayant des résultats publiés
+  // ignore: unused_element
   Future<void> _markRoundResultsAsPublished(String roundId) async {
     try {
       await _supabase

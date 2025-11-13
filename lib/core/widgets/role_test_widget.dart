@@ -222,37 +222,42 @@ class RoleTestWidget extends StatelessWidget {
     String title,
     IconData icon,
     Color color,
-    bool Function() permissionCheck,
+    Future<bool> Function() permissionCheck,
   ) {
-    final hasPermission = permissionCheck();
+    return FutureBuilder<bool>(
+      future: permissionCheck(),
+      builder: (context, snapshot) {
+        final hasPermission = snapshot.data ?? false;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: hasPermission ? color.withOpacity(0.1) : Colors.grey[100],
-        border: Border.all(color: hasPermission ? color : Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: hasPermission ? color : Colors.grey[400], size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: hasPermission ? color : Colors.grey[600],
-                fontWeight: hasPermission ? FontWeight.w600 : FontWeight.normal,
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: hasPermission ? color.withOpacity(0.1) : Colors.grey[100],
+            border: Border.all(color: hasPermission ? color : Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: hasPermission ? color : Colors.grey[400], size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: hasPermission ? color : Colors.grey[600],
+                    fontWeight: hasPermission ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
               ),
-            ),
+              Icon(
+                hasPermission ? Icons.check_circle : Icons.cancel,
+                color: hasPermission ? Colors.green : Colors.red,
+                size: 20,
+              ),
+            ],
           ),
-          Icon(
-            hasPermission ? Icons.check_circle : Icons.cancel,
-            color: hasPermission ? Colors.green : Colors.red,
-            size: 20,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

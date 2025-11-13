@@ -125,7 +125,7 @@ class EvaluationStatsService {
   ) async {
     try {
       if (activeRound.number == 1) {
-        // Round 1: tous les participants de la version
+        // Round 1: tous les participants acceptés de la version
         final response = await _supabase
             .from('participants')
             .select('*')
@@ -135,31 +135,45 @@ class EvaluationStatsService {
         return response.map<Participant>((record) {
           return Participant.fromMap(record);
         }).toList();
-      } else if (activeRound.number == 2) {
-        // Round 2: seulement ceux qui ont passé le round 1
-        final response = await _supabase
-            .from('participants')
-            .select('*')
-            .eq('competition_id', versionId)
-            .eq('is_accepted', true)
-            .eq('passed_round1', true);
-
-        return response.map<Participant>((record) {
-          return Participant.fromMap(record);
-        }).toList();
-      } else {
-        // Autres rounds: logique similaire
-        final response = await _supabase
-            .from('participants')
-            .select('*')
-            .eq('competition_id', versionId)
-            .eq('is_accepted', true)
-            .eq('passed_round1', true);
-
-        return response.map<Participant>((record) {
-          return Participant.fromMap(record);
-        }).toList();
       }
+
+      final previousRoundNumber = activeRound.number - 1;
+      final previousRoundResponse = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId)
+          .eq('number', previousRoundNumber)
+          .maybeSingle();
+
+      if (previousRoundResponse != null) {
+        final previousRoundId = previousRoundResponse['id'] as String;
+        final qualifiedResponse = await _supabase
+            .from('round_results')
+            .select('participants(*)')
+            .eq('version_id', versionId)
+            .eq('round_id', previousRoundId)
+            .eq('passed', true);
+
+        if (qualifiedResponse.isNotEmpty) {
+          return qualifiedResponse.map<Participant>((row) {
+            final participantMap =
+                row['participants'] as Map<String, dynamic>? ?? {};
+            return Participant.fromMap(participantMap);
+          }).toList();
+        }
+      }
+
+      // Fallback compatibilité: utiliser le champ passed_round1 si présent
+      final fallbackResponse = await _supabase
+          .from('participants')
+          .select('*')
+          .eq('competition_id', versionId)
+          .eq('is_accepted', true)
+          .eq('passed_round1', true);
+
+      return fallbackResponse.map<Participant>((record) {
+        return Participant.fromMap(record);
+      }).toList();
     } catch (e) {
       print('❌ Erreur lors de la récupération des participants: $e');
       return [];

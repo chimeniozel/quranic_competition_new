@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
+import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
@@ -78,7 +80,12 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
     }
   }
 
+  Future<void> _checkPermissionAndEdit(QuizLevel level) async {
+    context.push('/admin/quiz/levels/edit/${level.id}');
+  }
+
   Future<void> _deleteLevel(QuizLevel level) async {
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -239,7 +246,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                 onSelected: (value) {
                   switch (value) {
                     case 'edit':
-                      context.push('/admin/quiz/levels/edit/${level.id}');
+                      _checkPermissionAndEdit(level);
                       break;
                     case 'questions':
                       context.push('/admin/quiz/levels/${level.id}/questions');
@@ -253,80 +260,106 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                   }
                 },
                 itemBuilder:
-                    (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit,
-                              size: 16,
-                              color: AppTheme.primaryColor,
+                    (context) {
+                      final items = <PopupMenuEntry<String>>[];
+                      final permissionService = PermissionService();
+                      
+                      // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+                      if (permissionService.canModifySync()) {
+                        items.add(
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                SizedBox(width: 8),
+                                Text('تعديل'),
+                              ],
                             ),
-                            SizedBox(width: 8),
-                            Text('تعديل'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'questions',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.quiz,
-                              size: 16,
-                              color: AppTheme.successColor,
-                            ),
-                            SizedBox(width: 8),
-                            Text('إدارة الأسئلة'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'toggle',
-                        child: Row(
-                          children: [
-                            Icon(
-                              level.isActive
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              size: 16,
-                              color:
-                                  level.isActive
-                                      ? AppTheme.warningColor
-                                      : AppTheme.successColor,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                              style: TextStyle(
-                                color:
-                                    level.isActive
-                                        ? AppTheme.warningColor
-                                        : AppTheme.successColor,
+                          ),
+                        );
+                      }
+                      
+                      // عنصر الأسئلة متاح للجميع (للقراءة فقط)
+                      items.add(
+                        PopupMenuItem(
+                          value: 'questions',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.quiz,
+                                size: 16,
+                                color: AppTheme.successColor,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 8),
+                              Text('إدارة الأسئلة'),
+                            ],
+                          ),
                         ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete,
-                              size: 16,
-                              color: AppTheme.errorColor,
+                      );
+                      
+                      // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
+                      if (permissionService.canModifySync()) {
+                        items.add(
+                          PopupMenuItem(
+                            value: 'toggle',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  level.isActive
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  size: 16,
+                                  color:
+                                      level.isActive
+                                          ? AppTheme.warningColor
+                                          : AppTheme.successColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                                  style: TextStyle(
+                                    color:
+                                        level.isActive
+                                            ? AppTheme.warningColor
+                                            : AppTheme.successColor,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 8),
-                            Text(
-                              'حذف',
-                              style: TextStyle(color: AppTheme.errorColor),
+                          ),
+                        );
+                      }
+                      
+                      // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+                      if (permissionService.canDeleteSync()) {
+                        items.add(
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.delete,
+                                  size: 16,
+                                  color: AppTheme.errorColor,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'حذف',
+                                  style: TextStyle(color: AppTheme.errorColor),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        );
+                      }
+                      
+                      return items;
+                    },
               ),
             ],
           ),
@@ -348,9 +381,11 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
           ),
         ],
       ),
-      floatingActionButton: ModernFAB(
-        onPressed: () => context.push('/admin/quiz/levels/add'),
-        icon: Icons.add,
+      floatingActionButton: CanModifyGuard(
+        child: ModernFAB(
+          onPressed: () => context.push('/admin/quiz/levels/add'),
+          icon: Icons.add,
+        ),
       ),
       body:
           _isLoading

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/push_notification_service.dart';
@@ -17,6 +18,7 @@ class QuranicBenefitFormPage extends StatefulWidget {
 
 class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
   final QuranicBenefitService _benefitService = QuranicBenefitService();
+  final PermissionService _permissionService = PermissionService();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -85,6 +87,18 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
 
   Future<void> _saveBenefit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Vérifier الصلاحيات
+    final canModify = await _permissionService.canModify();
+    if (!canModify) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية تعديل المحتوى'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 

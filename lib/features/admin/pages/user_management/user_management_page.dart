@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/user_management_service.dart';
-import 'package:quranic_competition/core/widgets/role_guard.dart';
-import 'package:quranic_competition/core/services/confirmation_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/user_role.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
+import 'package:quranic_competition/features/shared/pages/access_denied_page.dart';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -379,16 +378,37 @@ class _UserManagementPageState extends State<UserManagementPage> {
   bool _isLoading = true;
   String _searchQuery = '';
   String _selectedRoleFilter = 'all';
-  String? _currentUserId;
+  String _selectedValidationFilter = 'all'; // all, validated, unvalidated
+  bool? _isSuperAdmin;
+  bool _isSummaryExpanded = false;
 
   @override
   void initState() {
     super.initState();
-    _currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    _loadUsers();
+    _initializePermissions();
+  }
+
+  Future<void> _initializePermissions() async {
+    final isSuperAdmin = await PermissionService().isSuperAdmin();
+    setState(() {
+      _isSuperAdmin = isSuperAdmin;
+    });
+
+    if (isSuperAdmin) {
+      _loadUsers();
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadUsers() async {
+    if (_isSuperAdmin != true) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -419,12 +439,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
   List<Map<String, dynamic>> get _filteredUsers {
     var filtered = _users;
 
-    // Exclure l'utilisateur actuel
-    if (_currentUserId != null) {
-      filtered =
-          filtered.where((user) => user['id'] != _currentUserId).toList();
-    }
-
     // Filtrer par recherche (nom ou email)
     if (_searchQuery.isNotEmpty) {
       filtered =
@@ -445,59 +459,45 @@ class _UserManagementPageState extends State<UserManagementPage> {
               .toList();
     }
 
+    // Filtrer par حالة التحقق
+    if (_selectedValidationFilter != 'all') {
+      filtered =
+          filtered.where((user) {
+            final isValidated = user['is_validated'] == true;
+            if (_selectedValidationFilter == 'validated') {
+              return isValidated;
+            } else if (_selectedValidationFilter == 'unvalidated') {
+              return !isValidated;
+            }
+            return true;
+          }).toList();
+    }
+
     return filtered;
   }
 
-  Future<void> _updateUserRole(
-    Map<String, dynamic> user,
-    UserRole newRole,
-  ) async {
-    final confirmed = await ConfirmationService.showCriticalActionConfirmation(
-      context,
-      title: 'تغيير دور المستخدم',
-      message:
-          'هل أنت متأكد من تغيير دور ${user['email']} إلى ${newRole.displayName}؟',
-      actionType: 'تغيير الدور',
-    );
-
-    if (confirmed) {
-      try {
-        await _userService.updateUserRole(user['id'], newRole);
-
-        // Mettre à jour localement sans recharger la page
-        setState(() {
-          final userIndex = _users.indexWhere((u) => u['id'] == user['id']);
-          if (userIndex != -1) {
-            _users[userIndex]['role'] = newRole.code;
-            _users[userIndex]['role_display_name'] = newRole.displayName;
-          }
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('تم تغيير دور المستخدم بنجاح'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          debugPrint('خطأ في تغيير الدور: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('خطأ في تغيير الدور: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  Future<void> _openPermissionsManager(Map<String, dynamic> user) async {
+  Future<void> _openUserManagement(Map<String, dynamic> user) async {
     if (!mounted) return;
-    context.push('/admin/users/${user['id']}/roles');
+
+    // Vérifier الصلاحيات
+    final canAssignRoles = await PermissionService().canAssignRoles();
+    if (!canAssignRoles) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية إدارة المستخدمين'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    // Naviguer vers la page de gestion et attendre le résultat
+    final result = await context.push('/admin/users/${user['id']}/manage');
+
+    // Si l'utilisateur a été supprimé ou modifié, recharger la liste
+    if (result == true && mounted) {
+      _loadUsers();
+    }
   }
 
   Widget _buildUserCard(Map<String, dynamic> user) {
@@ -511,7 +511,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        onTap: () => _openPermissionsManager(user),
+        onTap: () => _openUserManagement(user),
         child: Container(
           padding: const EdgeInsets.all(AppTheme.spacingS),
           decoration: BoxDecoration(
@@ -666,75 +666,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Séparateur
-              Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.dividerColor,
-                      AppTheme.dividerColor.withOpacity(0.5),
-                      AppTheme.dividerColor,
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Role Change Dropdown moderne
-              CanAssignRolesGuard(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    border: Border.all(color: AppTheme.dividerColor, width: 1),
-                  ),
-                  child: DropdownButtonFormField<UserRole>(
-                    value: role,
-                    decoration: InputDecoration(
-                      labelText: 'تغيير الدور',
-                      labelStyle: AppTheme.labelSmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 11,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingS,
-                        vertical: AppTheme.spacingXS,
-                      ),
-                    ),
-                    items:
-                        UserRole.values.map((role) {
-                          return DropdownMenuItem<UserRole>(
-                            value: role,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _getRoleIcon(role),
-                                  color: _getRoleColor(role),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: AppTheme.spacingXS),
-                                Text(
-                                  role.displayName,
-                                  style: AppTheme.bodySmall.copyWith(
-                                    color: AppTheme.textPrimaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                    onChanged: (newRole) {
-                      if (newRole != null && newRole != role) {
-                        _updateUserRole(user, newRole);
-                      }
-                    },
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -822,6 +753,222 @@ class _UserManagementPageState extends State<UserManagementPage> {
     );
   }
 
+  Widget _buildSummarySection() {
+    final totalUsers = _users.length;
+    final validatedUsers =
+        _users.where((user) => user['is_validated'] == true).length;
+    final unvalidatedUsers =
+        _users.where((user) => user['is_validated'] != true).length;
+    final superAdmins =
+        _users.where((user) => user['role'] == UserRole.superAdmin.code).length;
+    final admins =
+        _users.where((user) => user['role'] == UserRole.admin.code).length;
+    final juries =
+        _users.where((user) => user['role'] == UserRole.jury.code).length;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _isSummaryExpanded = !_isSummaryExpanded;
+        });
+      },
+      borderRadius: BorderRadius.circular(AppTheme.radiusL),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppTheme.spacingL),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppTheme.primaryColor.withOpacity(0.12),
+              AppTheme.primaryColor.withOpacity(0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          border: Border.all(
+            color: AppTheme.primaryColor.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  ),
+                  child: const Icon(Icons.insights, color: Colors.white),
+                ),
+                const SizedBox(width: AppTheme.spacingS),
+                Expanded(
+                  child: Text(
+                    'إحصائيات سريعة',
+                    style: AppTheme.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _isSummaryExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ],
+            ),
+            if (_isSummaryExpanded) ...[
+              const SizedBox(height: AppTheme.spacingM),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 660;
+                  final stats = [
+                    (
+                      label: 'إجمالي المستخدمين',
+                      value: totalUsers,
+                      icon: Icons.people_alt_outlined,
+                      color: AppTheme.primaryColor,
+                    ),
+                    (
+                      label: 'مستخدمون موثقون',
+                      value: validatedUsers,
+                      icon: Icons.verified_outlined,
+                      color: AppTheme.successColor,
+                    ),
+                    (
+                      label: 'مستخدمون غير موثقين',
+                      value: unvalidatedUsers,
+                      icon: Icons.pending_outlined,
+                      color: AppTheme.warningColor,
+                    ),
+                    (
+                      label: 'المديرون العامون',
+                      value: superAdmins,
+                      icon: Icons.shield_outlined,
+                      color: AppTheme.errorColor,
+                    ),
+                    (
+                      label: 'المديرون',
+                      value: admins,
+                      icon: Icons.settings_outlined,
+                      color: AppTheme.infoColor,
+                    ),
+                    (
+                      label: 'أعضاء لجنة التحكيم',
+                      value: juries,
+                      icon: Icons.gavel_outlined,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ];
+
+                  Widget buildStatCard(
+                    String label,
+                    int value,
+                    IconData icon,
+                    Color color,
+                  ) {
+                    return Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingS),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        boxShadow: AppTheme.shadowS,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppTheme.spacingXS),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusS,
+                              ),
+                            ),
+                            child: Icon(icon, color: color, size: 18),
+                          ),
+                          const SizedBox(width: AppTheme.spacingS),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  label,
+                                  style: AppTheme.labelSmall.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  value.toString(),
+                                  style: AppTheme.headingSmall.copyWith(
+                                    color: color,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (isWide) {
+                    return Row(
+                      children:
+                          stats
+                              .map(
+                                (stat) => Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      right:
+                                          stat == stats.last
+                                              ? 0
+                                              : AppTheme.spacingS,
+                                    ),
+                                    child: buildStatCard(
+                                      stat.label,
+                                      stat.value,
+                                      stat.icon,
+                                      stat.color,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    );
+                  }
+
+                  return Column(
+                    children:
+                        stats
+                            .map(
+                              (stat) => Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppTheme.spacingS,
+                                ),
+                                child: buildStatCard(
+                                  stat.label,
+                                  stat.value,
+                                  stat.icon,
+                                  stat.color,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingXL),
@@ -886,6 +1033,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 setState(() {
                   _searchQuery = '';
                   _selectedRoleFilter = 'all';
+                  _selectedValidationFilter = 'all';
                 });
               },
               icon: const Icon(Icons.clear),
@@ -910,6 +1058,15 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Attendre que les permissions soient chargées
+    if (_isSuperAdmin == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_isSuperAdmin == false) {
+      return const AccessDeniedPage();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('إدارة المستخدمين والأدوار'),
@@ -935,6 +1092,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildSummarySection(),
+                      const SizedBox(height: AppTheme.spacingS),
                       // Barre de recherche et filtres
                       Container(
                         padding: const EdgeInsets.all(AppTheme.spacingL),
@@ -1093,7 +1252,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                       ),
                                       const SizedBox(height: AppTheme.spacingS),
 
-                                      // Dropdown filtre
+                                      // Dropdown filtre الأدوار
                                       Container(
                                         width: double.infinity,
                                         decoration: BoxDecoration(
@@ -1276,6 +1435,244 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                             onChanged: (value) {
                                               setState(() {
                                                 _selectedRoleFilter =
+                                                    value ?? 'all';
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: AppTheme.spacingS),
+
+                                      // Dropdown filtre التحقق
+                                      Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppTheme.backgroundColor,
+                                              AppTheme.backgroundColor
+                                                  .withOpacity(0.8),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusL,
+                                          ),
+                                          border: Border.all(
+                                            color: AppTheme.infoColor
+                                                .withOpacity(0.3),
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.infoColor
+                                                  .withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: _selectedValidationFilter,
+                                            isExpanded: true,
+                                            icon: Container(
+                                              margin: const EdgeInsets.all(
+                                                AppTheme.spacingXS,
+                                              ),
+                                              padding: const EdgeInsets.all(
+                                                AppTheme.spacingXS,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    AppTheme.infoColor,
+                                                    AppTheme.infoColor
+                                                        .withOpacity(0.7),
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppTheme.radiusM,
+                                                    ),
+                                                boxShadow: AppTheme.shadowS,
+                                              ),
+                                              child: const Icon(
+                                                Icons.verified_user,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              color: AppTheme.textPrimaryColor,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            items: [
+                                              DropdownMenuItem(
+                                                value: 'all',
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            AppTheme.spacingS,
+                                                        vertical:
+                                                            AppTheme.spacingXS,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.infoColor
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          AppTheme.radiusS,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppTheme.infoColor
+                                                          .withOpacity(0.3),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.all_inclusive,
+                                                        size: 16,
+                                                        color:
+                                                            AppTheme.infoColor,
+                                                      ),
+                                                      const SizedBox(
+                                                        width:
+                                                            AppTheme.spacingS,
+                                                      ),
+                                                      Text(
+                                                        'جميع الحالات',
+                                                        style: AppTheme
+                                                            .bodySmall
+                                                            .copyWith(
+                                                              color:
+                                                                  AppTheme
+                                                                      .infoColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 'validated',
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            AppTheme.spacingS,
+                                                        vertical:
+                                                            AppTheme.spacingXS,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.successColor
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          AppTheme.radiusS,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppTheme
+                                                          .successColor
+                                                          .withOpacity(0.3),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.verified,
+                                                        size: 16,
+                                                        color:
+                                                            AppTheme
+                                                                .successColor,
+                                                      ),
+                                                      const SizedBox(
+                                                        width:
+                                                            AppTheme.spacingS,
+                                                      ),
+                                                      Text(
+                                                        'موثقون',
+                                                        style: AppTheme
+                                                            .bodySmall
+                                                            .copyWith(
+                                                              color:
+                                                                  AppTheme
+                                                                      .successColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 'unvalidated',
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            AppTheme.spacingS,
+                                                        vertical:
+                                                            AppTheme.spacingXS,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.warningColor
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          AppTheme.radiusS,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppTheme
+                                                          .warningColor
+                                                          .withOpacity(0.3),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.pending,
+                                                        size: 16,
+                                                        color:
+                                                            AppTheme
+                                                                .warningColor,
+                                                      ),
+                                                      const SizedBox(
+                                                        width:
+                                                            AppTheme.spacingS,
+                                                      ),
+                                                      Text(
+                                                        'غير موثقين',
+                                                        style: AppTheme
+                                                            .bodySmall
+                                                            .copyWith(
+                                                              color:
+                                                                  AppTheme
+                                                                      .warningColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _selectedValidationFilter =
                                                     value ?? 'all';
                                               });
                                             },
@@ -1568,6 +1965,256 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                               onChanged: (value) {
                                                 setState(() {
                                                   _selectedRoleFilter =
+                                                      value ?? 'all';
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppTheme.spacingS),
+
+                                      // Dropdown filtre التحقق للشاشات الكبيرة
+                                      Expanded(
+                                        flex: 1,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                AppTheme.backgroundColor,
+                                                AppTheme.backgroundColor
+                                                    .withOpacity(0.8),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusL,
+                                            ),
+                                            border: Border.all(
+                                              color: AppTheme.infoColor
+                                                  .withOpacity(0.3),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppTheme.infoColor
+                                                    .withOpacity(0.1),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              value: _selectedValidationFilter,
+                                              isExpanded: true,
+                                              icon: Container(
+                                                margin: const EdgeInsets.all(
+                                                  AppTheme.spacingXS,
+                                                ),
+                                                padding: const EdgeInsets.all(
+                                                  AppTheme.spacingXS,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      AppTheme.infoColor,
+                                                      AppTheme.infoColor
+                                                          .withOpacity(0.7),
+                                                    ],
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        AppTheme.radiusM,
+                                                      ),
+                                                  boxShadow: AppTheme.shadowS,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.verified_user,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                              style: AppTheme.bodyMedium
+                                                  .copyWith(
+                                                    color:
+                                                        AppTheme
+                                                            .textPrimaryColor,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                              items: [
+                                                DropdownMenuItem(
+                                                  value: 'all',
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal:
+                                                              AppTheme.spacingS,
+                                                          vertical:
+                                                              AppTheme
+                                                                  .spacingXS,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.infoColor
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppTheme.radiusS,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: AppTheme
+                                                            .infoColor
+                                                            .withOpacity(0.3),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.all_inclusive,
+                                                          size: 16,
+                                                          color:
+                                                              AppTheme
+                                                                  .infoColor,
+                                                        ),
+                                                        const SizedBox(
+                                                          width:
+                                                              AppTheme.spacingS,
+                                                        ),
+                                                        Text(
+                                                          'جميع الحالات',
+                                                          style: AppTheme
+                                                              .bodySmall
+                                                              .copyWith(
+                                                                color:
+                                                                    AppTheme
+                                                                        .infoColor,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 'validated',
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal:
+                                                              AppTheme.spacingS,
+                                                          vertical:
+                                                              AppTheme
+                                                                  .spacingXS,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme
+                                                          .successColor
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppTheme.radiusS,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: AppTheme
+                                                            .successColor
+                                                            .withOpacity(0.3),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.verified,
+                                                          size: 16,
+                                                          color:
+                                                              AppTheme
+                                                                  .successColor,
+                                                        ),
+                                                        const SizedBox(
+                                                          width:
+                                                              AppTheme.spacingS,
+                                                        ),
+                                                        Text(
+                                                          'موثقون',
+                                                          style: AppTheme
+                                                              .bodySmall
+                                                              .copyWith(
+                                                                color:
+                                                                    AppTheme
+                                                                        .successColor,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 'unvalidated',
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal:
+                                                              AppTheme.spacingS,
+                                                          vertical:
+                                                              AppTheme
+                                                                  .spacingXS,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme
+                                                          .warningColor
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            AppTheme.radiusS,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: AppTheme
+                                                            .warningColor
+                                                            .withOpacity(0.3),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.pending,
+                                                          size: 16,
+                                                          color:
+                                                              AppTheme
+                                                                  .warningColor,
+                                                        ),
+                                                        const SizedBox(
+                                                          width:
+                                                              AppTheme.spacingS,
+                                                        ),
+                                                        Text(
+                                                          'غير موثقين',
+                                                          style: AppTheme
+                                                              .bodySmall
+                                                              .copyWith(
+                                                                color:
+                                                                    AppTheme
+                                                                        .warningColor,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _selectedValidationFilter =
                                                       value ?? 'all';
                                                 });
                                               },

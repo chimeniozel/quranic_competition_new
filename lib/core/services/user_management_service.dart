@@ -78,29 +78,39 @@ class UserManagementService {
   // Mettre à jour le rôle d'un utilisateur
   Future<void> updateUserRole(String userId, UserRole newRole) async {
     try {
+      // Mettre à jour le rôle dans profiles (source de vérité)
       await _supabase
           .from('profiles')
           .update({'role': newRole.code})
           .eq('id', userId);
 
+      // Mettre à jour aussi userMetadata dans Supabase auth pour cohérence
+      // Note: Cette opération nécessite les privilèges admin, donc on l'ignore si elle échoue
+      try {
+        final currentUser = _supabase.auth.currentUser;
+        // Si c'est l'utilisateur actuel, on peut utiliser updateUser
+        if (currentUser != null && currentUser.id == userId) {
+          await _supabase.auth.updateUser(
+            UserAttributes(data: {'role': newRole.code}),
+          );
+        } else {
+          // Pour les autres utilisateurs, on essaie avec admin (peut échouer si pas admin)
+          await _supabase.auth.admin.updateUserById(
+            userId,
+            attributes: AdminUserAttributes(userMetadata: {'role': newRole.code}),
+          );
+        }
+      } catch (e) {
+        // Si l'utilisateur n'est pas admin, on ne peut pas mettre à jour userMetadata
+        // Ce n'est pas critique, le rôle dans profiles est la source de vérité
+        print('⚠️ Impossible de mettre à jour userMetadata (normal si non-admin): $e');
+      }
+
       // Rafraîchir les permissions de l'utilisateur actuel si c'est lui-même
       final currentUser = _supabase.auth.currentUser;
       if (currentUser != null && currentUser.id == userId) {
-        final profile = await _supabase
-            .from('profiles')
-            .select(
-              'role, can_create_versions, can_publish_content, '
-              'can_validate_accounts, can_delete, can_modify, '
-              'can_modify_versions, can_assign_roles, can_view_content',
-            )
-            .eq('id', userId)
-            .single();
-
-        final base = UserPermissions.forRole(newRole);
-        final custom = UserPermissions.withOverrides(base, profile);
-
-        final permissionService = PermissionService();
-        permissionService.setUserRole(newRole, customPermissions: custom);
+        // Forcer le rafraîchissement depuis la DB
+        await PermissionService().refreshPermissions();
       }
     } catch (e) {
       throw Exception('Erreur lors de la mise à jour du rôle: $e');
@@ -132,23 +142,29 @@ class UserManagementService {
             'can_view_content',
           )
           .eq('id', userId)
-          .single();
+          .maybeSingle();
+
+      if (response == null) return null;
+
+      // Vérifier si les colonnes de permissions existent (au moins une valeur non null)
+      final hasPermissions = response['can_create_versions'] != null ||
+          response['can_publish_content'] != null ||
+          response['can_validate_accounts'] != null;
+
+      if (!hasPermissions) return null;
 
       return {
-        'can_create_versions': (response['can_create_versions'] as bool?) ??
-            false,
-        'can_publish_content': (response['can_publish_content'] as bool?) ??
-            false,
-        'can_validate_accounts':
-            (response['can_validate_accounts'] as bool?) ?? false,
+        'can_create_versions': (response['can_create_versions'] as bool?) ?? false,
+        'can_publish_content': (response['can_publish_content'] as bool?) ?? false,
+        'can_validate_accounts': (response['can_validate_accounts'] as bool?) ?? false,
         'can_delete': (response['can_delete'] as bool?) ?? false,
         'can_modify': (response['can_modify'] as bool?) ?? false,
-        'can_modify_versions':
-            (response['can_modify_versions'] as bool?) ?? false,
+        'can_modify_versions': (response['can_modify_versions'] as bool?) ?? false,
         'can_assign_roles': (response['can_assign_roles'] as bool?) ?? false,
         'can_view_content': (response['can_view_content'] as bool?) ?? false,
       };
     } catch (e) {
+      print('⚠️ Erreur lors de la récupération des permissions: $e');
       return null;
     }
   }
@@ -168,6 +184,13 @@ class UserManagementService {
         'can_assign_roles': permissions['can_assign_roles'],
         'can_view_content': permissions['can_view_content'],
       }).eq('id', userId);
+
+      // Rafraîchir les permissions de l'utilisateur actuel si c'est lui-même
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser != null && currentUser.id == userId) {
+        // Forcer le rafraîchissement depuis la DB
+        await PermissionService().refreshPermissions();
+      }
     } catch (e) {
       throw Exception('Erreur lors de la mise à jour des permissions: $e');
     }
@@ -336,9 +359,57 @@ class UserManagementService {
   // Supprimer un utilisateur (Super Admin seulement)
   Future<void> deleteUser(String userId) async {
     try {
-      await _supabase.auth.admin.deleteUser(userId);
+      print('🗑️ Tentative de suppression de l\'utilisateur: $userId');
+      
+      // Supprimer d'abord les assignations de jury si l'utilisateur est un jury
+      try {
+        await _supabase
+            .from('round_jury_assignments')
+            .delete()
+            .eq('user_id', userId);
+        print('✅ Assignations de jury supprimées');
+      } catch (e) {
+        print('⚠️ Erreur lors de la suppression des assignations: $e');
+        // Continuer même si la suppression des assignations échoue
+      }
+
+      // Supprimer le profil de la table profiles
+      try {
+        await _supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+        print('✅ Profil supprimé de la table profiles');
+      } catch (e) {
+        print('⚠️ Erreur lors de la suppression du profil: $e');
+        // Continuer même si la suppression du profil échoue
+      }
+
+      // Supprimer l'utilisateur de Supabase Auth
+      try {
+        await _supabase.auth.admin.deleteUser(userId);
+        print('✅ Utilisateur supprimé de Supabase Auth');
+      } catch (e) {
+        print('❌ Erreur lors de la suppression de Supabase Auth: $e');
+        // Si la suppression de Auth échoue, vérifier si le profil a été supprimé
+        final profileExists = await _supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', userId)
+            .maybeSingle();
+        
+        if (profileExists == null) {
+          // Le profil a été supprimé, considérer comme succès partiel
+          print('✅ Profil supprimé mais Auth a échoué - considéré comme succès');
+          return;
+        }
+        
+        // Si le profil existe encore, lancer une exception
+        throw Exception('فشل حذف المستخدم من نظام المصادقة. قد تحتاج إلى صلاحيات إدارية خاصة.');
+      }
     } catch (e) {
-      throw Exception('Erreur lors de la suppression de l\'utilisateur: $e');
+      print('❌ Erreur complète lors de la suppression: $e');
+      throw Exception('خطأ أثناء حذف المستخدم: ${e.toString()}');
     }
   }
 }

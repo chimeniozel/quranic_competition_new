@@ -178,18 +178,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  Color _getRoleColor(String role) {
+  IconData _getRoleIcon(String role) {
     switch (role) {
       case 'super_admin':
-        return Colors.red;
+        return Icons.admin_panel_settings;
       case 'admin':
-        return Colors.orange;
+        return Icons.settings;
       case 'jury':
-        return Colors.blue;
+        return Icons.gavel;
       case 'membre':
-        return Colors.green;
+      case 'membre_ordinaire':
+        return Icons.person;
       default:
-        return Colors.grey;
+        return Icons.person_outline;
     }
   }
 
@@ -288,24 +289,35 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
           const SizedBox(height: 8),
 
-          // Rôle avec badge coloré
+          // Rôle avec badge coloré et icône
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: _getRoleColor(_currentUser!.role).withOpacity(0.2),
+              color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _getRoleColor(_currentUser!.role),
-                width: 1,
+                color: Colors.white.withOpacity(0.5),
+                width: 1.5,
               ),
             ),
-            child: Text(
-              _getRoleDisplayName(_currentUser!.role),
-              style: TextStyle(
-                color: _getRoleColor(_currentUser!.role),
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _getRoleIcon(_currentUser!.role),
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _getRoleDisplayName(_currentUser!.role),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

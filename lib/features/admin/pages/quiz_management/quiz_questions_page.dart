@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
+import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/models/quiz_question.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
@@ -92,7 +94,12 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
     }
   }
 
+  Future<void> _checkPermissionAndEdit(QuizQuestion question) async {
+    context.push('/admin/quiz/questions/edit/${question.id}');
+  }
+
   Future<void> _deleteQuestion(QuizQuestion question) async {
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -240,7 +247,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                 onSelected: (value) {
                   switch (value) {
                     case 'edit':
-                      context.push('/admin/quiz/questions/edit/${question.id}');
+                      _checkPermissionAndEdit(question);
                       break;
                     case 'delete':
                       _deleteQuestion(question);
@@ -248,28 +255,44 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                   }
                 },
                 itemBuilder:
-                    (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 16),
-                            SizedBox(width: 8),
-                            Text('تعديل'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 16, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('حذف', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
+                    (context) {
+                      final items = <PopupMenuEntry<String>>[];
+                      final permissionService = PermissionService();
+                      
+                      // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+                      if (permissionService.canModifySync()) {
+                        items.add(
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 16),
+                                SizedBox(width: 8),
+                                Text('تعديل'),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      
+                      // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+                      if (permissionService.canDeleteSync()) {
+                        items.add(
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, size: 16, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('حذف', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      
+                      return items;
+                    },
               ),
             ],
           ),
@@ -409,12 +432,13 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                   },
                 ),
               ),
-      floatingActionButton: ModernFAB(
-        onPressed:
-            () => context.push(
-              '/admin/quiz/questions/add?levelId=${widget.levelId}',
-            ),
-        icon: Icons.add,
+      floatingActionButton: CanModifyGuard(
+        child: ModernFAB(
+          onPressed: () => context.push(
+            '/admin/quiz/questions/add?levelId=${widget.levelId}',
+          ),
+          icon: Icons.add,
+        ),
       ),
     );
   }

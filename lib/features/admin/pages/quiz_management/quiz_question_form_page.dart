@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/models/quiz_question.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
@@ -30,6 +31,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
   final _quizService = QuizService();
   final _imagePicker = ImagePicker();
   final FilePermissionService _permissionService = FilePermissionService();
+  final PermissionService _permissionCheckService = PermissionService();
 
   List<QuizLevel> _levels = [];
   QuizLevel? _selectedLevel;
@@ -308,6 +310,19 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
 
   Future<void> _saveQuestion() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Vérifier الصلاحيات
+    final canModify = await _permissionCheckService.canModify();
+    if (!canModify) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية تعديل الأسئلة'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
     if (_selectedLevel == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

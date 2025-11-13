@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/user_role.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 
 /// Service unifié pour la gestion des utilisateurs
 /// Utilise uniquement la table 'profiles' pour la cohérence
@@ -144,6 +145,7 @@ class UnifiedUserService {
   /// Met à jour le rôle d'un utilisateur
   Future<void> updateUserRole(String userId, UserRole newRole) async {
     try {
+      // Mettre à jour le rôle dans profiles (source de vérité)
       await _supabase
           .from('profiles')
           .update({
@@ -151,6 +153,30 @@ class UnifiedUserService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', userId);
+
+      // Mettre à jour aussi userMetadata dans Supabase auth pour cohérence
+      // Note: Cette opération nécessite les privilèges admin, donc on l'ignore si elle échoue
+      try {
+        final currentUser = _supabase.auth.currentUser;
+        // Si c'est l'utilisateur actuel, on peut utiliser updateUser
+        if (currentUser != null && currentUser.id == userId) {
+          await _supabase.auth.updateUser(
+            UserAttributes(data: {'role': newRole.code}),
+          );
+          // Forcer le rafraîchissement des permissions depuis la DB
+          await PermissionService().refreshPermissions();
+        } else {
+          // Pour les autres utilisateurs, on essaie avec admin (peut échouer si pas admin)
+          await _supabase.auth.admin.updateUserById(
+            userId,
+            attributes: AdminUserAttributes(userMetadata: {'role': newRole.code}),
+          );
+        }
+      } catch (e) {
+        // Si l'utilisateur n'est pas admin, on ne peut pas mettre à jour userMetadata
+        // Ce n'est pas critique, le rôle dans profiles est la source de vérité
+        print('⚠️ Impossible de mettre à jour userMetadata (normal si non-admin): $e');
+      }
     } catch (e) {
       print('Erreur lors de la mise à jour du rôle: $e');
       throw Exception('Erreur lors de la mise à jour du rôle: $e');

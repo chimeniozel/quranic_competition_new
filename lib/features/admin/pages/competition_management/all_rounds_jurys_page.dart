@@ -137,8 +137,10 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
           allJurys
               .where(
                 (jury) =>
-                    jury.role.trim().toLowerCase() == 'jury' ||
-                    jury.role.trim().toLowerCase().contains('jury'),
+                    (jury.role.trim().toLowerCase() == 'jury' ||
+                        jury.role.trim().toLowerCase().contains('jury')) &&
+                    jury.isVerified ==
+                        true, // Filtrer seulement les jurys validés
               )
               .toList();
 

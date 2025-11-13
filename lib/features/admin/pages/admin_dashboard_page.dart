@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/auth_service.dart';
-import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/core/widgets/role_info_widget.dart';
 import 'package:quranic_competition/core/services/confirmation_service.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
@@ -20,20 +19,25 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
-  bool _isLoading = true;
+  bool _isLoading = false; // بدء بـ false لعرض الصفحة فوراً
   List<EvaluationStats> _evaluationStats = [];
   final EvaluationStatsService _statsService = EvaluationStatsService();
 
   @override
   void initState() {
     super.initState();
-    _loadDashboardData();
+    // تحميل البيانات في الخلفية بعد عرض الصفحة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDashboardData();
+    });
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       // Charger les statistiques d'évaluation réelles
@@ -53,9 +57,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       _evaluationStats = [];
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _showLogoutConfirmation(BuildContext context) async {
@@ -260,13 +266,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        appBar: ModernAppBar(title: 'لوحة التحكم'),
-        body: LoadingOverlay(child: SizedBox()),
-      );
-    }
-
     return Scaffold(
       appBar: ModernAppBar(
         title: 'لوحة التحكم',
@@ -279,131 +278,133 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
         ],
       ),
-      body: RoleGuard(
-        permissionCheck: () => true,
-        child: ModernPullToRefresh(
-          onRefresh: _loadDashboardData,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Informations de l'utilisateur
-                RoleInfoWidget(),
-                // const SizedBox(height: AppTheme.spacingL),
+      body: ModernPullToRefresh(
+        onRefresh: _loadDashboardData,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppTheme.spacingS),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Informations de l'utilisateur
+              RoleInfoWidget(),
+              // const SizedBox(height: AppTheme.spacingL),
 
-                // Actions rapides
-                DashboardSection(
-                  title: 'إجراءات سريعة',
-                  subtitle: 'الوصول السريع للوظائف الأساسية',
-                  child: QuickActionGrid(
-                    actions: [
-                      QuickAction(
-                        title: 'إدارة المستخدمين',
-                        icon: Icons.people,
-                        color: AppTheme.primaryColor,
-                        onTap: () => context.push('/admin/users'),
-                      ),
-                      QuickAction(
-                        title: 'إدارة المسابقات',
-                        icon: Icons.emoji_events,
-                        color: AppTheme.successColor,
-                        onTap: () => context.push('/admin/versions'),
-                      ),
-                      QuickAction(
-                        title: 'أحكام التجويد',
-                        icon: Icons.auto_stories,
-                        color: AppTheme.warningColor,
-                        onTap: () => context.push('/admin/tajweed-rules'),
-                      ),
-                      QuickAction(
-                        title: 'إدارة الفوائد القرآنية',
-                        icon: Icons.library_books,
-                        color: Colors.deepOrange,
-                        onTap: () => context.push('/admin/quranic-benefits'),
-                      ),
-                      QuickAction(
-                        title: 'مسابقات التجويد',
-                        icon: Icons.quiz,
-                        color: AppTheme.infoColor,
-                        onTap: () => context.push('/admin/quiz/levels'),
-                      ),
-                      QuickAction(
-                        title: 'أرشيف المسابقات',
-                        icon: Icons.archive,
-                        color: AppTheme.secondaryColor,
-                        onTap: () => context.push('/admin/archives'),
-                      ),
-                      QuickAction(
-                        title: 'فسحة العيد',
-                        icon: Icons.celebration,
-                        color: Colors.green,
-                        onTap: () => context.push('/admin/eid-sessions'),
-                      ),
-                      QuickAction(
-                        title: 'من نحن',
-                        icon: Icons.info,
-                        color: Colors.teal,
-                        onTap: () => context.push('/admin/about-us'),
-                      ),
-                    ],
-                    crossAxisCount: 2,
-                  ),
+              // Actions rapides
+              DashboardSection(
+                title: 'إجراءات سريعة',
+                subtitle: 'الوصول السريع للوظائف الأساسية',
+                child: QuickActionGrid(
+                  actions: [
+                    QuickAction(
+                      title: 'إدارة المستخدمين',
+                      icon: Icons.people,
+                      color: AppTheme.primaryColor,
+                      onTap: () => context.push('/admin/users'),
+                    ),
+                    QuickAction(
+                      title: 'إدارة المسابقات',
+                      icon: Icons.emoji_events,
+                      color: AppTheme.successColor,
+                      onTap: () => context.push('/admin/versions'),
+                    ),
+                    QuickAction(
+                      title: 'أحكام التجويد',
+                      icon: Icons.auto_stories,
+                      color: AppTheme.warningColor,
+                      onTap: () => context.push('/admin/tajweed-rules'),
+                    ),
+                    QuickAction(
+                      title: 'إدارة الفوائد القرآنية',
+                      icon: Icons.library_books,
+                      color: Colors.deepOrange,
+                      onTap: () => context.push('/admin/quranic-benefits'),
+                    ),
+                    QuickAction(
+                      title: 'مسابقات التجويد',
+                      icon: Icons.quiz,
+                      color: AppTheme.infoColor,
+                      onTap: () => context.push('/admin/quiz/levels'),
+                    ),
+                    QuickAction(
+                      title: 'أرشيف المسابقات',
+                      icon: Icons.archive,
+                      color: AppTheme.secondaryColor,
+                      onTap: () => context.push('/admin/archives'),
+                    ),
+                    QuickAction(
+                      title: 'فسحة العيد',
+                      icon: Icons.celebration,
+                      color: Colors.green,
+                      onTap: () => context.push('/admin/eid-sessions'),
+                    ),
+                    QuickAction(
+                      title: 'من نحن',
+                      icon: Icons.info,
+                      color: Colors.teal,
+                      onTap: () => context.push('/admin/about-us'),
+                    ),
+                  ],
+                  crossAxisCount: 2,
                 ),
+              ),
 
-                // const SizedBox(height: AppTheme.spacingL),
+              // const SizedBox(height: AppTheme.spacingL),
 
-                // Progression des activités (sans titre de section)
-                Column(children: _buildEvaluationProgressCards()),
+              // Progression des activités (sans titre de section)
+              _isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(AppTheme.spacingL),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : Column(children: _buildEvaluationProgressCards()),
 
-                // const SizedBox(height: AppTheme.spacingL),
+              // const SizedBox(height: AppTheme.spacingL),
 
-                // Menu utilisateur moderne
-                DashboardSection(
-                  title: 'إدارة الحساب',
-                  subtitle: 'خيارات الحساب الشخصي',
-                  child: ModernUserMenu(
-                    userName: 'مدير النظام',
-                    userEmail: 'admin@quranic-competition.com',
-                    userRole: 'admin',
-                    options: [
-                      UserMenuOption(
-                        title: 'الملف الشخصي',
-                        subtitle: 'إدارة المعلومات الشخصية',
-                        icon: Icons.person,
-                        color: AppTheme.primaryColor,
-                        onTap: () => context.push('/profile'),
-                      ),
-                      UserMenuOption(
-                        title: 'الإشعارات',
-                        subtitle: 'إعدادات التنبيهات',
-                        icon: Icons.notifications,
-                        color: AppTheme.infoColor,
-                        badge: '3',
-                        badgeColor: AppTheme.errorColor,
-                        onTap: () {},
-                      ),
-                      UserMenuOption(
-                        title: 'المساعدة',
-                        subtitle: 'الدعم والمساعدة',
-                        icon: Icons.help,
-                        color: AppTheme.successColor,
-                        onTap: () {},
-                      ),
-                      UserMenuOption(
-                        title: 'تسجيل الخروج',
-                        subtitle: 'إنهاء الجلسة الحالية',
-                        icon: Icons.logout,
-                        color: AppTheme.errorColor,
-                        onTap: () => _showLogoutConfirmation(context),
-                      ),
-                    ],
-                  ),
+              // Menu utilisateur moderne
+              DashboardSection(
+                title: 'إدارة الحساب',
+                subtitle: 'خيارات الحساب الشخصي',
+                child: ModernUserMenu(
+                  userName: 'مدير النظام',
+                  userEmail: 'admin@quranic-competition.com',
+                  userRole: 'admin',
+                  options: [
+                    UserMenuOption(
+                      title: 'الملف الشخصي',
+                      subtitle: 'إدارة المعلومات الشخصية',
+                      icon: Icons.person,
+                      color: AppTheme.primaryColor,
+                      onTap: () => context.push('/profile'),
+                    ),
+                    UserMenuOption(
+                      title: 'الإشعارات',
+                      subtitle: 'إعدادات التنبيهات',
+                      icon: Icons.notifications,
+                      color: AppTheme.infoColor,
+                      badge: '3',
+                      badgeColor: AppTheme.errorColor,
+                      onTap: () {},
+                    ),
+                    UserMenuOption(
+                      title: 'المساعدة',
+                      subtitle: 'الدعم والمساعدة',
+                      icon: Icons.help,
+                      color: AppTheme.successColor,
+                      onTap: () {},
+                    ),
+                    UserMenuOption(
+                      title: 'تسجيل الخروج',
+                      subtitle: 'إنهاء الجلسة الحالية',
+                      icon: Icons.logout,
+                      color: AppTheme.errorColor,
+                      onTap: () => _showLogoutConfirmation(context),
+                    ),
+                  ],
                 ),
+              ),
 
-                // const SizedBox(height: AppTheme.spacingXL),
-              ],
-            ),
+              // const SizedBox(height: AppTheme.spacingXL),
+            ],
           ),
         ),
       ),

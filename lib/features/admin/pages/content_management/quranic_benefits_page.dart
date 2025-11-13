@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
+import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
 
 class QuranicBenefitsPage extends StatefulWidget {
@@ -127,7 +129,12 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
     await _loadBenefits(reset: false);
   }
 
+  Future<void> _checkPermissionAndEdit(QuranicBenefit benefit) async {
+    context.push('/admin/quranic-benefits/edit/${benefit.id}');
+  }
+
   Future<void> _deleteBenefit(QuranicBenefit benefit) async {
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -262,9 +269,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                   onSelected: (value) {
                     switch (value) {
                       case 'edit':
-                        context.push(
-                          '/admin/quranic-benefits/edit/${benefit.id}',
-                        );
+                        _checkPermissionAndEdit(benefit);
                         break;
                       case 'toggle_status':
                         _toggleBenefitStatus(benefit);
@@ -275,44 +280,66 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                     }
                   },
                   itemBuilder:
-                      (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit),
-                              SizedBox(width: 8),
-                              Text('تعديل'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'toggle_status',
-                          child: Row(
-                            children: [
-                              Icon(
-                                benefit.isActive
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                      (context) {
+                        final items = <PopupMenuEntry<String>>[];
+                        final permissionService = PermissionService();
+                        
+                        // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+                        if (permissionService.canModifySync()) {
+                          items.add(
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit),
+                                  SizedBox(width: 8),
+                                  Text('تعديل'),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                benefit.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                            ),
+                          );
+                        }
+                        
+                        // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
+                        if (permissionService.canModifySync()) {
+                          items.add(
+                            PopupMenuItem(
+                              value: 'toggle_status',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    benefit.isActive
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    benefit.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('حذف', style: TextStyle(color: Colors.red)),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          );
+                        }
+                        
+                        // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+                        if (permissionService.canDeleteSync()) {
+                          items.add(
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('حذف', style: TextStyle(color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        return items;
+                      },
                 ),
               ],
             ),
@@ -439,11 +466,13 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
               ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.push('/admin/quranic-benefits/add');
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: CanModifyGuard(
+        child: FloatingActionButton(
+          onPressed: () {
+            context.push('/admin/quranic-benefits/add');
+          },
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }

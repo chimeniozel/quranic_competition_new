@@ -390,21 +390,13 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     final fullPhone = '+$countryCodeDigits$phoneDigits';
 
     // Déterminer si le participant doit être automatiquement refusé
-    final bool isOutsideCountry = _residence == 'خارج موريتانيا';
     final bool hasWonPreviousRanks = _wonPreviousRanks;
-    final bool shouldAutoReject = isOutsideCountry || hasWonPreviousRanks;
+    final bool shouldAutoReject = hasWonPreviousRanks;
 
     // Déterminer la raison de refus
     String? rejectionReason;
     if (shouldAutoReject) {
-      if (isOutsideCountry && hasWonPreviousRanks) {
-        rejectionReason =
-            'الإقامة خارج موريتانيا وحصوله على المرتبة الأولى أو الثانية في مسابقة سابقة';
-      } else if (isOutsideCountry) {
-        rejectionReason = 'الإقامة خارج موريتانيا';
-      } else if (hasWonPreviousRanks) {
-        rejectionReason = 'حصوله على المرتبة الأولى أو الثانية في مسابقة سابقة';
-      }
+      rejectionReason = 'حصوله على المرتبة الأولى أو الثانية في مسابقة سابقة';
       print('🚫 Raison de refus déterminée: $rejectionReason');
     }
 
@@ -459,16 +451,8 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       final ageGroupText = widget.ageGroup == 'كبار' ? 'الكبار' : 'الصغار';
       String message;
       if (shouldAutoReject) {
-        if (isOutsideCountry && hasWonPreviousRanks) {
-          message =
-              'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً للأسباب التالية:\n• الإقامة خارج موريتانيا\n• حصولك على المرتبة الأولى أو الثانية في مسابقة سابقة';
-        } else if (isOutsideCountry) {
-          message =
-              'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك تقيم خارج موريتانيا';
-        } else {
-          message =
-              'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة سابقة';
-        }
+        message =
+            'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة سابقة';
       } else {
         message =
             'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber';

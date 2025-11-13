@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/services/user_service.dart';
+import '../../../../core/services/permission_service.dart';
 import '../../../../models/competition_version.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
@@ -23,6 +24,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
   final _service = CompetitionVersionService();
   final _pushNotificationService = PushNotificationService();
   final _userService = UserService();
+  final _permissionService = PermissionService();
 
   TextEditingController _nameController = TextEditingController();
   TextEditingController _yearController = TextEditingController();
@@ -314,6 +316,18 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
   }
 
   Future<void> _submitUpdate() async {
+    // Vérifier الصلاحيات
+    final canModify = await _permissionService.canModifyVersions();
+    if (!canModify) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية تعديل النسخ'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
     // Vérifier si les modifications sont autorisées
     if (!_canEdit) {
       ScaffoldMessenger.of(context).showSnackBar(

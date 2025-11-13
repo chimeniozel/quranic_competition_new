@@ -152,7 +152,12 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         builder: (context, child) {
-          if (child == null) return const SizedBox.shrink();
+          // إذا كان child null، عرض loading indicator بدلاً من صفحة سوداء
+          if (child == null) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
           return SafeArea(
             top: false,
             left: false,

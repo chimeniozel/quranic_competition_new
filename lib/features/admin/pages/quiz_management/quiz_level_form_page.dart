@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
@@ -22,6 +23,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
   final _descriptionController = TextEditingController();
   final _orderController = TextEditingController();
   final _quizService = QuizService();
+  final PermissionService _permissionService = PermissionService();
 
   bool _isLoading = false;
   bool _isEditing = false;
@@ -93,6 +95,18 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
 
   Future<void> _saveLevel() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Vérifier الصلاحيات
+    final canModify = await _permissionService.canModify();
+    if (!canModify) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية تعديل المستويات'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/user_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/app_user.dart';
 
 class UserManagePage extends StatefulWidget {
@@ -117,6 +118,13 @@ class _UserManagePageState extends State<UserManagePage> {
   }
 
   Future<void> _toggleUserVerification(AppUser user) async {
+    // Vérifier الصلاحيات
+    final canValidate = await PermissionService().canValidateAccounts();
+    if (!canValidate) {
+      _showErrorSnackBar('ليس لديك صلاحية التحقق من الحسابات');
+      return;
+    }
+
     try {
       await _userService.updateUserVerificationStatus(
         userId: user.id,
@@ -147,6 +155,13 @@ class _UserManagePageState extends State<UserManagePage> {
   }
 
   Future<void> _updateUserRole(AppUser user, String newRole) async {
+    // Vérifier الصلاحيات
+    final canAssignRoles = await PermissionService().canAssignRoles();
+    if (!canAssignRoles) {
+      _showErrorSnackBar('ليس لديك صلاحية تعيين الأدوار');
+      return;
+    }
+
     try {
       await _userService.updateUserRole(userId: user.id, newRole: newRole);
 
@@ -215,7 +230,38 @@ class _UserManagePageState extends State<UserManagePage> {
     );
   }
 
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'super_admin':
+        return Colors.orange;
+      case 'admin':
+        return Colors.blue;
+      case 'jury':
+        return Colors.purple;
+      case 'membre_ordinaire':
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getRoleIcon(String role) {
+    switch (role) {
+      case 'super_admin':
+        return Icons.admin_panel_settings;
+      case 'admin':
+        return Icons.settings;
+      case 'jury':
+        return Icons.gavel;
+      case 'membre_ordinaire':
+      default:
+        return Icons.person;
+    }
+  }
+
   Widget _buildUserCard(AppUser user) {
+    final roleColor = _getRoleColor(user.role);
+    final roleIcon = _getRoleIcon(user.role);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
@@ -226,16 +272,46 @@ class _UserManagePageState extends State<UserManagePage> {
             color: Colors.white,
           ),
         ),
-        title: Text(
-          user.fullName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                user.fullName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: roleColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: roleColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(roleIcon, size: 14, color: roleColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getRoleDisplayName(user.role),
+                    style: TextStyle(
+                      color: roleColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 4),
             Text('البريد: ${user.email}'),
             Text('الهاتف: ${user.phone}'),
-            Text('الدور: ${_getRoleDisplayName(user.role)}'),
+            const SizedBox(height: 4),
             Text(
               'الحالة: ${user.isVerified ? "موثق" : "غير موثق"}',
               style: TextStyle(
@@ -259,8 +335,13 @@ class _UserManagePageState extends State<UserManagePage> {
                 break;
             }
           },
-          itemBuilder:
-              (context) => [
+          itemBuilder: (context) {
+            final items = <PopupMenuEntry<String>>[];
+            final permissionService = PermissionService();
+
+            // إضافة عنصر التوثيق فقط إذا كانت الصلاحية متوفرة
+            if (permissionService.canValidateAccountsSync()) {
+              items.add(
                 PopupMenuItem(
                   value: 'toggle_verification',
                   child: Row(
@@ -273,18 +354,29 @@ class _UserManagePageState extends State<UserManagePage> {
                     ],
                   ),
                 ),
-                if (user.isVerified)
-                  const PopupMenuItem(
-                    value: 'change_role',
-                    child: Row(
-                      children: [
-                        Icon(Icons.admin_panel_settings),
-                        SizedBox(width: 8),
-                        Text('تغيير الدور'),
-                      ],
-                    ),
+              );
+            }
+
+            // إضافة عنصر تغيير الدور فقط إذا كانت الصلاحية متوفرة والمستخدم موثق
+            if (user.isVerified && permissionService.canAssignRolesSync()) {
+              items.add(
+                PopupMenuItem(
+                  value: 'change_role',
+                  child: Row(
+                    children: [
+                      Icon(Icons.admin_panel_settings),
+                      SizedBox(width: 8),
+                      Text('تغيير الدور'),
+                    ],
                   ),
-                const PopupMenuItem(
+                ),
+              );
+            }
+
+            // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+            if (permissionService.canDeleteSync()) {
+              items.add(
+                PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
@@ -294,7 +386,11 @@ class _UserManagePageState extends State<UserManagePage> {
                     ],
                   ),
                 ),
-              ],
+              );
+            }
+
+            return items;
+          },
         ),
       ),
     );
@@ -360,7 +456,14 @@ class _UserManagePageState extends State<UserManagePage> {
     );
   }
 
-  void _showDeleteConfirmation(AppUser user) {
+  void _showDeleteConfirmation(AppUser user) async {
+    // Vérifier الصلاحيات
+    final canDelete = await PermissionService().canDelete();
+    if (!canDelete) {
+      _showErrorSnackBar('ليس لديك صلاحية حذف المستخدمين');
+      return;
+    }
+
     showDialog(
       context: context,
       builder:

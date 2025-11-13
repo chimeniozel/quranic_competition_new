@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:quranic_competition/core/services/permission_service.dart';
+import 'package:quranic_competition/core/services/auth_service.dart';
 import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 
-class RoleInfoWidget extends StatelessWidget {
+class RoleInfoWidget extends StatefulWidget {
   final bool showDetails;
   final bool compact;
 
@@ -15,16 +15,52 @@ class RoleInfoWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final permissionService = PermissionService();
-    final role = permissionService.currentUserRole;
-    final permissions = permissionService.currentPermissions;
+  State<RoleInfoWidget> createState() => _RoleInfoWidgetState();
+}
 
-    if (role == null || permissions == null) {
+class _RoleInfoWidgetState extends State<RoleInfoWidget> {
+  String? _userRole;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    try {
+      final user = await AuthService().getUserProfile();
+      if (mounted) {
+        setState(() {
+          _userRole = user?.role;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      // إرجاع widget فارغ بدلاً من CircularProgressIndicator لتجنب التأخير
+      // سيتم تحديثه تلقائياً عند تحميل البيانات
       return const SizedBox.shrink();
     }
 
-    if (compact) {
+    if (_userRole == null) {
+      return const SizedBox.shrink();
+    }
+
+    final role = UserRole.fromString(_userRole!);
+
+    if (widget.compact) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
@@ -36,7 +72,7 @@ class RoleInfoWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              permissionService.getRoleDisplayName(),
+              role.displayName,
               style: TextStyle(
                 color: _getRoleColor(role),
                 fontWeight: FontWeight.w600,
@@ -52,7 +88,7 @@ class RoleInfoWidget extends StatelessWidget {
       backgroundColor: AppTheme.backgroundColor,
       padding: const EdgeInsets.all(8),
       child: Container(
-        height: showDetails ? null : 50,
+        height: widget.showDetails ? null : 50,
         child: Row(
           children: [
             Container(
@@ -74,7 +110,7 @@ class RoleInfoWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    permissionService.getRoleDisplayName(),
+                    role.displayName,
                     style: AppTheme.bodyMedium.copyWith(
                       fontWeight: FontWeight.bold,
                       color: _getRoleColor(role),
@@ -94,7 +130,7 @@ class RoleInfoWidget extends StatelessWidget {
                 ],
               ),
             ),
-            if (!showDetails)
+            if (!widget.showDetails)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(

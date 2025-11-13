@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
 import 'package:quranic_competition/core/services/push_notification_service.dart';
 import 'dart:convert';
@@ -27,6 +28,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
   final _ruleService = TajweedRuleService();
   final _imagePicker = ImagePicker();
   final FilePermissionService _permissionService = FilePermissionService();
+  final PermissionService _permissionCheckService = PermissionService();
 
   TajweedType _selectedType = TajweedType.post;
   bool _isLoading = false;
@@ -185,6 +187,18 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
 
   Future<void> _saveRule() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Vérifier الصلاحيات
+    final canModify = await _permissionCheckService.canModify();
+    if (!canModify) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية تعديل المحتوى'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;

@@ -266,73 +266,114 @@ class ParticipantService {
     );
 
     try {
-      if (activeRound?.number == 1) {
-        // Round 1 → tous les participants acceptés
-        print('🔍 Round 1: Récupération de tous les participants acceptés');
+      if (activeRound == null) {
+        // Aucun round sélectionné → retourner tous les participants acceptés de la version
         final response = await _supabase
             .from('participants')
             .select('*')
+            .eq('competition_id', versionId)
             .eq('is_accepted', true);
 
         final participants =
-            response.map<Participant>((record) {
-              return Participant.fromMap(record);
-            }).toList();
+            response
+                .map<Participant>((record) => Participant.fromMap(record))
+                .toList();
 
         print(
-          '🔍 Round 1: ${participants.length} participants acceptés trouvés',
-        );
-        return participants;
-      } else if (activeRound?.number == 2) {
-        // Round 2+ → participants acceptés ET qui ont passé le round 1
-        print(
-          '🔍 Round ${activeRound?.number}: Récupération des participants acceptés et qualifiés',
-        );
-
-        // Récupérer tous les participants acceptés
-        final allParticipantsResponse = await _supabase
-            .from('participants')
-            .select('*')
-            .eq('is_accepted', true);
-
-        final allParticipants =
-            allParticipantsResponse.map<Participant>((record) {
-              return Participant.fromMap(record);
-            }).toList();
-
-        // Filtrer ceux qui ont passé le round 1
-        final qualifiedParticipants = <Participant>[];
-        for (final participant in allParticipants) {
-          // Vérifier si le participant a passé le round 1
-          if (participant.passedRound1 == true) {
-            qualifiedParticipants.add(participant);
-          }
-        }
-
-        print(
-          '🔍 Round ${activeRound?.number}: ${qualifiedParticipants.length} participants qualifiés trouvés',
-        );
-        return qualifiedParticipants;
-      } else {
-        // Pas de round spécifique → tous les participants acceptés
-        print(
-          '🔍 Pas de round spécifique: Récupération de tous les participants acceptés',
-        );
-        final response = await _supabase
-            .from('participants')
-            .select('*')
-            .eq('is_accepted', true);
-
-        final participants =
-            response.map<Participant>((record) {
-              return Participant.fromMap(record);
-            }).toList();
-
-        print(
-          '🔍 Pas de round spécifique: ${participants.length} participants acceptés trouvés',
+          '🔍 Aucun round spécifique: ${participants.length} participants acceptés trouvés pour la version $versionId',
         );
         return participants;
       }
+
+      if (activeRound.number == 1) {
+        // Round 1 → tous les participants acceptés de la version
+        print(
+          '🔍 Round 1: Récupération de tous les participants acceptés pour la version $versionId',
+        );
+        final response = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('competition_id', versionId)
+            .eq('is_accepted', true);
+
+        final participants =
+            response
+                .map<Participant>((record) => Participant.fromMap(record))
+                .toList();
+
+        print(
+          '🔍 Round 1: ${participants.length} participants acceptés trouvés pour la version $versionId',
+        );
+        return participants;
+      }
+
+      // Round >= 2 → participants qui ont réussi le round précédent
+      print(
+        '🔍 Round ${activeRound.number}: Récupération des participants qualifiés depuis le round précédent',
+      );
+
+      // Identifier le round précédent
+      final previousRoundNumber = activeRound.number - 1;
+      final previousRoundResponse =
+          await _supabase
+              .from('rounds')
+              .select('id')
+              .eq('version_id', versionId)
+              .eq('number', previousRoundNumber)
+              .maybeSingle();
+
+      List<Participant> qualifiedParticipants = [];
+
+      if (previousRoundResponse != null) {
+        final previousRoundId = previousRoundResponse['id'] as String;
+        final qualifiedResponse = await _supabase
+            .from('round_results')
+            .select('participants(*)')
+            .eq('version_id', versionId)
+            .eq('round_id', previousRoundId)
+            .eq('passed', true);
+
+        qualifiedParticipants =
+            qualifiedResponse.map<Participant>((row) {
+              final participantMap =
+                  row['participants'] as Map<String, dynamic>? ?? {};
+              final participant = Participant.fromMap(participantMap);
+              // S'assurer que le participant est marqué comme qualifié
+              participant.passedRound1 = true;
+              return participant;
+            }).toList();
+
+        print(
+          '🔍 Round ${activeRound.number}: ${qualifiedParticipants.length} participants qualifiés via round_results',
+        );
+      } else {
+        print(
+          '⚠️ Aucun round précédent trouvé pour la version $versionId (round ${activeRound.number})',
+        );
+      }
+
+      // Fallback pour compatibilité si round_results ne contient pas encore de données
+      if (qualifiedParticipants.isEmpty) {
+        print(
+          '⚠️ Aucun participant trouvé via round_results, fallback sur passed_round1',
+        );
+        final fallbackResponse = await _supabase
+            .from('participants')
+            .select('*')
+            .eq('competition_id', versionId)
+            .eq('is_accepted', true)
+            .eq('passed_round1', true);
+
+        qualifiedParticipants =
+            fallbackResponse
+                .map<Participant>((record) => Participant.fromMap(record))
+                .toList();
+      }
+
+      print(
+        '🔍 Round ${activeRound.number}: ${qualifiedParticipants.length} participants qualifiés retournés',
+      );
+      return qualifiedParticipants;
     } catch (e) {
       print('❌ Erreur dans fetchParticipantsByVersionAndRounds: $e');
       return [];

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/services/permission_service.dart';
+import '../../../../core/widgets/role_guard.dart';
 import '../../../../models/competition_version.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
@@ -19,6 +21,7 @@ class VersionManagementPage extends StatefulWidget {
 
 class _VersionManagementPageState extends State<VersionManagementPage> {
   final _service = CompetitionVersionService();
+  final _permissionService = PermissionService();
   final _nameController = TextEditingController();
   final _maxAdultsController = TextEditingController();
   final _maxChildrenController = TextEditingController();
@@ -30,6 +33,9 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
 
   List<CompetitionVersion> _versions = [];
   bool _isLoading = false;
+  bool _canCreateVersions = false;
+  bool _canDelete = false;
+  bool _permissionsLoaded = false;
 
   // Vérifier si une version est active
   bool _hasActiveVersion() {
@@ -48,7 +54,20 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   @override
   void initState() {
     super.initState();
+    _checkPermissions();
     _loadVersions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final canCreate = await _permissionService.canCreateVersions();
+    final canDelete = await _permissionService.canDelete();
+    if (mounted) {
+      setState(() {
+        _canCreateVersions = canCreate;
+        _canDelete = canDelete;
+        _permissionsLoaded = true;
+      });
+    }
   }
 
   Future<void> _loadVersions() async {
@@ -61,6 +80,18 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
     if (_isAddingLoad) {
       return;
     }
+    
+    // Vérifier الصلاحيات
+    if (!_canCreateVersions) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية إنشاء نسخ جديدة'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
     // Vérifier si une version est active
     if (_hasActiveVersion()) {
       final activeVersion = _getActiveVersion();
@@ -183,6 +214,17 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
 
   Future<void> _showDeleteConfirmation(CompetitionVersion version) async {
     try {
+      // Vérifier الصلاحيات
+      if (!_canDelete) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('ليس لديك صلاحية حذف النسخ'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+      
       // Vérifier si la compétition est active
       if (version.isActive) {
         if (!mounted) return;
@@ -489,6 +531,17 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   }
 
   Future<void> showAddDialog() async {
+    // Vérifier الصلاحيات
+    if (!_canCreateVersions) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية إنشاء نسخ جديدة'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
     // Vérifier si une version est active
     if (_hasActiveVersion()) {
       final activeVersion = _getActiveVersion();
@@ -889,41 +942,36 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
               Row(
                 children: [
                   Expanded(
-                    child: SecondaryButton(
-                      onPressed: () async {
-                        final result = await context.push<bool>(
-                          '/admin/version_update',
-                          extra: version,
-                        );
+                    child: CanModifyVersionsGuard(
+                      child: SecondaryButton(
+                        onPressed: () async {
+                          final result = await context.push<bool>(
+                            '/admin/version_update',
+                            extra: version,
+                          );
 
-                        if (result == true) {
-                          await _loadVersions();
-                          setState(() {});
-                        }
-                      },
-                      text: 'الإعدادات',
-                      icon: Icons.settings,
+                          if (result == true) {
+                            await _loadVersions();
+                            setState(() {});
+                          }
+                        },
+                        text: 'الإعدادات',
+                        icon: Icons.settings,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppTheme.spacingS),
                   Expanded(
-                    child: SecondaryButton(
-                      onPressed:
-                          version.isActive
-                              ? null
-                              : () async {
-                                await _showDeleteConfirmation(version);
-                              },
-                      text: version.isActive ? 'حذف (غير متاح)' : 'حذف',
-                      icon: Icons.delete,
-                      borderColor:
-                          version.isActive
-                              ? AppTheme.textDisabledColor
-                              : AppTheme.errorColor,
-                      textColor:
-                          version.isActive
-                              ? AppTheme.textDisabledColor
-                              : AppTheme.errorColor,
+                    child: CanDeleteGuard(
+                      child: SecondaryButton(
+                        onPressed: version.isActive ? null : () async {
+                          await _showDeleteConfirmation(version);
+                        },
+                        text: version.isActive ? 'حذف (غير متاح)' : 'حذف',
+                        icon: Icons.delete,
+                        borderColor: version.isActive ? AppTheme.textDisabledColor : AppTheme.errorColor,
+                        textColor: version.isActive ? AppTheme.textDisabledColor : AppTheme.errorColor,
+                      ),
                     ),
                   ),
                 ],
@@ -948,53 +996,53 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
           ),
         ],
       ),
-      floatingActionButton:
-          _hasActiveVersion()
-              ? Tooltip(
-                message:
-                    'لا يمكن إضافة نسخة جديدة بينما توجد نسخة نشطة. يجب إلغاء تفعيل النسخة النشطة أولاً.',
-                child: Opacity(
-                  opacity: 0.5,
-                  child: ModernFAB(
-                    onPressed: () async {
-                      final activeVersion = _getActiveVersion();
-                      if (mounted && activeVersion != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion.name}" نشطة.',
-                            ),
-                            backgroundColor: AppTheme.warningColor,
-                            duration: const Duration(seconds: 4),
-                            action: SnackBarAction(
-                              label: 'الإعدادات',
-                              textColor: Colors.white,
-                              onPressed: () async {
-                                final result = await context.push<bool>(
-                                  '/admin/version_update',
-                                  extra: activeVersion,
-                                );
-                                if (result == true) {
-                                  await _loadVersions();
-                                  setState(() {});
-                                }
-                              },
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    icon: Icons.add,
-                  ),
-                ),
-              )
-              : ModernFAB(
+      floatingActionButton: _hasActiveVersion()
+          ? Tooltip(
+            message: 'لا يمكن إضافة نسخة جديدة بينما توجد نسخة نشطة. يجب إلغاء تفعيل النسخة النشطة أولاً.',
+            child: Opacity(
+              opacity: 0.5,
+              child: ModernFAB(
                 onPressed: () async {
-                  await showAddDialog();
-                  setState(() {});
+                  final activeVersion = _getActiveVersion();
+                  if (mounted && activeVersion != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'لا يمكن إضافة نسخة جديدة بينما النسخة "${activeVersion.name}" نشطة.',
+                        ),
+                        backgroundColor: AppTheme.warningColor,
+                        duration: const Duration(seconds: 4),
+                        action: SnackBarAction(
+                          label: 'الإعدادات',
+                          textColor: Colors.white,
+                          onPressed: () async {
+                            final result = await context.push<bool>(
+                              '/admin/version_update',
+                              extra: activeVersion,
+                            );
+                            if (result == true) {
+                              await _loadVersions();
+                              setState(() {});
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  }
                 },
                 icon: Icons.add,
               ),
+            ),
+          )
+          : (_permissionsLoaded && _canCreateVersions)
+              ? ModernFAB(
+                  onPressed: () async {
+                    await showAddDialog();
+                    setState(() {});
+                  },
+                  icon: Icons.add,
+                )
+              : null,
       body:
           _isLoading
               ? const LoadingOverlay(child: SizedBox())

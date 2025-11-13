@@ -23,6 +23,7 @@ class NewCompetitionMediaManagementPage extends StatefulWidget {
 class _NewCompetitionMediaManagementPageState
     extends State<NewCompetitionMediaManagementPage> {
   final ArchiveMediaService _mediaService = ArchiveMediaService();
+  final PermissionService _permissionService = PermissionService();
 
   List<ArchiveMedia> _allMedia = [];
   List<ArchiveMedia> _filteredMedia = [];
@@ -148,6 +149,18 @@ class _NewCompetitionMediaManagementPageState
   }
 
   Future<void> _deleteMedia(ArchiveMedia media) async {
+    // Vérifier الصلاحيات
+    final canDelete = await _permissionService.canDelete();
+    if (!canDelete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ليس لديك صلاحية حذف الوسائط'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
     final confirmed = await ConfirmationService.showDeleteConfirmation(
       context,
       title: 'تأكيد حذف الميديا',
@@ -636,8 +649,8 @@ class _NewCompetitionMediaManagementPageState
                     ),
                   );
 
-                  // Option de suppression
-                  if (permissionService.canDelete()) {
+                  // Option de suppression (utiliser la version synchrone)
+                  if (permissionService.canDeleteSync()) {
                     items.add(
                       const PopupMenuItem<String>(
                         value: 'delete',

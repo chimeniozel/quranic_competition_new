@@ -275,10 +275,12 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   }
 
   void _applyFilter() {
-    List<Participant> filtered = _allParticipants;
+    final searchQuery = _searchController.text.trim();
+    final hasSearch = searchQuery.isNotEmpty;
 
-    // Filtrer par groupe d'âge
-    filtered = filtered.where((p) => p.ageGroup == _selectedAgeGroup).toList();
+    // Toujours filtrer par groupe d'âge sélectionné
+    List<Participant> filtered =
+        _allParticipants.where((p) => p.ageGroup == _selectedAgeGroup).toList();
 
     // Filtrer par statut d'évaluation
     if (_selectedEvaluationStatus == 'evaluated') {
@@ -286,22 +288,21 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
     } else if (_selectedEvaluationStatus == 'notEvaluated') {
       filtered = filtered.where((p) => !p.isEvaluated).toList();
     }
-    // Si 'all', on garde tous les participants du groupe d'âge
 
-    // Filtrer par recherche si nécessaire
-    if (_searchController.text.isNotEmpty) {
-      final query = _searchController.text.toLowerCase();
+    // Filtrer par recherche (رقم التسجيل فقط)
+    if (hasSearch) {
+      final normalizedQuery = searchQuery.replaceAll(RegExp(r'[^\d]'), '');
       filtered =
           filtered.where((p) {
-            // Recherche par nom
-            final nameMatch = p.fullName.toLowerCase().contains(query);
-            // Recherche par numéro d'enregistrement
-            final numberMatch =
-                p.registrationNumber?.toString().contains(query) ?? false;
-            // Recherche par téléphone
-            final phoneMatch = p.phone.toLowerCase().contains(query);
-
-            return nameMatch || numberMatch || phoneMatch;
+            final registrationString =
+                p.registrationNumber != null
+                    ? p.registrationNumber.toString()
+                    : '';
+            final normalizedRegistration = registrationString.replaceAll(
+              RegExp(r'[^\d]'),
+              '',
+            );
+            return normalizedRegistration.contains(normalizedQuery);
           }).toList();
     }
 
@@ -382,72 +383,6 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                 ? '${widget.version.name} - ${activeRound!.name}'
                 : widget.version.name,
       ),
-      floatingActionButton:
-          // Afficher le bouton seulement si :
-          // 1. L'évaluation est autorisée (jury_evaluation_enabled == true)
-          // 2. Il y a des participants
-          // 3. Tous les participants du groupe sont évalués
-          _filteredParticipants.isEmpty ||
-                  !widget.version.juryEvaluationEnabled ||
-                  !_areAllGroupParticipantsEvaluated()
-              ? null
-              : Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingS,
-                  vertical: AppTheme.spacingS,
-                ),
-                margin: const EdgeInsets.only(right: AppTheme.spacingL),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(
-                    text: 'حفظ التصحيح',
-                    icon: Icons.send,
-                    backgroundColor: AppTheme.successColor,
-                    onPressed: () async {
-                      if (appUser == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              "لم يتم العثور على حساب المستخدم",
-                            ),
-                            backgroundColor: AppTheme.errorColor,
-                          ),
-                        );
-                        return;
-                      }
-
-                      final EvaluationService evaluationService =
-                          EvaluationService();
-
-                      final juryId = appUser?.id ?? '';
-
-                      // Récupérer toutes les évaluations faites par ce jury dans cette version
-                      print(
-                        '🔍 JuryVersionDetailPage - Export des évaluations pour jury: $juryId, version: ${widget.version.id}',
-                      );
-                      final evaluations = await evaluationService
-                          .getEvaluationsByJuryInVersion(
-                            juryId: juryId,
-                            versionId: widget.version.id,
-                          );
-                      print(
-                        '🔍 JuryVersionDetailPage - Évaluations pour export: ${evaluations.length}',
-                      );
-
-                      await EvaluationService.exportEvaluatedParticipantsLocally(
-                        context: context,
-                        evaluations: evaluations,
-                        participants: _filteredParticipants,
-                        version: widget.version,
-                        roundName: _selectedRound?.name ?? 'Round',
-                        juryName: appUser!.fullName,
-                        ageGroup: _selectedAgeGroup,
-                      );
-                    },
-                  ),
-                ),
-              ),
-
       /*FloatingActionButton(
         child: 
         
@@ -565,7 +500,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'البحث برقم التسجيل أو الهاتف...',
+                            hintText: 'ابحث برقم التسجيل...',
                             hintStyle: AppTheme.bodyMedium.copyWith(
                               color: AppTheme.textDisabledColor,
                             ),

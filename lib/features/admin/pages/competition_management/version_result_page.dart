@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/round.dart';
 import 'package:quranic_competition/models/round_result.dart';
 import 'package:quranic_competition/core/services/round_results_service.dart';
+import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
@@ -32,6 +34,7 @@ class VersionResultPage extends StatefulWidget {
 
 class _VersionResultPageState extends State<VersionResultPage> {
   final RoundResultsService _resultsService = RoundResultsService();
+  final PermissionService _permissionService = PermissionService();
   final ScrollController _scrollController = ScrollController();
 
   List<RoundResult> _allResults = []; // Tous les résultats chargés
@@ -42,6 +45,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedAgeGroup = 'كبار';
   late bool _published;
+  bool _isLockedByNextRound = false;
   bool get _hasResults => _allResults.isNotEmpty;
   bool _isExporting = false;
 
@@ -89,6 +93,8 @@ class _VersionResultPageState extends State<VersionResultPage> {
         limit: 1000,
       );
 
+      final isLocked = await _fetchLockStatus();
+
       setState(() {
         _allResults = [
           ...(result['results'] as List<RoundResult>),
@@ -97,12 +103,30 @@ class _VersionResultPageState extends State<VersionResultPage> {
 
         // Filtrer selon le groupe d'âge sélectionné
         _filterResultsByAgeGroup();
+        _isLockedByNextRound = isLocked;
       });
     } catch (e) {
       print('Erreur lors du chargement des résultats: $e');
       _showErrorSnackBar('خطأ أثناء تحميل النتائج');
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<bool> _fetchLockStatus() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', widget.version.id)
+          .gt('number', widget.round.number)
+          .eq('result_is_published', true);
+
+      return response.isNotEmpty;
+    } catch (e) {
+      debugPrint('⚠️ Impossible de vérifier le verrouillage de الجولة: $e');
+      return false;
     }
   }
 
@@ -123,14 +147,30 @@ class _VersionResultPageState extends State<VersionResultPage> {
     );
   }
 
-  Future<void> _publishResults() async {
-    if (_published || _isPublishing) return;
+  Future<void> _publishResults({bool force = false}) async {
+    // Vérifier الصلاحيات
+    final canPublish = await _permissionService.canPublishContent();
+    if (!canPublish) {
+      _showErrorSnackBar('ليس لديك صلاحية نشر النتائج');
+      return;
+    }
+    
+    if (_isLockedByNextRound) {
+      _showErrorSnackBar(
+        'لا يمكن تعديل نتائج هذه الجولة بعد نشر الجولة التالية.',
+      );
+      return;
+    }
+    if (_isPublishing) return;
+    if (_published && !force) return;
     if (!_hasResults) {
       _showErrorSnackBar('لا توجد نتائج لنشرها');
       return;
     }
     setState(() => _isPublishing = true);
     try {
+      final isRepublish = force || _published;
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -150,7 +190,9 @@ class _VersionResultPageState extends State<VersionResultPage> {
                   ),
                   const SizedBox(width: AppTheme.spacingS),
                   Text(
-                    'جاري نشر النتائج...',
+                    isRepublish
+                        ? 'جاري إعادة نشر النتائج...'
+                        : 'جاري نشر النتائج...',
                     style: AppTheme.bodyMedium.copyWith(
                       color: AppTheme.textPrimaryColor,
                     ),
@@ -166,29 +208,63 @@ class _VersionResultPageState extends State<VersionResultPage> {
           .update({'result_is_published': true})
           .eq('id', widget.round.id);
 
-      // Envoyer une notification publique de publication des résultats
+      // Activer la prochaine round si elle existe
       try {
-        final push = PushNotificationService();
-        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-        await push.sendNotification(
-          title: '📣 تم نشر نتائج الجولة',
-          body:
-              'تم نشر نتائج ${widget.round.name ?? 'الجولة ${widget.round.number}'} في نسخة "${widget.version.name}".',
-          type: 'info',
-          payload: jsonEncode({
-            'type': 'results_published',
-            'version_id': widget.version.id,
-            'version_name': widget.version.name,
-            'round_id': widget.round.id,
-            'round_name': widget.round.name,
-            'round_number': widget.round.number,
-            'created_by': currentUserId,
-          }),
-          userId: null, // à tous les utilisateurs
-        );
+        final nextRoundResponse =
+            await supabase
+                .from('rounds')
+                .select('id, is_active')
+                .eq('version_id', widget.version.id)
+                .eq('number', widget.round.number + 1)
+                .maybeSingle();
+
+        if (nextRoundResponse != null) {
+          final nextRoundId = nextRoundResponse['id'] as String;
+          final nextRoundActive =
+              nextRoundResponse['is_active'] as bool? ?? false;
+
+          if (!nextRoundActive) {
+            await supabase
+                .from('rounds')
+                .update({'is_active': true})
+                .eq('id', nextRoundId);
+          }
+
+          await supabase
+              .from('rounds')
+              .update({'is_active': false})
+              .eq('id', widget.round.id);
+        }
       } catch (e) {
-        // Ne pas bloquer l'UI si la notification échoue
-        // print silencieux pour éviter le spam
+        debugPrint('⚠️ Impossible d\'activer la prochaine جولة: $e');
+      }
+
+      _isLockedByNextRound = await _fetchLockStatus();
+
+      if (!isRepublish) {
+        // Envoyer une notification publique de publication des résultats
+        try {
+          final push = PushNotificationService();
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          await push.sendNotification(
+            title: '📣 تم نشر نتائج الجولة',
+            body:
+                'تم نشر نتائج ${widget.round.name ?? 'الجولة ${widget.round.number}'} في نسخة "${widget.version.name}".',
+            type: 'info',
+            payload: jsonEncode({
+              'type': 'results_published',
+              'version_id': widget.version.id,
+              'version_name': widget.version.name,
+              'round_id': widget.round.id,
+              'round_name': widget.round.name,
+              'round_number': widget.round.number,
+              'created_by': currentUserId,
+            }),
+            userId: null, // à tous les utilisateurs
+          );
+        } catch (e) {
+          // Ne pas bloquer l'UI si la notification échoue
+        }
       }
 
       if (mounted) Navigator.of(context).pop();
@@ -199,10 +275,14 @@ class _VersionResultPageState extends State<VersionResultPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
-              children: const [
-                Icon(Icons.public, color: Colors.white),
-                SizedBox(width: AppTheme.spacingS),
-                Text('تم نشر النتائج بنجاح'),
+              children: [
+                const Icon(Icons.public, color: Colors.white),
+                const SizedBox(width: AppTheme.spacingS),
+                Text(
+                  isRepublish
+                      ? 'تم إعادة نشر النتائج بنجاح'
+                      : 'تم نشر النتائج بنجاح',
+                ),
               ],
             ),
             backgroundColor: AppTheme.successColor,
@@ -222,6 +302,19 @@ class _VersionResultPageState extends State<VersionResultPage> {
   }
 
   Future<void> _unpublishResults() async {
+    // Vérifier الصلاحيات
+    final canPublish = await _permissionService.canPublishContent();
+    if (!canPublish) {
+      _showErrorSnackBar('ليس لديك صلاحية إلغاء نشر النتائج');
+      return;
+    }
+    
+    if (_isLockedByNextRound) {
+      _showErrorSnackBar(
+        'لا يمكن تعديل نتائج هذه الجولة بعد نشر الجولة التالية.',
+      );
+      return;
+    }
     if (!_published || _isPublishing) return;
     setState(() => _isPublishing = true);
     try {
@@ -581,6 +674,10 @@ class _VersionResultPageState extends State<VersionResultPage> {
                               delegate: SliverChildListDelegate([
                                 _buildRoundInfo(),
                                 const SizedBox(height: AppTheme.spacingS),
+                                if (_isLockedByNextRound)
+                                  _buildLockedNoticeCard(),
+                                if (_isLockedByNextRound)
+                                  const SizedBox(height: AppTheme.spacingS),
                                 _buildAgeGroupSelector(),
                                 _buildSearchBar(),
                               ]),
@@ -722,6 +819,45 @@ class _VersionResultPageState extends State<VersionResultPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLockedNoticeCard() {
+    return ModernCard(
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.spacingS),
+        decoration: BoxDecoration(
+          color: AppTheme.warningColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.lock, color: AppTheme.warningColor, size: 24),
+            const SizedBox(width: AppTheme.spacingS),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'لا يمكن تعديل نتائج هذه الجولة',
+                    style: AppTheme.labelLarge.copyWith(
+                      color: AppTheme.warningColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingXS),
+                  Text(
+                    'تم نشر نتائج الجولة التالية، لذلك تم إيقاف إمكانية النشر أو الإلغاء لهذه الجولة للحفاظ على التسلسل.',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1020,80 +1156,79 @@ class _VersionResultPageState extends State<VersionResultPage> {
                 ),
               ),
             ),
-            const SizedBox(width: AppTheme.spacingS),
-            // Bouton de publication/dépublication (affiché seulement si la version est active)
-            if (widget.version.isActive)
+            if (widget.version.isActive && _hasResults) ...[
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
-                child:
-                    !_published && _hasResults
-                        ? ElevatedButton.icon(
-                          onPressed: _isPublishing ? null : _publishResults,
-                          icon:
-                              _isPublishing
-                                  ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                  : const Icon(
-                                    Icons.publish,
-                                    color: Colors.white,
-                                  ),
-                          label: const Text('نشر النتائج'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.successColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppTheme.spacingS,
-                              vertical: AppTheme.spacingS,
-                            ),
-                            minimumSize: const Size(0, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      _isPublishing || _isLockedByNextRound
+                          ? null
+                          : () => _publishResults(force: _published),
+                  icon:
+                      _isPublishing
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
                               ),
                             ),
-                            elevation: AppTheme.elevationS,
+                          )
+                          : Icon(
+                            _published ? Icons.refresh : Icons.publish,
+                            color: Colors.white,
                           ),
-                        )
-                        : _published
-                        ? OutlinedButton.icon(
-                          onPressed: _isPublishing ? null : _unpublishResults,
-                          icon:
-                              _isPublishing
-                                  ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : const Icon(Icons.undo),
-                          label: const Text('إلغاء النشر'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.warningColor,
-                            side: const BorderSide(
-                              color: AppTheme.warningColor,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppTheme.spacingS,
-                              vertical: AppTheme.spacingS,
-                            ),
-                            minimumSize: const Size(0, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
-                            ),
-                          ),
-                        )
-                        : const SizedBox.shrink(),
+                  label: Text(_published ? 'إعادة النشر' : 'نشر النتائج'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.successColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingS,
+                    ),
+                    minimumSize: const Size(0, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    ),
+                    elevation: AppTheme.elevationS,
+                  ),
+                ),
               ),
+              if (_published) ...[
+                const SizedBox(width: AppTheme.spacingS),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _isPublishing || _isLockedByNextRound
+                            ? null
+                            : _unpublishResults,
+                    icon:
+                        _isPublishing
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(Icons.undo),
+                    label: const Text('إلغاء النشر'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.warningColor,
+                      side: const BorderSide(color: AppTheme.warningColor),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingS,
+                        vertical: AppTheme.spacingS,
+                      ),
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
