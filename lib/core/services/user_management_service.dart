@@ -97,13 +97,17 @@ class UserManagementService {
           // Pour les autres utilisateurs, on essaie avec admin (peut échouer si pas admin)
           await _supabase.auth.admin.updateUserById(
             userId,
-            attributes: AdminUserAttributes(userMetadata: {'role': newRole.code}),
+            attributes: AdminUserAttributes(
+              userMetadata: {'role': newRole.code},
+            ),
           );
         }
       } catch (e) {
         // Si l'utilisateur n'est pas admin, on ne peut pas mettre à jour userMetadata
         // Ce n'est pas critique, le rôle dans profiles est la source de vérité
-        print('⚠️ Impossible de mettre à jour userMetadata (normal si non-admin): $e');
+        print(
+          '⚠️ Impossible de mettre à jour userMetadata (normal si non-admin): $e',
+        );
       }
 
       // Rafraîchir les permissions de l'utilisateur actuel si c'est lui-même
@@ -134,32 +138,38 @@ class UserManagementService {
   // Obtenir les permissions d'un utilisateur
   Future<Map<String, bool>?> getUserPermissions(String userId) async {
     try {
-      final response = await _supabase
-          .from('profiles')
-          .select(
-            'can_create_versions, can_publish_content, can_validate_accounts, '
-            'can_delete, can_modify, can_modify_versions, can_assign_roles, '
-            'can_view_content',
-          )
-          .eq('id', userId)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('profiles')
+              .select(
+                'can_create_versions, can_publish_content, can_validate_accounts, '
+                'can_delete, can_modify, can_modify_versions, can_assign_roles, '
+                'can_view_content',
+              )
+              .eq('id', userId)
+              .maybeSingle();
 
       if (response == null) return null;
 
       // Vérifier si les colonnes de permissions existent (au moins une valeur non null)
-      final hasPermissions = response['can_create_versions'] != null ||
+      final hasPermissions =
+          response['can_create_versions'] != null ||
           response['can_publish_content'] != null ||
           response['can_validate_accounts'] != null;
 
       if (!hasPermissions) return null;
 
       return {
-        'can_create_versions': (response['can_create_versions'] as bool?) ?? false,
-        'can_publish_content': (response['can_publish_content'] as bool?) ?? false,
-        'can_validate_accounts': (response['can_validate_accounts'] as bool?) ?? false,
+        'can_create_versions':
+            (response['can_create_versions'] as bool?) ?? false,
+        'can_publish_content':
+            (response['can_publish_content'] as bool?) ?? false,
+        'can_validate_accounts':
+            (response['can_validate_accounts'] as bool?) ?? false,
         'can_delete': (response['can_delete'] as bool?) ?? false,
         'can_modify': (response['can_modify'] as bool?) ?? false,
-        'can_modify_versions': (response['can_modify_versions'] as bool?) ?? false,
+        'can_modify_versions':
+            (response['can_modify_versions'] as bool?) ?? false,
         'can_assign_roles': (response['can_assign_roles'] as bool?) ?? false,
         'can_view_content': (response['can_view_content'] as bool?) ?? false,
       };
@@ -174,16 +184,19 @@ class UserManagementService {
     Map<String, bool> permissions,
   ) async {
     try {
-      await _supabase.from('profiles').update({
-        'can_create_versions': permissions['can_create_versions'],
-        'can_publish_content': permissions['can_publish_content'],
-        'can_validate_accounts': permissions['can_validate_accounts'],
-        'can_delete': permissions['can_delete'],
-        'can_modify': permissions['can_modify'],
-        'can_modify_versions': permissions['can_modify_versions'],
-        'can_assign_roles': permissions['can_assign_roles'],
-        'can_view_content': permissions['can_view_content'],
-      }).eq('id', userId);
+      await _supabase
+          .from('profiles')
+          .update({
+            'can_create_versions': permissions['can_create_versions'],
+            'can_publish_content': permissions['can_publish_content'],
+            'can_validate_accounts': permissions['can_validate_accounts'],
+            'can_delete': permissions['can_delete'],
+            'can_modify': permissions['can_modify'],
+            'can_modify_versions': permissions['can_modify_versions'],
+            'can_assign_roles': permissions['can_assign_roles'],
+            'can_view_content': permissions['can_view_content'],
+          })
+          .eq('id', userId);
 
       // Rafraîchir les permissions de l'utilisateur actuel si c'est lui-même
       final currentUser = _supabase.auth.currentUser;
@@ -360,7 +373,7 @@ class UserManagementService {
   Future<void> deleteUser(String userId) async {
     try {
       print('🗑️ Tentative de suppression de l\'utilisateur: $userId');
-      
+
       // Supprimer d'abord les assignations de jury si l'utilisateur est un jury
       try {
         await _supabase
@@ -375,10 +388,7 @@ class UserManagementService {
 
       // Supprimer le profil de la table profiles
       try {
-        await _supabase
-            .from('profiles')
-            .delete()
-            .eq('id', userId);
+        await _supabase.from('profiles').delete().eq('id', userId);
         print('✅ Profil supprimé de la table profiles');
       } catch (e) {
         print('⚠️ Erreur lors de la suppression du profil: $e');
@@ -386,26 +396,86 @@ class UserManagementService {
       }
 
       // Supprimer l'utilisateur de Supabase Auth
+      // Essayer d'abord avec RPC function (plus fiable)
+      bool authDeleted = false;
+      String? authError;
+
       try {
-        await _supabase.auth.admin.deleteUser(userId);
-        print('✅ Utilisateur supprimé de Supabase Auth');
-      } catch (e) {
-        print('❌ Erreur lors de la suppression de Supabase Auth: $e');
-        // Si la suppression de Auth échoue, vérifier si le profil a été supprimé
-        final profileExists = await _supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', userId)
-            .maybeSingle();
-        
+        print('🔍 Tentative de suppression Auth via RPC function...');
+        final result = await _supabase.rpc(
+          'delete_user_from_auth',
+          params: {'user_id_to_delete': userId},
+        );
+        authDeleted = result == true;
+        if (authDeleted) {
+          print('✅ Utilisateur supprimé de Supabase Auth via RPC');
+        } else {
+          print('⚠️ RPC function retourné false pour la suppression Auth');
+          authError = 'RPC function returned false';
+        }
+      } catch (rpcError) {
+        print('⚠️ Erreur lors de la suppression Auth via RPC: $rpcError');
+        authError = rpcError.toString();
+
+        // Essayer avec auth.admin.deleteUser comme fallback
+        try {
+          print('🔍 Tentative de suppression Auth via admin.deleteUser...');
+          await _supabase.auth.admin.deleteUser(userId);
+          authDeleted = true;
+          print('✅ Utilisateur supprimé de Supabase Auth via admin.deleteUser');
+          authError = null;
+        } catch (adminError) {
+          print(
+            '❌ Erreur lors de la suppression Auth via admin.deleteUser: $adminError',
+          );
+          authError = adminError.toString();
+
+          // Vérifier le type d'erreur
+          if (adminError.toString().contains('permission') ||
+              adminError.toString().contains('unauthorized') ||
+              adminError.toString().contains('403')) {
+            print(
+              '⚠️ Erreur de permissions - service role key peut être requis',
+            );
+            authError =
+                'Permissions insuffisantes. Service role key requis pour supprimer de Auth.';
+          }
+        }
+      }
+
+      // Si la suppression de Auth a échoué, vérifier si le profil a été supprimé
+      if (!authDeleted) {
+        final profileExists =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', userId)
+                .maybeSingle();
+
         if (profileExists == null) {
           // Le profil a été supprimé, considérer comme succès partiel
-          print('✅ Profil supprimé mais Auth a échoué - considéré comme succès');
-          return;
+          print(
+            '✅ Profil supprimé mais Auth a échoué - considéré comme succès partiel',
+          );
+          print(
+            '⚠️ L\'utilisateur peut encore exister dans auth.users mais le profil est supprimé',
+          );
+          print('⚠️ Erreur Auth: $authError');
+          // Ne pas lancer d'exception car le profil est supprimé
+          // Mais informer l'utilisateur
+          throw Exception(
+            'تم حذف المستخدم من قاعدة البيانات، لكن فشل حذفه من نظام المصادقة.\n'
+            'قد يحتاج المستخدم إلى حذف يدوي من Supabase Dashboard.\n'
+            'الخطأ: ${authError ?? "غير معروف"}',
+          );
         }
-        
+
         // Si le profil existe encore, lancer une exception
-        throw Exception('فشل حذف المستخدم من نظام المصادقة. قد تحتاج إلى صلاحيات إدارية خاصة.');
+        throw Exception(
+          'فشل حذف المستخدم من نظام المصادقة وقاعدة البيانات.\n'
+          'قد تحتاج إلى صلاحيات إدارية خاصة أو RPC function.\n'
+          'الخطأ: ${authError ?? "غير معروف"}',
+        );
       }
     } catch (e) {
       print('❌ Erreur complète lors de la suppression: $e');

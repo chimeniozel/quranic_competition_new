@@ -32,6 +32,21 @@ class EvaluationService {
       print('  - total_score: ${evaluation.totalScore}');
       print('  - notes_json: $notesJson');
 
+      // Vérifier que le jury existe dans profiles avant d'insérer
+      final juryExists = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', evaluation.juryId)
+          .maybeSingle();
+      
+      if (juryExists == null) {
+        print('❌ Le jury avec l\'ID ${evaluation.juryId} n\'existe pas dans profiles');
+        throw Exception(
+          'المحكم غير موجود في قاعدة البيانات. '
+          'قد يكون المستخدم قد تم حذفه. يرجى تسجيل الخروج وإعادة تسجيل الدخول.'
+        );
+      }
+
       final response =
           await _supabase.from('evaluations').insert({
             'participant_id': evaluation.participantId,
@@ -48,6 +63,16 @@ class EvaluationService {
     } catch (e) {
       print('❌ Erreur lors de l\'enregistrement de l\'évaluation : $e');
       print('❌ Stack trace: ${StackTrace.current}');
+      
+      // Vérifier si c'est une erreur de foreign key constraint
+      if (e.toString().contains('foreign key constraint') || 
+          e.toString().contains('evaluations_jury_id_fkey')) {
+        throw Exception(
+          'خطأ في قاعدة البيانات: foreign key constraint غير صحيح.\n'
+          'يرجى تشغيل ملف fix_evaluations_jury_id_foreign_key.sql في Supabase SQL Editor.'
+        );
+      }
+      
       throw Exception('فشل في إرسال التقييم: $e');
     }
   }
