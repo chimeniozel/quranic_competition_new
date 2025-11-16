@@ -5,7 +5,6 @@ import 'package:quranic_competition/core/widgets/role_info_widget.dart';
 import 'package:quranic_competition/core/services/confirmation_service.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
 import 'package:quranic_competition/core/widgets/modern_dashboard.dart';
-import 'package:quranic_competition/core/widgets/modern_user_menu.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
@@ -353,57 +352,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               // Progression des activités (sans titre de section)
               _isLoading
                   ? const Padding(
-                      padding: EdgeInsets.all(AppTheme.spacingL),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
+                    padding: EdgeInsets.all(AppTheme.spacingL),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                   : Column(children: _buildEvaluationProgressCards()),
 
               // const SizedBox(height: AppTheme.spacingL),
-
-              // Menu utilisateur moderne
-              DashboardSection(
-                title: 'إدارة الحساب',
-                subtitle: 'خيارات الحساب الشخصي',
-                child: ModernUserMenu(
-                  userName: 'مدير النظام',
-                  userEmail: 'admin@quranic-competition.com',
-                  userRole: 'admin',
-                  options: [
-                    UserMenuOption(
-                      title: 'الملف الشخصي',
-                      subtitle: 'إدارة المعلومات الشخصية',
-                      icon: Icons.person,
-                      color: AppTheme.primaryColor,
-                      onTap: () => context.push('/profile'),
-                    ),
-                    UserMenuOption(
-                      title: 'الإشعارات',
-                      subtitle: 'إعدادات التنبيهات',
-                      icon: Icons.notifications,
-                      color: AppTheme.infoColor,
-                      badge: '3',
-                      badgeColor: AppTheme.errorColor,
-                      onTap: () {},
-                    ),
-                    UserMenuOption(
-                      title: 'المساعدة',
-                      subtitle: 'الدعم والمساعدة',
-                      icon: Icons.help,
-                      color: AppTheme.successColor,
-                      onTap: () {},
-                    ),
-                    UserMenuOption(
-                      title: 'تسجيل الخروج',
-                      subtitle: 'إنهاء الجلسة الحالية',
-                      icon: Icons.logout,
-                      color: AppTheme.errorColor,
-                      onTap: () => _showLogoutConfirmation(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              // const SizedBox(height: AppTheme.spacingXL),
             ],
           ),
         ),

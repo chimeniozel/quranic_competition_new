@@ -95,8 +95,9 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
 
   Future<void> _pickImageFromGallery() async {
     // Demander la permission avant de charger l'image
-    final hasPermission =
-        await _permissionService.requestStoragePermission(context);
+    final hasPermission = await _permissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) {
       return; // L'utilisateur n'a pas accordé la permission
     }
@@ -328,7 +329,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
           _isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
-                padding: const EdgeInsets.all(AppTheme.spacingS),
+                // padding: const EdgeInsets.all(AppTheme.spacingS),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -377,7 +378,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: AppTheme.spacingS),
+                              const SizedBox(height: AppTheme.spacingM),
 
                               // Contenu
                               TextFormField(
@@ -432,7 +433,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: AppTheme.spacingS),
+                              const SizedBox(height: 4),
                               // Aperçu de l'image de couverture
                               if (_imageUrl != null ||
                                   _selectedImageFile != null)
