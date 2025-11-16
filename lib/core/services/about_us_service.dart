@@ -40,6 +40,7 @@ class AboutUsService {
     String? facebookUrl,
     String? instagramUrl,
     String? youtubeUrl,
+    String? tiktokUrl,
   }) async {
     try {
       // Vérifier s'il existe déjà une entrée
@@ -64,6 +65,7 @@ class AboutUsService {
               'facebook_url': facebookUrl,
               'instagram_url': instagramUrl,
               'youtube_url': youtubeUrl,
+              'tiktok_url': tiktokUrl,
               'updated_at': DateTime.now().toIso8601String(),
             })
             .eq('id', existing['id'] as String)
@@ -86,6 +88,7 @@ class AboutUsService {
               'facebook_url': facebookUrl,
               'instagram_url': instagramUrl,
               'youtube_url': youtubeUrl,
+              'tiktok_url': tiktokUrl,
             })
             .select()
             .single();

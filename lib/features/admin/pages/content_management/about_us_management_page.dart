@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:quranic_competition/core/services/about_us_service.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/models/about_us.dart';
@@ -30,6 +31,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
   final _facebookUrlController = TextEditingController();
   final _instagramUrlController = TextEditingController();
   final _youtubeUrlController = TextEditingController();
+  final _tiktokUrlController = TextEditingController();
 
   AboutUs? _aboutUs;
   File? _selectedImageFile;
@@ -55,6 +57,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
     _facebookUrlController.dispose();
     _instagramUrlController.dispose();
     _youtubeUrlController.dispose();
+    _tiktokUrlController.dispose();
     super.dispose();
   }
 
@@ -76,6 +79,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
             _facebookUrlController.text = aboutUs.facebookUrl ?? '';
             _instagramUrlController.text = aboutUs.instagramUrl ?? '';
             _youtubeUrlController.text = aboutUs.youtubeUrl ?? '';
+            _tiktokUrlController.text = aboutUs.tiktokUrl ?? '';
           }
           _isLoading = false;
         });
@@ -232,6 +236,10 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
             _youtubeUrlController.text.trim().isEmpty
                 ? null
                 : _youtubeUrlController.text.trim(),
+        tiktokUrl:
+            _tiktokUrlController.text.trim().isEmpty
+                ? null
+                : _tiktokUrlController.text.trim(),
       );
 
       if (mounted) {
@@ -301,6 +309,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
           _facebookUrlController.clear();
           _instagramUrlController.clear();
           _youtubeUrlController.clear();
+          _tiktokUrlController.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -341,23 +350,6 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Text(
-                                    _aboutUs == null
-                                        ? 'إضافة معلومات "من نحن"'
-                                        : 'تعديل معلومات "من نحن"',
-                                    style: AppTheme.headingSmall,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
                               // Titre
                               TextFormField(
                                 controller: _titleController,
@@ -369,7 +361,9 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.title),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.heading,
+                                  ),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
@@ -419,7 +413,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       ),
                                     ),
                                     child: Icon(
-                                      Icons.image,
+                                      FontAwesomeIcons.image,
                                       color: AppTheme.primaryColor,
                                       size: 20,
                                     ),
@@ -490,8 +484,8 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                                       ),
                                                       child: const Center(
                                                         child: Icon(
-                                                          Icons
-                                                              .image_not_supported,
+                                                          FontAwesomeIcons
+                                                              .image,
                                                           size: 48,
                                                           color: Colors.white,
                                                         ),
@@ -526,7 +520,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                           radius: 18,
                                           child: IconButton(
                                             icon: const Icon(
-                                              Icons.close,
+                                              FontAwesomeIcons.xmark,
                                               size: 18,
                                               color: Colors.white,
                                             ),
@@ -573,7 +567,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
-                                            Icons.add_photo_alternate,
+                                            FontAwesomeIcons.circlePlus,
                                             size: 48,
                                             color: AppTheme.primaryColor,
                                           ),
@@ -616,7 +610,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.contact_phone,
+                                    FontAwesomeIcons.addressCard,
                                     color: AppTheme.primaryColor,
                                   ),
                                   const SizedBox(width: AppTheme.spacingS),
@@ -625,24 +619,6 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                     style: AppTheme.headingSmall,
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              // WhatsApp
-                              TextFormField(
-                                controller: _whatsappUrlController,
-                                keyboardType: TextInputType.url,
-                                decoration: InputDecoration(
-                                  labelText: 'رابط قناة WhatsApp',
-                                  hintText:
-                                      'https://wa.me/... أو https://whatsapp.com/channel/...',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                  ),
-                                  prefixIcon: const Icon(Icons.chat),
-                                ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),
 
@@ -658,7 +634,9 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.email),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.envelope,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),
@@ -675,7 +653,9 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.location_on),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.locationDot,
+                                  ),
                                   alignLabelWithHint: true,
                                 ),
                               ),
@@ -693,7 +673,9 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.language),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.globe,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),
@@ -714,7 +696,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       ),
                                     ),
                                     child: Icon(
-                                      Icons.share,
+                                      FontAwesomeIcons.shareNodes,
                                       color: AppTheme.primaryColor,
                                       size: 20,
                                     ),
@@ -730,6 +712,27 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                               ),
                               const SizedBox(height: AppTheme.spacingS),
 
+                              // WhatsApp
+                              TextFormField(
+                                controller: _whatsappUrlController,
+                                keyboardType: TextInputType.url,
+                                decoration: InputDecoration(
+                                  labelText: 'رابط قناة WhatsApp',
+                                  hintText:
+                                      'https://wa.me/... أو https://whatsapp.com/channel/...',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                  ),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.whatsapp,
+                                    color: Color(0xFF25D366), // WhatsApp green
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+
                               // Facebook
                               TextFormField(
                                 controller: _facebookUrlController,
@@ -742,7 +745,10 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.facebook),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.facebook,
+                                    color: Color(0xFF1877F2), // Facebook blue
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),
@@ -759,7 +765,10 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.camera_alt),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.instagram,
+                                    color: Color(0xFFE4405F), // Instagram pink
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),
@@ -777,7 +786,31 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(Icons.play_circle),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.youtube,
+                                    color: Color(0xFFFF0000), // YouTube red
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+
+                              // TikTok
+                              TextFormField(
+                                controller: _tiktokUrlController,
+                                keyboardType: TextInputType.url,
+                                decoration: InputDecoration(
+                                  labelText: 'رابط حساب TikTok',
+                                  hintText:
+                                      'https://www.tiktok.com/@username...',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                  ),
+                                  prefixIcon: const Icon(
+                                    FontAwesomeIcons.tiktok,
+                                    color: Color(0xFF000000), // TikTok black
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),
@@ -790,7 +823,10 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       onPressed:
                                           _isSaving ? null : _saveAboutUs,
                                       text: _isSaving ? 'جاري الحفظ...' : 'حفظ',
-                                      icon: _isSaving ? null : Icons.save,
+                                      icon:
+                                          _isSaving
+                                              ? null
+                                              : FontAwesomeIcons.floppyDisk,
                                     ),
                                   ),
                                   if (_aboutUs != null) ...[
@@ -800,7 +836,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                         onPressed:
                                             _isSaving ? null : _deleteAboutUs,
                                         text: 'حذف',
-                                        icon: Icons.delete,
+                                        icon: FontAwesomeIcons.trash,
                                         textColor: AppTheme.errorColor,
                                       ),
                                     ),

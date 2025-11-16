@@ -259,7 +259,8 @@ class _AboutUsPageState extends State<AboutUsPage> {
                           _aboutUs!.whatsappUrl != null ||
                           _aboutUs!.facebookUrl != null ||
                           _aboutUs!.instagramUrl != null ||
-                          _aboutUs!.youtubeUrl != null) ...[
+                          _aboutUs!.youtubeUrl != null ||
+                          _aboutUs!.tiktokUrl != null) ...[
                         const SizedBox(height: AppTheme.spacingS),
                         ModernCard(
                           margin: EdgeInsets.zero,
@@ -324,6 +325,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                     _aboutUs!.facebookUrl != null ||
                                     _aboutUs!.instagramUrl != null ||
                                     _aboutUs!.youtubeUrl != null ||
+                                    _aboutUs!.tiktokUrl != null ||
                                     _aboutUs!.website != null) ...[
                                   const SizedBox(height: AppTheme.spacingS),
                                   Divider(
@@ -399,6 +401,16 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                       backgroundColor: const Color(
                                         0xFFFF0000,
                                       ), // Rouge YouTube
+                                      textColor: Colors.white,
+                                    ),
+                                  if (_aboutUs!.tiktokUrl != null)
+                                    _buildSocialMediaButton(
+                                      iconData: FontAwesomeIcons.tiktok,
+                                      label: 'TikTok',
+                                      url: _aboutUs!.tiktokUrl!,
+                                      backgroundColor: const Color(
+                                        0xFF000000,
+                                      ), // Noir TikTok
                                       textColor: Colors.white,
                                     ),
                                   if (_aboutUs!.website != null)

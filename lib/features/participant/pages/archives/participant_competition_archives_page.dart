@@ -200,10 +200,11 @@ class _ParticipantCompetitionArchivesPageState
                               if (progress == null) return child;
                               return Center(
                                 child: CircularProgressIndicator(
-                                  value: progress.expectedTotalBytes != null
-                                      ? progress.cumulativeBytesLoaded /
-                                          progress.expectedTotalBytes!
-                                      : null,
+                                  value:
+                                      progress.expectedTotalBytes != null
+                                          ? progress.cumulativeBytesLoaded /
+                                              progress.expectedTotalBytes!
+                                          : null,
                                 ),
                               );
                             },
@@ -211,7 +212,10 @@ class _ParticipantCompetitionArchivesPageState
                               return Container(
                                 color: Colors.grey[200],
                                 child: const Center(
-                                  child: Icon(Icons.image_not_supported, size: 64),
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    size: 64,
+                                  ),
                                 ),
                               );
                             },
@@ -239,8 +243,10 @@ class _ParticipantCompetitionArchivesPageState
                       children: [
                         TextButton.icon(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon:
-                              const Icon(Icons.close, color: AppTheme.textPrimaryColor),
+                          icon: const Icon(
+                            Icons.close,
+                            color: AppTheme.textPrimaryColor,
+                          ),
                           label: Text(
                             'إغلاق',
                             style: AppTheme.bodyMedium.copyWith(

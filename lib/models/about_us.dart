@@ -10,6 +10,7 @@ class AboutUs {
   final String? facebookUrl;
   final String? instagramUrl;
   final String? youtubeUrl;
+  final String? tiktokUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -25,6 +26,7 @@ class AboutUs {
     this.facebookUrl,
     this.instagramUrl,
     this.youtubeUrl,
+    this.tiktokUrl,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -42,6 +44,7 @@ class AboutUs {
       facebookUrl: map['facebook_url'] as String?,
       instagramUrl: map['instagram_url'] as String?,
       youtubeUrl: map['youtube_url'] as String?,
+      tiktokUrl: map['tiktok_url'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -60,6 +63,7 @@ class AboutUs {
       'facebook_url': facebookUrl,
       'instagram_url': instagramUrl,
       'youtube_url': youtubeUrl,
+      'tiktok_url': tiktokUrl,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -77,6 +81,7 @@ class AboutUs {
     String? facebookUrl,
     String? instagramUrl,
     String? youtubeUrl,
+    String? tiktokUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -92,6 +97,7 @@ class AboutUs {
       facebookUrl: facebookUrl ?? this.facebookUrl,
       instagramUrl: instagramUrl ?? this.instagramUrl,
       youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+      tiktokUrl: tiktokUrl ?? this.tiktokUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
