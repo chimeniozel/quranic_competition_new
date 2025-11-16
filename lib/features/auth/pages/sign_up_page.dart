@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/widgets/password_field_widget.dart';
+import '../../../core/theme/app_theme.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -57,7 +59,11 @@ class _SignUpPageState extends State<SignUpPage> {
         return AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.error_outline, color: Colors.red),
+              Icon(
+                FontAwesomeIcons.circleExclamation,
+                color: Colors.red,
+                size: 20,
+              ),
               SizedBox(width: 8),
               Text('خطأ في التسجيل'),
             ],
@@ -81,7 +87,7 @@ class _SignUpPageState extends State<SignUpPage> {
         return AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.check_circle_outline, color: Colors.green),
+              Icon(FontAwesomeIcons.circleCheck, color: Colors.green, size: 20),
               SizedBox(width: 8),
               Text('تم التسجيل بنجاح'),
             ],
@@ -176,149 +182,294 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('إنشاء حساب جديد'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(FontAwesomeIcons.chevronRight, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppTheme.spacingM),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header avec icône
-              Icon(
-                Icons.person_add_outlined,
-                size: 80,
-                color: Colors.deepPurple.shade300,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'إنشاء حساب جديد',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+              // Header avec logo
+              Container(
+                padding: const EdgeInsets.all(AppTheme.spacingL),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/images/logos/logo.png',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      'إنشاء حساب جديد',
+                      style: AppTheme.headingMedium.copyWith(
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      'املأ البيانات التالية لإنشاء حسابك',
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'املأ البيانات التالية لإنشاء حسابك',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppTheme.spacingXL),
               // Nom complet
-              TextFormField(
-                controller: _fullNameController,
-                textDirection: TextDirection.rtl,
-                decoration: InputDecoration(
-                  labelText: 'الاسم الكامل',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(
+                height: 56,
+                child: TextFormField(
+                  controller: _fullNameController,
+                  textDirection: TextDirection.rtl,
+                  decoration: InputDecoration(
+                    labelText: 'الاسم الكامل',
+                    prefixIcon: const Icon(FontAwesomeIcons.user, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(color: AppTheme.errorColor),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.errorColor,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingS,
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
+                  validator: _validateFullName,
                 ),
-                validator: _validateFullName,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Email
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(
-                  labelText: 'البريد الإلكتروني',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(
+                height: 56,
+                child: TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textDirection: TextDirection.ltr,
+                  decoration: InputDecoration(
+                    labelText: 'البريد الإلكتروني',
+                    prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(color: AppTheme.errorColor),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.errorColor,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingS,
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
+                  validator: _validateEmail,
                 ),
-                validator: _validateEmail,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingS),
 
-              // Phone fields (country code + number)
+              // Phone fields (number + country code)
               Row(
                 children: [
                   Expanded(
-                    flex: 2,
-                    child: Container(
-                      height: 58,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.public, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '+',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _countryCodeController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                LengthLimitingTextInputFormatter(4),
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              textDirection: TextDirection.ltr,
-                              textAlign: TextAlign.left,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                                hintText: '222',
-                              ),
-                              validator: _validateCountryCode,
-                            ),
-                          ),
+                    flex: 6,
+                    child: SizedBox(
+                      height: 56,
+                      child: TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(12),
+                          FilteringTextInputFormatter.digitsOnly,
                         ],
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(
+                          labelText: 'رقم الهاتف',
+                          prefixIcon: const Icon(
+                            FontAwesomeIcons.phone,
+                            size: 20,
+                          ),
+                          hintText: '20202020',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusM,
+                            ),
+                            borderSide: const BorderSide(
+                              color: AppTheme.dividerColor,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusM,
+                            ),
+                            borderSide: const BorderSide(
+                              color: AppTheme.dividerColor,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusM,
+                            ),
+                            borderSide: const BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 2,
+                            ),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusM,
+                            ),
+                            borderSide: const BorderSide(
+                              color: AppTheme.errorColor,
+                            ),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusM,
+                            ),
+                            borderSide: const BorderSide(
+                              color: AppTheme.errorColor,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppTheme.spacingS,
+                            vertical: AppTheme.spacingS,
+                          ),
+                        ),
+                        validator: _validatePhone,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppTheme.spacingS),
                   Expanded(
-                    flex: 5,
-                    child: TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(12),
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      textDirection: TextDirection.ltr,
-                      decoration: InputDecoration(
-                        labelText: 'رقم الهاتف',
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        hintText: '20202020',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    flex: 2,
+                    child: SizedBox(
+                      height: 48,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                          border: Border.all(color: AppTheme.dividerColor),
                         ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingS,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _countryCodeController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(4),
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                textDirection: TextDirection.ltr,
+                                textAlign: TextAlign.left,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 0,
+                                    vertical: AppTheme.spacingS,
+                                  ),
+                                  hintText: '222',
+                                ),
+                                validator: _validateCountryCode,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '+',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      validator: _validatePhone,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Mot de passe avec validation avancée
               PasswordFieldWidget(
@@ -327,7 +478,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 showStrengthIndicator: true,
                 showSuggestions: true,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Confirmation mot de passe
               ConfirmPasswordFieldWidget(
@@ -335,27 +486,36 @@ class _SignUpPageState extends State<SignUpPage> {
                 passwordController: _passwordController,
                 labelText: 'تأكيد كلمة المرور',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingXL),
 
               // Bouton d'inscription
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  : SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingL,
+                          vertical: AppTheme.spacingS,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        ),
+                      ),
+                      child: Text(
+                        'إنشاء الحساب',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      'إنشاء الحساب',
-                      style: TextStyle(fontSize: 16),
-                    ),
                   ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Lien vers la connexion
               Row(

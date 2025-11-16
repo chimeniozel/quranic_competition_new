@@ -169,7 +169,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'الصفحة الرئيسة',
+        title: 'مسابقة أهل القرآن الواتسابية',
         actions: [
           IconButton(
             icon: const Icon(Icons.login),

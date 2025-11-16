@@ -203,17 +203,29 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   padding: const EdgeInsets.all(AppTheme.spacingL),
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.login, size: 60, color: Colors.white),
+                      Image.asset(
+                        'assets/images/logos/logo.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
                       const SizedBox(height: AppTheme.spacingS),
                       Text(
                         'مرحباً بك',
                         style: AppTheme.headingMedium.copyWith(
-                          color: Colors.white,
+                          color: AppTheme.textPrimaryColor,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -221,7 +233,7 @@ class _LoginPageState extends State<LoginPage> {
                       Text(
                         'سجل دخولك للوصول إلى المسابقة القرآنية',
                         style: AppTheme.bodyMedium.copyWith(
-                          color: Colors.white70,
+                          color: AppTheme.textSecondaryColor,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -231,35 +243,112 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: AppTheme.spacingXL),
 
                 // Champs de saisie modernes
-                ModernTextField(
+                TextFormField(
                   controller: _emailController,
-                  label: 'البريد الإلكتروني',
-                  hint: 'أدخل بريدك الإلكتروني',
                   keyboardType: TextInputType.emailAddress,
-                  prefixIcon: const Icon(Icons.email_outlined),
+                  textDirection: TextDirection.ltr,
                   validator: _validateEmail,
+                  decoration: InputDecoration(
+                    labelText: 'البريد الإلكتروني',
+                    hintText: 'أدخل بريدك الإلكتروني',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(color: AppTheme.errorColor),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.errorColor,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingS,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: AppTheme.spacingS),
 
-                ModernTextField(
+                TextFormField(
                   controller: _passwordController,
-                  label: 'كلمة المرور',
-                  hint: 'أدخل كلمة المرور',
                   obscureText: _obscurePassword,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
                   validator: _validatePassword,
+                  decoration: InputDecoration(
+                    labelText: 'كلمة المرور',
+                    hintText: 'أدخل كلمة المرور',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.dividerColor,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(color: AppTheme.errorColor),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      borderSide: const BorderSide(
+                        color: AppTheme.errorColor,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingS,
+                      vertical: AppTheme.spacingS,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: AppTheme.spacingXL),
 

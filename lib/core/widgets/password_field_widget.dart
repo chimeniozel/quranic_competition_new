@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/password_validation_service.dart';
 import '../services/error_service.dart';
+import '../theme/app_theme.dart';
 
 /// Widget réutilisable pour les champs de mot de passe avec validation avancée
 class PasswordFieldWidget extends StatefulWidget {
@@ -100,9 +101,32 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                 ),
               ],
             ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              borderSide: const BorderSide(color: AppTheme.dividerColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              borderSide: const BorderSide(color: AppTheme.dividerColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              borderSide: const BorderSide(color: AppTheme.errorColor),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
+            ),
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingS,
+              vertical: AppTheme.spacingS,
+            ),
           ),
           validator: widget.validator ?? _defaultValidator,
         ),
