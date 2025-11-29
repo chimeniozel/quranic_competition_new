@@ -90,9 +90,9 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                 _isRegistrationAllowed = nowAllowed;
                 if (!_isRegistrationAllowed) {
                   if (!isActive) {
-                    _registrationErrorMessage = 'المسابقة غير نشطة';
+                    _registrationErrorMessage = 'النسخة غير نشطة';
                   } else if (!isRegistrationOpen) {
-                    _registrationErrorMessage = 'التسجيل مغلق لهذه المسابقة';
+                    _registrationErrorMessage = 'التسجيل مغلق لهذه النسخة';
                   }
                 } else {
                   _registrationErrorMessage = null;
@@ -131,7 +131,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
             if (mounted) {
               setState(() {
                 _isRegistrationAllowed = false;
-                _registrationErrorMessage = 'خطأ في التحقق من حالة المسابقة';
+                _registrationErrorMessage = 'خطأ في التحقق من حالة النسخة';
               });
             }
           },
@@ -149,7 +149,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       if (!versionExists) {
         setState(() {
           _isRegistrationAllowed = false;
-          _registrationErrorMessage = 'المسابقة غير نشطة أو التسجيل مغلق';
+          _registrationErrorMessage = 'النسخة غير نشطة أو التسجيل مغلق';
         });
       } else {
         setState(() {
@@ -160,7 +160,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     } catch (e) {
       setState(() {
         _isRegistrationAllowed = false;
-        _registrationErrorMessage = 'خطأ في التحقق من حالة المسابقة';
+        _registrationErrorMessage = 'خطأ في التحقق من حالة النسخة';
       });
       print('Erreur lors de la vérification du statut d\'inscription: $e');
     }
@@ -175,7 +175,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       if (version == null) {
         setState(() {
           _isRegistrationAllowed = false;
-          _registrationErrorMessage = 'المسابقة غير موجودة';
+          _registrationErrorMessage = 'النسخة غير موجودة';
         });
         return;
       }
@@ -396,7 +396,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     // Déterminer la raison de refus
     String? rejectionReason;
     if (shouldAutoReject) {
-      rejectionReason = 'حصوله على المرتبة الأولى أو الثانية في مسابقة سابقة';
+      rejectionReason = 'حصوله على المرتبة الأولى أو الثانية في مسابقة أهل القرآن الواتسابية سابقة';
       print('🚫 Raison de refus déterminée: $rejectionReason');
     }
 
@@ -452,7 +452,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       String message;
       if (shouldAutoReject) {
         message =
-            'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة سابقة';
+            'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة أهل القرآن الواتسابية سابقة';
       } else {
         message =
             'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber';
@@ -518,7 +518,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
         errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في تحديد حالة القبول';
         backgroundColor = Colors.orange; // Orange car l'inscription a réussi
       } else if (e.toString().contains('التسجيل غير متاح لهذه المسابقة')) {
-        errorMessage = 'التسجيل غير متاح لهذه المسابقة';
+        errorMessage = 'التسجيل غير متاح لهذه النسخة';
       } else if (e.toString().contains('رقم الهاتف')) {
         errorMessage = 'هذا الرقم مسجل بالفعل في هذه النسخة.';
       } else if (e.toString().contains('network') ||
@@ -1052,7 +1052,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
 
                                 _buildSwitchTile(
                                   title:
-                                      'هل حصلت على المراتب 1 إلى 2 في مسابقة أهل القرآن أو غيرها؟',
+                                      'هل حصلت على المراتب 1 إلى 2 في مسابقة أهل القرآن الواتسابية أو غيرها؟',
                                   value: _wonPreviousRanks,
                                   onChanged: (v) {
                                     setState(() {

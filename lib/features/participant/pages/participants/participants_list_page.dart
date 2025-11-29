@@ -676,7 +676,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'مسابقة نشطة',
+                        'نسخة نشطة',
                         style: AppTheme.labelLarge.copyWith(
                           color: Colors.green[700],
                           fontWeight: FontWeight.bold,
@@ -738,7 +738,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'آخر مسابقة',
+                        'آخر نسخة نشطة',
                         style: AppTheme.labelLarge.copyWith(
                           color: Colors.orange[700],
                           fontWeight: FontWeight.bold,

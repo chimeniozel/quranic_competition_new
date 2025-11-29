@@ -269,7 +269,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
       await _pushNotificationService.sendNotification(
         title: 'تم فتح التسجيل',
         body:
-            'تم فتح التسجيل للنسخة "${widget.version.name}". يمكنك الآن التسجيل في المسابقة.',
+            'تم فتح التسجيل للنسخة "${widget.version.name}". يمكنك الآن التسجيل في النسخة.',
         type: 'info',
         payload: payload,
         userId: null, // null = tous les utilisateurs

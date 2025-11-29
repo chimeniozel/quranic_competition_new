@@ -7,7 +7,6 @@ import 'package:quranic_competition/app/router.dart' as router;
 import 'package:quranic_competition/firebase_options.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -123,12 +122,11 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return AuthInitializer(
       child: MaterialApp.router(
-        title: 'مسابقة أهل القرآن',
+        title: 'مسابقة أهل القرآن الواتسابية',
         routerConfig: router.appRouter,
         debugShowCheckedModeBanner: false,
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: const [
-          AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
@@ -136,7 +134,7 @@ class _MyAppState extends State<MyApp> {
         theme: ThemeData(
           useMaterial3: true,
           fontFamily: null, // Ne pas affecter les icônes
-          cardTheme: CardTheme(color: Colors.white),
+          cardTheme: CardThemeData(color: Colors.white),
           textTheme: ThemeData.light().textTheme.apply(
             fontFamily: "Tajawal",
           ), // Texte en Tajawal

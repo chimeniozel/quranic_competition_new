@@ -45,7 +45,7 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: backgroundColor ?? AppTheme.primaryColor,
       foregroundColor: foregroundColor ?? Colors.white,
       elevation: elevation,
-      automaticallyImplyLeading: automaticallyImplyLeading,
+      automaticallyImplyLeading: leading != null ? false : automaticallyImplyLeading,
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

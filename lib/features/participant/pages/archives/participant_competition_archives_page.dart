@@ -78,6 +78,128 @@ class _ParticipantCompetitionArchivesPageState
     }
   }
 
+  String _extractVideoId(String url) {
+    if (url.isEmpty) return '';
+
+    try {
+      // Handle youtu.be short URLs
+      if (url.contains('youtu.be/')) {
+        final parts = url.split('youtu.be/');
+        if (parts.length > 1) {
+          final videoId = parts[1].split('?')[0].split('&')[0];
+          return videoId;
+        }
+      }
+
+      // Handle youtube.com URLs
+      if (url.contains('youtube.com')) {
+        final uri = Uri.tryParse(url);
+        if (uri != null) {
+          // Try query parameter first
+          final videoId = uri.queryParameters['v'];
+          if (videoId != null && videoId.isNotEmpty) {
+            return videoId;
+          }
+
+          // Try path segments for embed URLs
+          if (uri.pathSegments.contains('embed')) {
+            final embedIndex = uri.pathSegments.indexOf('embed');
+            if (embedIndex + 1 < uri.pathSegments.length) {
+              return uri.pathSegments[embedIndex + 1].split('?')[0];
+            }
+          }
+
+          // Try watch path
+          if (uri.pathSegments.contains('watch') &&
+              uri.queryParameters.containsKey('v')) {
+            return uri.queryParameters['v']!;
+          }
+        }
+      }
+
+      // Try to extract from any YouTube URL pattern
+      final regex = RegExp(
+        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
+      );
+      final match = regex.firstMatch(url);
+      if (match != null && match.groupCount >= 1) {
+        return match.group(1) ?? '';
+      }
+    } catch (e) {
+      print('Error extracting video ID: $e');
+    }
+
+    return '';
+  }
+
+  Widget _buildVideoThumbnail(String videoUrl) {
+    final videoId = _extractVideoId(videoUrl);
+
+    if (videoId.isEmpty) {
+      return Container(
+        height: double.infinity,
+        width: double.infinity,
+        color: AppTheme.errorColor,
+        child: const Center(
+          child: Icon(
+            Icons.video_library,
+            size: 50,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    // Try maxresdefault first, then hqdefault as fallback
+    return Image.network(
+      'https://img.youtube.com/vi/$videoId/maxresdefault.jpg',
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: double.infinity,
+          width: double.infinity,
+          color: AppTheme.backgroundColor,
+          child: Center(
+            child: CircularProgressIndicator(
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to hqdefault if maxresdefault fails
+        return Image.network(
+          'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // Final fallback
+            return Container(
+              height: double.infinity,
+              width: double.infinity,
+              color: AppTheme.errorColor,
+              child: const Center(
+                child: Icon(
+                  Icons.video_library,
+                  size: 50,
+                  color: Colors.white,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _launchVideo(String url) async {
     try {
       // Convertir l'URL YouTube en format mobile
@@ -299,43 +421,30 @@ class _ParticipantCompetitionArchivesPageState
           },
           child:
               media.type == MediaType.video
-                  ? // Vidéo : fond rouge avec titre en bas
-                  Container(
-                    height: double.infinity,
-                    width: double.infinity,
-                    color: AppTheme.errorColor,
-                    child: Column(
-                      children: [
-                        // Zone principale avec icône de lecture
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            color: AppTheme.errorColor,
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.play_circle_filled,
-                                  size: 64,
-                                  color: Colors.white,
-                                ),
-                                SizedBox(height: AppTheme.spacingS),
-                                Text(
-                                  'فيديو',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
+                  ? // Vidéo : thumbnail avec bouton play transparent
+                  Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildVideoThumbnail(media.url),
+                      // Bouton play transparent au centre
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          child: Icon(
+                            Icons.play_circle_filled,
+                            color: Colors.white.withOpacity(0.7),
+                            size: 64,
                           ),
                         ),
-                        // Titre en bas
-                        Container(
+                      ),
+                      // Titre en bas
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
                           width: double.infinity,
-                          color: Colors.white,
+                          color: Colors.white.withOpacity(0.95),
                           padding: const EdgeInsets.all(AppTheme.spacingS),
                           child: Text(
                             media.title != null && media.title!.isNotEmpty
@@ -349,8 +458,8 @@ class _ParticipantCompetitionArchivesPageState
                             textAlign: TextAlign.center,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   )
                   : // Image : expansion complète sans titre
                   Image.network(
@@ -447,24 +556,24 @@ class _ParticipantCompetitionArchivesPageState
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: ModernAppBar(title: _competitionName ?? 'المسابقة'),
+        appBar: ModernAppBar(title: _competitionName ?? 'النسخة'),
         body: const LoadingOverlay(child: SizedBox()),
       );
     }
 
     if (_allMedia.isEmpty) {
       return Scaffold(
-        appBar: ModernAppBar(title: _competitionName ?? 'المسابقة'),
+        appBar: ModernAppBar(title: _competitionName ?? 'النسخة'),
         body: EmptyState(
           icon: Icons.archive_outlined,
           title: 'لا توجد أرشيفات',
-          subtitle: 'لا توجد أرشيفات متاحة لهذه المسابقة',
+          subtitle: 'لا توجد أرشيفات متاحة لهذه النسخة',
         ),
       );
     }
 
     return Scaffold(
-      appBar: ModernAppBar(title: _competitionName ?? 'المسابقة'),
+      appBar: ModernAppBar(title: _competitionName ?? 'النسخة'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.spacingS),
         child: Column(

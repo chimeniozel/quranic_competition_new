@@ -9,6 +9,9 @@ import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/services/evaluation_stats_service.dart';
+import 'package:quranic_competition/core/services/user_service.dart';
+import 'package:quranic_competition/models/app_user.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -284,6 +287,45 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Welcome message
+              FutureBuilder<AppUser?>(
+                future: UserService().getCurrentUserProfile(),
+                builder: (context, snapshot) {
+                  final username = snapshot.data?.fullName ?? 'مدير النظام';
+                  return Container(
+                    padding: const EdgeInsets.all(AppTheme.spacingM),
+                    margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          FontAwesomeIcons.hand,
+                          color: AppTheme.primaryColor,
+                          size: 24,
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          child: Text(
+                            'مرحبا بكم $username',
+                            style: AppTheme.headingSmall.copyWith(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: AppTheme.spacingS),
               // Informations de l'utilisateur
               RoleInfoWidget(),
               // const SizedBox(height: AppTheme.spacingL),
@@ -296,37 +338,37 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   actions: [
                     QuickAction(
                       title: 'إدارة المستخدمين',
-                      icon: Icons.people,
+                      imagePath: 'assets/images/admin.png',
                       color: AppTheme.primaryColor,
                       onTap: () => context.push('/admin/users'),
                     ),
                     QuickAction(
                       title: 'إدارة المسابقات',
-                      icon: Icons.emoji_events,
+                      imagePath: 'assets/images/competition.png',
                       color: AppTheme.successColor,
                       onTap: () => context.push('/admin/versions'),
                     ),
                     QuickAction(
                       title: 'أحكام التجويد',
-                      icon: Icons.auto_stories,
+                      imagePath: 'assets/images/tejweed.png',
                       color: AppTheme.warningColor,
                       onTap: () => context.push('/admin/tajweed-rules'),
                     ),
                     QuickAction(
                       title: 'إدارة الفوائد القرآنية',
-                      icon: Icons.library_books,
+                      imagePath: 'assets/images/فوائد قرآنية.png',
                       color: Colors.deepOrange,
                       onTap: () => context.push('/admin/quranic-benefits'),
                     ),
                     QuickAction(
-                      title: 'مسابقات التجويد',
-                      icon: Icons.quiz,
+                      title: 'أسئلة و أجوبة في القرآن',
+                      imagePath: 'assets/images/أسئلة_وأجوبة_عن_القرآن_الكريم.png',
                       color: AppTheme.infoColor,
                       onTap: () => context.push('/admin/quiz/levels'),
                     ),
                     QuickAction(
                       title: 'أرشيف المسابقات',
-                      icon: Icons.archive,
+                      imagePath: 'assets/images/archive.png',
                       color: AppTheme.secondaryColor,
                       onTap: () => context.push('/admin/archives'),
                     ),
@@ -338,7 +380,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                     QuickAction(
                       title: 'من نحن',
-                      icon: Icons.info,
+                      imagePath: 'assets/images/about-us.png',
                       color: Colors.teal,
                       onTap: () => context.push('/admin/about-us'),
                     ),

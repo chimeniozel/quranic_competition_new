@@ -186,7 +186,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
         final pushNotificationService = PushNotificationService();
         await pushNotificationService.sendNotification(
           title: '🎉 نسخة جديدة',
-          body: 'تم إنشاء نسخة جديدة من المسابقة: $name',
+          body: 'تم إنشاء نسخة جديدة من مسابقة أهل القرآن الواتسابية: $name',
           type: 'success',
           payload: jsonEncode({
             'type': 'version_created',

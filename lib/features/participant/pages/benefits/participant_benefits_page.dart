@@ -260,7 +260,7 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
                       return _isLoadingMore
                           ? const Padding(
                             padding: EdgeInsets.all(AppTheme.spacingS),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: const Center(child: CircularProgressIndicator()),
                           )
                           : _hasMore
                           ? Padding(

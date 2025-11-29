@@ -145,7 +145,7 @@ class _ParticipantQuizLevelsPageState extends State<ParticipantQuizLevelsPage> {
                       Icon(Icons.quiz, size: 16, color: AppTheme.successColor),
                       const SizedBox(width: 4),
                       Text(
-                        'ابدأ المسابقة',
+                        'ابدأ النسخة',
                         style: AppTheme.labelSmall.copyWith(
                           color: AppTheme.successColor,
                           fontWeight: FontWeight.w500,

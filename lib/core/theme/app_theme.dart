@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 /// Design system centralisé pour l'application
 class AppTheme {
   // Couleurs principales
-  static const Color primaryColor = Color(0xFF6B46C1); // deepPurple
+  // static const Color primaryColor = Color(0xFF6B46C1); // deepPurple
+  static const Color primaryColor = Color(0xFF4e5ae8); // deepPurple
   static const Color secondaryColor = Color(0xFF9333EA); // purple
   static const Color accentColor = Color(0xFFEC4899); // pink
   static const Color successColor = Color(0xFF10B981); // emerald
@@ -138,7 +139,7 @@ class AppTheme {
         labelStyle: const TextStyle(color: textSecondaryColor),
         hintStyle: const TextStyle(color: textDisabledColor),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: cardColor,
         elevation: elevationS,
         shape: RoundedRectangleBorder(
@@ -146,7 +147,7 @@ class AppTheme {
         ),
         margin: const EdgeInsets.all(spacingS),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: backgroundColor,
         elevation: elevationL,
         shape: RoundedRectangleBorder(

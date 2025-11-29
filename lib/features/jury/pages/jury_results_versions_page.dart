@@ -50,7 +50,7 @@ class _JuryResultsVersionsPageState extends State<JuryResultsVersionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const ModernAppBar(title: 'نتائج المسابقة - اختر النسخة'),
+      appBar: const ModernAppBar(title: 'اختر نسخة'),
       body:
           _isLoading
               ? const ModernLoadingIndicator()
@@ -61,7 +61,7 @@ class _JuryResultsVersionsPageState extends State<JuryResultsVersionsPage> {
                         ? const EmptyState(
                           icon: Icons.event_busy,
                           title: 'لا توجد نسخ',
-                          subtitle: 'لم يتم إنشاء أي نسخة من المسابقة بعد',
+                          subtitle: 'لم يتم إنشاء أي نسخة بعد',
                         )
                         : ListView.builder(
                           padding: const EdgeInsets.all(AppTheme.spacingS),

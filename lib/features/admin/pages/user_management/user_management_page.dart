@@ -305,7 +305,7 @@ class _UserPermissionsBottomSheetState
       (
         key: 'can_publish_content',
         title: 'نشر المحتوى',
-        description: 'إدارة ونشر الفوائد القرآنية، قواعد التجويد، والأرشيف.',
+        description: 'إدارة ونشر الفوائد القرآنية، أحكام التجويد، والأرشيف.',
       ),
       (
         key: 'can_validate_accounts',
@@ -1096,7 +1096,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       const SizedBox(height: AppTheme.spacingS),
                       // Barre de recherche et filtres
                       Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingL),
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(AppTheme.radiusL),
                           gradient: LinearGradient(
@@ -1253,431 +1253,234 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                       const SizedBox(height: AppTheme.spacingS),
 
                                       // Dropdown filtre الأدوار
-                                      Container(
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              AppTheme.backgroundColor,
-                                              AppTheme.backgroundColor
-                                                  .withOpacity(0.8),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
+                                      DropdownButtonFormField<String>(
+                                        value: _selectedRoleFilter,
+                                        dropdownColor: Colors.white,
+                                        decoration: InputDecoration(
+                                          labelText: 'فلترة حسب الدور',
+                                          labelStyle: AppTheme.bodyMedium
+                                              .copyWith(
+                                                color:
+                                                    AppTheme.textSecondaryColor,
+                                              ),
+                                          prefixIcon: Icon(
+                                            Icons.filter_list,
+                                            color: AppTheme.primaryColor,
+                                            size: 20,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusL,
-                                          ),
-                                          border: Border.all(
-                                            color: AppTheme.successColor
-                                                .withOpacity(0.3),
-                                            width: 1.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppTheme.successColor
-                                                  .withOpacity(0.1),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
                                             ),
-                                          ],
+                                            borderSide: BorderSide(
+                                              color: AppTheme.dividerColor,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppTheme.dividerColor,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppTheme.primaryColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: AppTheme.spacingS,
+                                                vertical: AppTheme.spacingS,
+                                              ),
                                         ),
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: _selectedRoleFilter,
-                                            isExpanded: true,
-                                            icon: Container(
-                                              margin: const EdgeInsets.all(
-                                                AppTheme.spacingXS,
-                                              ),
-                                              padding: const EdgeInsets.all(
-                                                AppTheme.spacingXS,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    AppTheme.successColor,
-                                                    AppTheme.successColor
-                                                        .withOpacity(0.7),
-                                                  ],
+                                        items: [
+                                          DropdownMenuItem(
+                                            value: 'all',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.all_inclusive,
+                                                  size: 18,
+                                                  color: AppTheme.primaryColor,
                                                 ),
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      AppTheme.radiusM,
-                                                    ),
-                                                boxShadow: AppTheme.shadowS,
-                                              ),
-                                              child: const Icon(
-                                                Icons.filter_list,
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
-                                            ),
-                                            style: AppTheme.bodyMedium.copyWith(
-                                              color: AppTheme.textPrimaryColor,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            items: [
-                                              DropdownMenuItem(
-                                                value: 'all',
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal:
-                                                            AppTheme.spacingS,
-                                                        vertical:
-                                                            AppTheme.spacingXS,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.primaryColor
-                                                        .withOpacity(0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          AppTheme.radiusS,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: AppTheme
-                                                          .primaryColor
-                                                          .withOpacity(0.3),
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.all_inclusive,
-                                                        size: 16,
-                                                        color:
-                                                            AppTheme
-                                                                .primaryColor,
-                                                      ),
-                                                      const SizedBox(
-                                                        width:
-                                                            AppTheme.spacingS,
-                                                      ),
-                                                      Text(
-                                                        'جميع الأدوار',
-                                                        style: AppTheme
-                                                            .bodySmall
-                                                            .copyWith(
-                                                              color:
-                                                                  AppTheme
-                                                                      .primaryColor,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                const SizedBox(
+                                                  width: AppTheme.spacingS,
                                                 ),
-                                              ),
-                                              ...UserRole.values.map((role) {
-                                                return DropdownMenuItem<String>(
-                                                  value: role.code,
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              AppTheme.spacingS,
-                                                          vertical:
-                                                              AppTheme
-                                                                  .spacingXS,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: _getRoleColor(
-                                                        role,
-                                                      ).withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            AppTheme.radiusS,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: _getRoleColor(
-                                                          role,
-                                                        ).withOpacity(0.3),
-                                                        width: 1,
-                                                      ),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          _getRoleIcon(role),
-                                                          size: 16,
+                                                Text(
+                                                  'جميع الأدوار',
+                                                  style: AppTheme.bodyMedium,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          ...UserRole.values.map((role) {
+                                            return DropdownMenuItem<String>(
+                                              value: role.code,
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    _getRoleIcon(role),
+                                                    size: 18,
+                                                    color: _getRoleColor(role),
+                                                  ),
+                                                  const SizedBox(
+                                                    width: AppTheme.spacingS,
+                                                  ),
+                                                  Text(
+                                                    role.displayName,
+                                                    style: AppTheme.bodyMedium
+                                                        .copyWith(
                                                           color: _getRoleColor(
                                                             role,
                                                           ),
                                                         ),
-                                                        const SizedBox(
-                                                          width:
-                                                              AppTheme.spacingS,
-                                                        ),
-                                                        Text(
-                                                          role.displayName,
-                                                          style: AppTheme
-                                                              .bodySmall
-                                                              .copyWith(
-                                                                color:
-                                                                    _getRoleColor(
-                                                                      role,
-                                                                    ),
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
                                                   ),
-                                                );
-                                              }),
-                                            ],
-                                            onChanged: (value) {
-                                              setState(() {
-                                                _selectedRoleFilter =
-                                                    value ?? 'all';
-                                              });
-                                            },
-                                          ),
-                                        ),
+                                                ],
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedRoleFilter =
+                                                value ?? 'all';
+                                          });
+                                        },
                                       ),
                                       const SizedBox(height: AppTheme.spacingS),
 
                                       // Dropdown filtre التحقق
-                                      Container(
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              AppTheme.backgroundColor,
-                                              AppTheme.backgroundColor
-                                                  .withOpacity(0.8),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
+                                      DropdownButtonFormField<String>(
+                                        value: _selectedValidationFilter,
+                                        dropdownColor: Colors.white,
+                                        decoration: InputDecoration(
+                                          labelText: 'فلترة حسب التحقق',
+                                          labelStyle: AppTheme.bodyMedium
+                                              .copyWith(
+                                                color:
+                                                    AppTheme.textSecondaryColor,
+                                              ),
+                                          prefixIcon: Icon(
+                                            Icons.verified_user,
+                                            color: AppTheme.infoColor,
+                                            size: 20,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusL,
-                                          ),
-                                          border: Border.all(
-                                            color: AppTheme.infoColor
-                                                .withOpacity(0.3),
-                                            width: 1.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppTheme.infoColor
-                                                  .withOpacity(0.1),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
                                             ),
-                                          ],
+                                            borderSide: BorderSide(
+                                              color: AppTheme.dividerColor,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppTheme.dividerColor,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppTheme.radiusM,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: AppTheme.primaryColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: AppTheme.spacingS,
+                                                vertical: AppTheme.spacingS,
+                                              ),
                                         ),
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: _selectedValidationFilter,
-                                            isExpanded: true,
-                                            icon: Container(
-                                              margin: const EdgeInsets.all(
-                                                AppTheme.spacingXS,
-                                              ),
-                                              padding: const EdgeInsets.all(
-                                                AppTheme.spacingXS,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    AppTheme.infoColor,
-                                                    AppTheme.infoColor
-                                                        .withOpacity(0.7),
-                                                  ],
+                                        items: [
+                                          DropdownMenuItem(
+                                            value: 'all',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.all_inclusive,
+                                                  size: 18,
+                                                  color: AppTheme.infoColor,
                                                 ),
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      AppTheme.radiusM,
-                                                    ),
-                                                boxShadow: AppTheme.shadowS,
-                                              ),
-                                              child: const Icon(
-                                                Icons.verified_user,
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
-                                            ),
-                                            style: AppTheme.bodyMedium.copyWith(
-                                              color: AppTheme.textPrimaryColor,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            items: [
-                                              DropdownMenuItem(
-                                                value: 'all',
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal:
-                                                            AppTheme.spacingS,
-                                                        vertical:
-                                                            AppTheme.spacingXS,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.infoColor
-                                                        .withOpacity(0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          AppTheme.radiusS,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: AppTheme.infoColor
-                                                          .withOpacity(0.3),
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.all_inclusive,
-                                                        size: 16,
-                                                        color:
-                                                            AppTheme.infoColor,
-                                                      ),
-                                                      const SizedBox(
-                                                        width:
-                                                            AppTheme.spacingS,
-                                                      ),
-                                                      Text(
-                                                        'جميع الحالات',
-                                                        style: AppTheme
-                                                            .bodySmall
-                                                            .copyWith(
-                                                              color:
-                                                                  AppTheme
-                                                                      .infoColor,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                const SizedBox(
+                                                  width: AppTheme.spacingS,
                                                 ),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: 'validated',
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal:
-                                                            AppTheme.spacingS,
-                                                        vertical:
-                                                            AppTheme.spacingXS,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.successColor
-                                                        .withOpacity(0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          AppTheme.radiusS,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: AppTheme
-                                                          .successColor
-                                                          .withOpacity(0.3),
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.verified,
-                                                        size: 16,
+                                                Text(
+                                                  'جميع الحالات',
+                                                  style: AppTheme.bodyMedium,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'validated',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.verified,
+                                                  size: 18,
+                                                  color: AppTheme.successColor,
+                                                ),
+                                                const SizedBox(
+                                                  width: AppTheme.spacingS,
+                                                ),
+                                                Text(
+                                                  'موثقون',
+                                                  style: AppTheme.bodyMedium
+                                                      .copyWith(
                                                         color:
                                                             AppTheme
                                                                 .successColor,
                                                       ),
-                                                      const SizedBox(
-                                                        width:
-                                                            AppTheme.spacingS,
-                                                      ),
-                                                      Text(
-                                                        'موثقون',
-                                                        style: AppTheme
-                                                            .bodySmall
-                                                            .copyWith(
-                                                              color:
-                                                                  AppTheme
-                                                                      .successColor,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ),
                                                 ),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: 'unvalidated',
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal:
-                                                            AppTheme.spacingS,
-                                                        vertical:
-                                                            AppTheme.spacingXS,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.warningColor
-                                                        .withOpacity(0.1),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          AppTheme.radiusS,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: AppTheme
-                                                          .warningColor
-                                                          .withOpacity(0.3),
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.pending,
-                                                        size: 16,
+                                              ],
+                                            ),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'unvalidated',
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.pending,
+                                                  size: 18,
+                                                  color: AppTheme.warningColor,
+                                                ),
+                                                const SizedBox(
+                                                  width: AppTheme.spacingS,
+                                                ),
+                                                Text(
+                                                  'غير موثقين',
+                                                  style: AppTheme.bodyMedium
+                                                      .copyWith(
                                                         color:
                                                             AppTheme
                                                                 .warningColor,
                                                       ),
-                                                      const SizedBox(
-                                                        width:
-                                                            AppTheme.spacingS,
-                                                      ),
-                                                      Text(
-                                                        'غير موثقين',
-                                                        style: AppTheme
-                                                            .bodySmall
-                                                            .copyWith(
-                                                              color:
-                                                                  AppTheme
-                                                                      .warningColor,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ),
                                                 ),
-                                              ),
-                                            ],
-                                            onChanged: (value) {
-                                              setState(() {
-                                                _selectedValidationFilter =
-                                                    value ?? 'all';
-                                              });
-                                            },
+                                              ],
+                                            ),
                                           ),
-                                        ),
+                                        ],
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedValidationFilter =
+                                                value ?? 'all';
+                                          });
+                                        },
                                       ),
                                     ],
                                   );
@@ -1774,202 +1577,115 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                       // Dropdown filtre avec design moderne
                                       Expanded(
                                         flex: 1,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                AppTheme.backgroundColor,
-                                                AppTheme.backgroundColor
-                                                    .withOpacity(0.8),
-                                              ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
+                                        child: DropdownButtonFormField<String>(
+                                          value: _selectedRoleFilter,
+                                          dropdownColor: Colors.white,
+                                          decoration: InputDecoration(
+                                            labelText: 'فلترة حسب الدور',
+                                            labelStyle: AppTheme.bodyMedium
+                                                .copyWith(
+                                                  color:
+                                                      AppTheme
+                                                          .textSecondaryColor,
+                                                ),
+                                            prefixIcon: Icon(
+                                              Icons.filter_list,
+                                              color: AppTheme.primaryColor,
+                                              size: 20,
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              AppTheme.radiusL,
-                                            ),
-                                            border: Border.all(
-                                              color: AppTheme.successColor
-                                                  .withOpacity(0.3),
-                                              width: 1.5,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: AppTheme.successColor
-                                                    .withOpacity(0.1),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                              borderSide: BorderSide(
+                                                color: AppTheme.dividerColor,
                                               ),
-                                            ],
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                              borderSide: BorderSide(
+                                                color: AppTheme.dividerColor,
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                              borderSide: BorderSide(
+                                                color: AppTheme.primaryColor,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: AppTheme.spacingS,
+                                                  vertical: AppTheme.spacingS,
+                                                ),
                                           ),
-                                          child: DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: _selectedRoleFilter,
-                                              isExpanded: true,
-                                              icon: Container(
-                                                margin: const EdgeInsets.all(
-                                                  AppTheme.spacingXS,
-                                                ),
-                                                padding: const EdgeInsets.all(
-                                                  AppTheme.spacingXS,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      AppTheme.successColor,
-                                                      AppTheme.successColor
-                                                          .withOpacity(0.7),
-                                                    ],
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        AppTheme.radiusM,
-                                                      ),
-                                                  boxShadow: AppTheme.shadowS,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.filter_list,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                ),
-                                              ),
-                                              style: AppTheme.bodyMedium
-                                                  .copyWith(
+                                          items: [
+                                            DropdownMenuItem(
+                                              value: 'all',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.all_inclusive,
+                                                    size: 18,
                                                     color:
-                                                        AppTheme
-                                                            .textPrimaryColor,
-                                                    fontWeight: FontWeight.w500,
+                                                        AppTheme.primaryColor,
                                                   ),
-                                              items: [
-                                                DropdownMenuItem(
-                                                  value: 'all',
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              AppTheme.spacingS,
-                                                          vertical:
-                                                              AppTheme
-                                                                  .spacingXS,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme
-                                                          .primaryColor
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            AppTheme.radiusS,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: AppTheme
-                                                            .primaryColor
-                                                            .withOpacity(0.3),
-                                                        width: 1,
+                                                  const SizedBox(
+                                                    width: AppTheme.spacingS,
+                                                  ),
+                                                  Text(
+                                                    'جميع الأدوار',
+                                                    style: AppTheme.bodyMedium,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            ...UserRole.values.map((role) {
+                                              return DropdownMenuItem<String>(
+                                                value: role.code,
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      _getRoleIcon(role),
+                                                      size: 18,
+                                                      color: _getRoleColor(
+                                                        role,
                                                       ),
                                                     ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.all_inclusive,
-                                                          size: 16,
-                                                          color:
-                                                              AppTheme
-                                                                  .primaryColor,
-                                                        ),
-                                                        const SizedBox(
-                                                          width:
-                                                              AppTheme.spacingS,
-                                                        ),
-                                                        Text(
-                                                          'جميع الأدوار',
-                                                          style: AppTheme
-                                                              .bodySmall
-                                                              .copyWith(
-                                                                color:
-                                                                    AppTheme
-                                                                        .primaryColor,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                        ),
-                                                      ],
+                                                    const SizedBox(
+                                                      width: AppTheme.spacingS,
                                                     ),
-                                                  ),
-                                                ),
-                                                ...UserRole.values.map((role) {
-                                                  return DropdownMenuItem<
-                                                    String
-                                                  >(
-                                                    value: role.code,
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal:
-                                                                AppTheme
-                                                                    .spacingS,
-                                                            vertical:
-                                                                AppTheme
-                                                                    .spacingXS,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: _getRoleColor(
-                                                          role,
-                                                        ).withOpacity(0.1),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              AppTheme.radiusS,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: _getRoleColor(
-                                                            role,
-                                                          ).withOpacity(0.3),
-                                                          width: 1,
-                                                        ),
-                                                      ),
-                                                      child: Row(
-                                                        children: [
-                                                          Icon(
-                                                            _getRoleIcon(role),
-                                                            size: 16,
+                                                    Text(
+                                                      role.displayName,
+                                                      style: AppTheme.bodyMedium
+                                                          .copyWith(
                                                             color:
                                                                 _getRoleColor(
                                                                   role,
                                                                 ),
                                                           ),
-                                                          const SizedBox(
-                                                            width:
-                                                                AppTheme
-                                                                    .spacingS,
-                                                          ),
-                                                          Text(
-                                                            role.displayName,
-                                                            style: AppTheme
-                                                                .bodySmall
-                                                                .copyWith(
-                                                                  color:
-                                                                      _getRoleColor(
-                                                                        role,
-                                                                      ),
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                ),
-                                                          ),
-                                                        ],
-                                                      ),
                                                     ),
-                                                  );
-                                                }),
-                                              ],
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  _selectedRoleFilter =
-                                                      value ?? 'all';
-                                                });
-                                              },
-                                            ),
-                                          ),
+                                                  ],
+                                                ),
+                                              );
+                                            }),
+                                          ],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedRoleFilter =
+                                                  value ?? 'all';
+                                            });
+                                          },
                                         ),
                                       ),
                                       const SizedBox(width: AppTheme.spacingS),
@@ -1977,249 +1693,135 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                       // Dropdown filtre التحقق للشاشات الكبيرة
                                       Expanded(
                                         flex: 1,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                AppTheme.backgroundColor,
-                                                AppTheme.backgroundColor
-                                                    .withOpacity(0.8),
-                                              ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
+                                        child: DropdownButtonFormField<String>(
+                                          value: _selectedValidationFilter,
+                                          dropdownColor: Colors.white,
+                                          decoration: InputDecoration(
+                                            labelText: 'فلترة حسب التحقق',
+                                            labelStyle: AppTheme.bodyMedium
+                                                .copyWith(
+                                                  color:
+                                                      AppTheme
+                                                          .textSecondaryColor,
+                                                ),
+                                            prefixIcon: Icon(
+                                              Icons.verified_user,
+                                              color: AppTheme.infoColor,
+                                              size: 20,
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              AppTheme.radiusL,
-                                            ),
-                                            border: Border.all(
-                                              color: AppTheme.infoColor
-                                                  .withOpacity(0.3),
-                                              width: 1.5,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: AppTheme.infoColor
-                                                    .withOpacity(0.1),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                              borderSide: BorderSide(
+                                                color: AppTheme.dividerColor,
                                               ),
-                                            ],
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                              borderSide: BorderSide(
+                                                color: AppTheme.dividerColor,
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppTheme.radiusM,
+                                                  ),
+                                              borderSide: BorderSide(
+                                                color: AppTheme.primaryColor,
+                                                width: 2,
+                                              ),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: AppTheme.spacingS,
+                                                  vertical: AppTheme.spacingS,
+                                                ),
                                           ),
-                                          child: DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: _selectedValidationFilter,
-                                              isExpanded: true,
-                                              icon: Container(
-                                                margin: const EdgeInsets.all(
-                                                  AppTheme.spacingXS,
-                                                ),
-                                                padding: const EdgeInsets.all(
-                                                  AppTheme.spacingXS,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      AppTheme.infoColor,
-                                                      AppTheme.infoColor
-                                                          .withOpacity(0.7),
-                                                    ],
+                                          items: [
+                                            DropdownMenuItem(
+                                              value: 'all',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.all_inclusive,
+                                                    size: 18,
+                                                    color: AppTheme.infoColor,
                                                   ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        AppTheme.radiusM,
-                                                      ),
-                                                  boxShadow: AppTheme.shadowS,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.verified_user,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                ),
+                                                  const SizedBox(
+                                                    width: AppTheme.spacingS,
+                                                  ),
+                                                  Text(
+                                                    'جميع الحالات',
+                                                    style: AppTheme.bodyMedium,
+                                                  ),
+                                                ],
                                               ),
-                                              style: AppTheme.bodyMedium
-                                                  .copyWith(
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'validated',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.verified,
+                                                    size: 18,
                                                     color:
-                                                        AppTheme
-                                                            .textPrimaryColor,
-                                                    fontWeight: FontWeight.w500,
+                                                        AppTheme.successColor,
                                                   ),
-                                              items: [
-                                                DropdownMenuItem(
-                                                  value: 'all',
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              AppTheme.spacingS,
-                                                          vertical:
-                                                              AppTheme
-                                                                  .spacingXS,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme.infoColor
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            AppTheme.radiusS,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: AppTheme
-                                                            .infoColor
-                                                            .withOpacity(0.3),
-                                                        width: 1,
-                                                      ),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.all_inclusive,
-                                                          size: 16,
-                                                          color:
-                                                              AppTheme
-                                                                  .infoColor,
-                                                        ),
-                                                        const SizedBox(
-                                                          width:
-                                                              AppTheme.spacingS,
-                                                        ),
-                                                        Text(
-                                                          'جميع الحالات',
-                                                          style: AppTheme
-                                                              .bodySmall
-                                                              .copyWith(
-                                                                color:
-                                                                    AppTheme
-                                                                        .infoColor,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
+                                                  const SizedBox(
+                                                    width: AppTheme.spacingS,
                                                   ),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: 'validated',
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              AppTheme.spacingS,
-                                                          vertical:
-                                                              AppTheme
-                                                                  .spacingXS,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme
-                                                          .successColor
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            AppTheme.radiusS,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: AppTheme
-                                                            .successColor
-                                                            .withOpacity(0.3),
-                                                        width: 1,
-                                                      ),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.verified,
-                                                          size: 16,
+                                                  Text(
+                                                    'موثقون',
+                                                    style: AppTheme.bodyMedium
+                                                        .copyWith(
                                                           color:
                                                               AppTheme
                                                                   .successColor,
                                                         ),
-                                                        const SizedBox(
-                                                          width:
-                                                              AppTheme.spacingS,
-                                                        ),
-                                                        Text(
-                                                          'موثقون',
-                                                          style: AppTheme
-                                                              .bodySmall
-                                                              .copyWith(
-                                                                color:
-                                                                    AppTheme
-                                                                        .successColor,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
                                                   ),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: 'unvalidated',
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              AppTheme.spacingS,
-                                                          vertical:
-                                                              AppTheme
-                                                                  .spacingXS,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme
-                                                          .warningColor
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            AppTheme.radiusS,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: AppTheme
-                                                            .warningColor
-                                                            .withOpacity(0.3),
-                                                        width: 1,
-                                                      ),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.pending,
-                                                          size: 16,
+                                                ],
+                                              ),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'unvalidated',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.pending,
+                                                    size: 18,
+                                                    color:
+                                                        AppTheme.warningColor,
+                                                  ),
+                                                  const SizedBox(
+                                                    width: AppTheme.spacingS,
+                                                  ),
+                                                  Text(
+                                                    'غير موثقين',
+                                                    style: AppTheme.bodyMedium
+                                                        .copyWith(
                                                           color:
                                                               AppTheme
                                                                   .warningColor,
                                                         ),
-                                                        const SizedBox(
-                                                          width:
-                                                              AppTheme.spacingS,
-                                                        ),
-                                                        Text(
-                                                          'غير موثقين',
-                                                          style: AppTheme
-                                                              .bodySmall
-                                                              .copyWith(
-                                                                color:
-                                                                    AppTheme
-                                                                        .warningColor,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
                                                   ),
-                                                ),
-                                              ],
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  _selectedValidationFilter =
-                                                      value ?? 'all';
-                                                });
-                                              },
+                                                ],
+                                              ),
                                             ),
-                                          ),
+                                          ],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedValidationFilter =
+                                                  value ?? 'all';
+                                            });
+                                          },
                                         ),
                                       ),
                                     ],

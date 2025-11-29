@@ -196,7 +196,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
     if (_selectedVersion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('يرجى اختيار مسابقة'),
+          content: Text('يرجى اختيار النسخة'),
           backgroundColor: Colors.red,
         ),
       );
@@ -281,7 +281,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
           final push = PushNotificationService();
           final currentUserId = Supabase.instance.client.auth.currentUser?.id;
           await push.sendNotification(
-            title: '📦 تمت إضافة أرشيف للمسابقة',
+            title: '📦 تمت إضافة أرشيف للنسخة',
             body:
                 'تمت إضافة ${createdImages > 0 ? '$createdImages صورة' : ''}${createdImages > 0 && createdVideos > 0 ? ' و ' : ''}${createdVideos > 0 ? '$createdVideos فيديو' : ''} في نسخة "${_selectedVersion!.name}"',
             type: 'info',
@@ -350,14 +350,14 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'اختيار المسابقة',
+                                  'اختيار النسخة',
                                   style: AppTheme.headingMedium,
                                 ),
                                 const SizedBox(height: AppTheme.spacingS),
                                 DropdownButtonFormField<CompetitionVersion>(
                                   value: _selectedVersion,
                                   decoration: InputDecoration(
-                                    labelText: 'المسابقة',
+                                    labelText: 'النسخة',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(
                                         AppTheme.radiusM,
@@ -381,7 +381,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                   },
                                   validator: (value) {
                                     if (value == null) {
-                                      return 'يرجى اختيار مسابقة';
+                                      return 'يرجى اختيار النسخة';
                                     }
                                     return null;
                                   },

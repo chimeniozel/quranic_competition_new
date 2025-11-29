@@ -256,7 +256,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
             ),
             const SizedBox(height: AppTheme.spacingS),
             Text(
-              'مرحباً بك في لوحة تحكيم مسابقة أهل القرآن',
+              'مرحباً بك في لوحة تحكيم مسابقة أهل القرآن الواتسابية',
               style: AppTheme.bodyMedium.copyWith(
                 color: Colors.white.withOpacity(0.9),
               ),

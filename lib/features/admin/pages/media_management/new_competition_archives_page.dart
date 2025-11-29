@@ -165,7 +165,7 @@ class _NewCompetitionArchivesPageState
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'مسابقة قرآنية',
+                      'مسابقة أهل القرآن الواتسابية',
                       style: AppTheme.bodyMedium.copyWith(
                         color: AppTheme.infoColor,
                         fontWeight: FontWeight.w500,

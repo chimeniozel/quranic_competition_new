@@ -67,68 +67,73 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Champ de mot de passe
-        TextFormField(
-          controller: widget.controller,
-          obscureText: _obscurePassword,
-          decoration: InputDecoration(
-            labelText: widget.labelText,
-            prefixIcon: const Icon(Icons.lock_outline),
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.controller.text.isNotEmpty)
+        SizedBox(
+          height: 56,
+          child: TextFormField(
+            controller: widget.controller,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              labelText: widget.labelText,
+              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.controller.text.isNotEmpty)
+                    IconButton(
+                      icon: Icon(
+                        _validationResult?.isValid == true
+                            ? Icons.check_circle_outline
+                            : Icons.error_outline,
+                        size: 20,
+                        color:
+                            _validationResult?.isValid == true
+                                ? Colors.green
+                                : Colors.red,
+                      ),
+                      onPressed: null,
+                    ),
                   IconButton(
                     icon: Icon(
-                      _validationResult?.isValid == true
-                          ? Icons.check_circle_outline
-                          : Icons.error_outline,
-                      color:
-                          _validationResult?.isValid == true
-                              ? Colors.green
-                              : Colors.red,
+                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      size: 20,
                     ),
-                    onPressed: null,
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
                   ),
-                IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                ),
-              ],
+                ],
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                borderSide: const BorderSide(color: AppTheme.dividerColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                borderSide: const BorderSide(color: AppTheme.dividerColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                borderSide: const BorderSide(color: AppTheme.errorColor),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingS,
+                vertical: AppTheme.spacingS,
+              ),
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: const BorderSide(color: AppTheme.dividerColor),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: const BorderSide(color: AppTheme.dividerColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: const BorderSide(color: AppTheme.errorColor),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppTheme.spacingS,
-              vertical: AppTheme.spacingS,
-            ),
+            validator: widget.validator ?? _defaultValidator,
           ),
-          validator: widget.validator ?? _defaultValidator,
         ),
 
         // Indicateur de force et validation
@@ -342,27 +347,54 @@ class _ConfirmPasswordFieldWidgetState
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: widget.controller,
-      obscureText: _obscurePassword,
-      decoration: InputDecoration(
-        labelText: widget.labelText,
-        prefixIcon: const Icon(Icons.lock_outline),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+    return SizedBox(
+      height: 56,
+      child: TextFormField(
+        controller: widget.controller,
+        obscureText: _obscurePassword,
+        decoration: InputDecoration(
+          labelText: widget.labelText,
+          prefixIcon: const Icon(Icons.lock_outline, size: 20),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+              size: 20,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
           ),
-          onPressed: () {
-            setState(() {
-              _obscurePassword = !_obscurePassword;
-            });
-          },
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            borderSide: const BorderSide(color: AppTheme.dividerColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            borderSide: const BorderSide(color: AppTheme.dividerColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            borderSide: const BorderSide(color: AppTheme.errorColor),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.spacingS,
+            vertical: AppTheme.spacingS,
+          ),
         ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: Colors.grey.shade50,
+        validator: _validateConfirmPassword,
       ),
-      validator: _validateConfirmPassword,
     );
   }
 

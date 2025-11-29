@@ -159,7 +159,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                           ),
                         ),
                         Text(
-                          'مسابقة قرآنية',
+                          'مسابقة أهل القرآن الواتسابية',
                           style: AppTheme.labelMedium.copyWith(
                             color: AppTheme.primaryColor,
                           ),

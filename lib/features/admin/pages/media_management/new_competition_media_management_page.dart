@@ -710,7 +710,7 @@ class _NewCompetitionMediaManagementPageState
                       // Header Section
                       DashboardSection(
                         title: 'إدارة الأرشيف',
-                        subtitle: 'إدارة وسائط الأرشيف للمسابقة',
+                        subtitle: 'إدارة وسائط الأرشيف للنسخة',
                         child: Row(
                           children: [
                             Expanded(

@@ -486,7 +486,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 passwordController: _passwordController,
                 labelText: 'تأكيد كلمة المرور',
               ),
-              const SizedBox(height: AppTheme.spacingXL),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Bouton d'inscription
               _isLoading

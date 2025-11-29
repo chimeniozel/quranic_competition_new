@@ -134,7 +134,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحميل قواعد التجويد: $e'),
+            content: Text('خطأ في تحميل أحكام التجويد: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -212,13 +212,54 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   }
 
   String _extractVideoId(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return '';
+    if (url.isEmpty) return '';
 
-    if (uri.host == 'youtu.be') {
-      return uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
-    } else if (uri.host.contains('youtube.com')) {
-      return uri.queryParameters['v'] ?? '';
+    try {
+      // Handle youtu.be short URLs
+      if (url.contains('youtu.be/')) {
+        final parts = url.split('youtu.be/');
+        if (parts.length > 1) {
+          final videoId = parts[1].split('?')[0].split('&')[0];
+          return videoId;
+        }
+      }
+
+      // Handle youtube.com URLs
+      if (url.contains('youtube.com')) {
+        final uri = Uri.tryParse(url);
+        if (uri != null) {
+          // Try query parameter first
+          final videoId = uri.queryParameters['v'];
+          if (videoId != null && videoId.isNotEmpty) {
+            return videoId;
+          }
+
+          // Try path segments for embed URLs
+          if (uri.pathSegments.contains('embed')) {
+            final embedIndex = uri.pathSegments.indexOf('embed');
+            if (embedIndex + 1 < uri.pathSegments.length) {
+              return uri.pathSegments[embedIndex + 1].split('?')[0];
+            }
+          }
+
+          // Try watch path
+          if (uri.pathSegments.contains('watch') &&
+              uri.queryParameters.containsKey('v')) {
+            return uri.queryParameters['v']!;
+          }
+        }
+      }
+
+      // Try to extract from any YouTube URL pattern
+      final regex = RegExp(
+        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
+      );
+      final match = regex.firstMatch(url);
+      if (match != null && match.groupCount >= 1) {
+        return match.group(1) ?? '';
+      }
+    } catch (e) {
+      print('Error extracting video ID: $e');
     }
 
     return '';
@@ -250,7 +291,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                     ),
                     const SizedBox(width: AppTheme.spacingS),
                     Text(
-                      'البحث في قواعد التجويد',
+                      'البحث في أحكام التجويد',
                       style: AppTheme.labelLarge.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -262,7 +303,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                   controller: _searchController,
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'ابحث في قواعد التجويد...',
+                    hintText: 'ابحث في أحكام التجويد...',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon:
                         _searchText.isNotEmpty
@@ -496,78 +537,23 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                 ],
 
                 if (rule.type == TajweedType.video &&
-                    rule.videoUrl != null) ...[
+                    rule.videoUrl != null &&
+                    rule.videoUrl!.isNotEmpty) ...[
                   GestureDetector(
                     onTap: () => _launchVideo(rule.videoUrl!),
-                    child: Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                        border: Border.all(
-                          color: AppTheme.errorColor.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
+                          _buildVideoThumbnail(rule.videoUrl!),
                           Container(
                             padding: const EdgeInsets.all(AppTheme.spacingS),
-                            decoration: BoxDecoration(
-                              color: AppTheme.errorColor,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.play_circle_filled,
-                              color: Colors.white,
-                              size: 28,
+                              color: Colors.white.withOpacity(0.7),
+                              size: 50,
                             ),
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.video_library,
-                                      color: AppTheme.errorColor,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'فيديو تعليمي على يوتيوب',
-                                      style: AppTheme.labelMedium.copyWith(
-                                        color: AppTheme.errorColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'اضغط لمشاهدة الفيديو في تطبيق يوتيوب',
-                                  style: AppTheme.labelSmall.copyWith(
-                                    color: AppTheme.errorColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _extractVideoId(rule.videoUrl!),
-                                  style: AppTheme.labelSmall.copyWith(
-                                    color: AppTheme.errorColor.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.open_in_new,
-                            color: AppTheme.errorColor,
-                            size: 20,
                           ),
                         ],
                       ),
@@ -671,17 +657,85 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  Widget _buildVideoThumbnail(String videoUrl) {
+    final videoId = _extractVideoId(videoUrl);
+
+    if (videoId.isEmpty) {
+      return Container(
+        height: 200,
+        width: double.infinity,
+        color: AppTheme.backgroundColor,
+        child: const Center(
+          child: Icon(
+            Icons.video_library,
+            size: 50,
+            color: AppTheme.textSecondaryColor,
+          ),
+        ),
+      );
+    }
+
+    // Try maxresdefault first, then hqdefault as fallback
+    return Image.network(
+      'https://img.youtube.com/vi/$videoId/maxresdefault.jpg',
+      width: double.infinity,
+      height: 200,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: 200,
+          width: double.infinity,
+          color: AppTheme.backgroundColor,
+          child: Center(
+            child: CircularProgressIndicator(
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to hqdefault if maxresdefault fails
+        return Image.network(
+          'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+          width: double.infinity,
+          height: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // Final fallback
+            return Container(
+              height: 200,
+              width: double.infinity,
+              color: AppTheme.backgroundColor,
+              child: const Center(
+                child: Icon(
+                  Icons.video_library,
+                  size: 50,
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildEmptyState() {
     return EmptyState(
       icon: Icons.auto_stories,
       title:
           _searchQuery.isNotEmpty || _selectedType != null
-              ? 'لا توجد قواعد تجويد تطابق البحث'
-              : 'لا توجد قواعد تجويد متاحة حالياً',
+              ? 'لا توجد أحكام تجويد تطابق البحث'
+              : 'لا توجد أحكام تجويد متاحة حالياً',
       subtitle:
           _searchQuery.isNotEmpty || _selectedType != null
               ? 'جرب البحث بكلمات مختلفة أو غير الفلتر'
-              : 'سيتم إضافة قواعد جديدة قريباً',
+              : 'سيتم إضافة أحكام جديدة قريباً',
     );
   }
 

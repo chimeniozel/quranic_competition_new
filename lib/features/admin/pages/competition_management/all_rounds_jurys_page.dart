@@ -764,7 +764,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
         child: EmptyState(
           icon: Icons.event_busy,
           title: 'لا توجد جولات',
-          subtitle: 'لم يتم إنشاء أي جولات لهذه المسابقة بعد',
+          subtitle: 'لم يتم إنشاء أي جولات لهذه النسخة بعد',
         ),
       );
     }

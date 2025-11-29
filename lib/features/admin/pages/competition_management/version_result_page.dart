@@ -154,7 +154,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
       _showErrorSnackBar('ليس لديك صلاحية نشر النتائج');
       return;
     }
-    
+
     if (_isLockedByNextRound) {
       _showErrorSnackBar(
         'لا يمكن تعديل نتائج هذه الجولة بعد نشر الجولة التالية.',
@@ -308,7 +308,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
       _showErrorSnackBar('ليس لديك صلاحية إلغاء نشر النتائج');
       return;
     }
-    
+
     if (_isLockedByNextRound) {
       _showErrorSnackBar(
         'لا يمكن تعديل نتائج هذه الجولة بعد نشر الجولة التالية.',
@@ -754,7 +754,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'المسابقة: ${widget.version.name} - ${widget.version.year}',
+                    '${widget.version.name} - ${widget.version.year}',
                     style: AppTheme.bodySmall.copyWith(
                       color: AppTheme.textSecondaryColor,
                     ),

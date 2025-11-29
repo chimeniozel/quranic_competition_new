@@ -61,16 +61,112 @@ class TajweedRuleDetailPage extends StatelessWidget {
   }
 
   String _extractVideoId(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return '';
+    if (url.isEmpty) return '';
+    
+    try {
+      // Handle youtu.be short URLs
+      if (url.contains('youtu.be/')) {
+        final parts = url.split('youtu.be/');
+        if (parts.length > 1) {
+          final videoId = parts[1].split('?')[0].split('&')[0];
+          return videoId;
+        }
+      }
+      
+      // Handle youtube.com URLs
+      if (url.contains('youtube.com')) {
+        final uri = Uri.tryParse(url);
+        if (uri != null) {
+          // Try query parameter first
+          final videoId = uri.queryParameters['v'];
+          if (videoId != null && videoId.isNotEmpty) {
+            return videoId;
+          }
+          
+          // Try path segments for embed URLs
+          if (uri.pathSegments.contains('embed')) {
+            final embedIndex = uri.pathSegments.indexOf('embed');
+            if (embedIndex + 1 < uri.pathSegments.length) {
+              return uri.pathSegments[embedIndex + 1].split('?')[0];
+            }
+          }
+          
+          // Try watch path
+          if (uri.pathSegments.contains('watch') && uri.queryParameters.containsKey('v')) {
+            return uri.queryParameters['v']!;
+          }
+        }
+      }
+      
+      // Try to extract from any YouTube URL pattern
+      final regex = RegExp(r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})');
+      final match = regex.firstMatch(url);
+      if (match != null && match.groupCount >= 1) {
+        return match.group(1) ?? '';
+      }
+    } catch (e) {
+      print('Error extracting video ID: $e');
+    }
+    
+    return '';
+  }
 
-    if (uri.host == 'youtu.be') {
-      return uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
-    } else if (uri.host.contains('youtube.com')) {
-      return uri.queryParameters['v'] ?? '';
+  Widget _buildVideoThumbnail(String videoUrl) {
+    final videoId = _extractVideoId(videoUrl);
+    
+    if (videoId.isEmpty) {
+      return Container(
+        height: 250,
+        width: double.infinity,
+        color: AppTheme.backgroundColor,
+        child: const Center(
+          child: Icon(Icons.video_library, size: 50, color: AppTheme.textSecondaryColor),
+        ),
+      );
     }
 
-    return '';
+    // Try maxresdefault first, then hqdefault as fallback
+    return Image.network(
+      'https://img.youtube.com/vi/$videoId/maxresdefault.jpg',
+      width: double.infinity,
+      height: 250,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: 250,
+          width: double.infinity,
+          color: AppTheme.backgroundColor,
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to hqdefault if maxresdefault fails
+        return Image.network(
+          'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+          width: double.infinity,
+          height: 250,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // Final fallback
+            return Container(
+              height: 250,
+              width: double.infinity,
+              color: AppTheme.backgroundColor,
+              child: const Center(
+                child: Icon(Icons.video_library, size: 50, color: AppTheme.textSecondaryColor),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -170,67 +266,25 @@ class TajweedRuleDetailPage extends StatelessWidget {
 
                   // Vidéo si c'est une vidéo
                   if (rule.type == TajweedType.video &&
-                      rule.videoUrl != null) ...[
+                      rule.videoUrl != null &&
+                      rule.videoUrl!.isNotEmpty) ...[
                     GestureDetector(
                       onTap: () => _launchVideo(rule.videoUrl!),
-                      child: ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.errorColor,
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: const Icon(
-                                  Icons.play_circle_filled,
-                                  color: Colors.white,
-                                  size: 40,
-                                ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            _buildVideoThumbnail(rule.videoUrl!),
+                            Container(
+                              padding: const EdgeInsets.all(AppTheme.spacingS),
+                              child: Icon(
+                                Icons.play_circle_filled,
+                                color: Colors.white.withOpacity(0.7),
+                                size: 60,
                               ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              Text(
-                                'مشاهدة الفيديو التعليمي',
-                                style: AppTheme.labelLarge.copyWith(
-                                  color: AppTheme.errorColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'اضغط لمشاهدة الفيديو في تطبيق يوتيوب',
-                                style: AppTheme.labelMedium.copyWith(
-                                  color: AppTheme.errorColor,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.youtube_searched_for,
-                                    color: AppTheme.errorColor,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Text(
-                                    'ID: ${_extractVideoId(rule.videoUrl!)}',
-                                    style: AppTheme.labelSmall.copyWith(
-                                      color: AppTheme.errorColor.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -358,7 +412,8 @@ class TajweedRuleDetailPage extends StatelessWidget {
                         Expanded(
                           child: PrimaryButton(
                             onPressed: () => _launchVideo(rule.videoUrl!),
-                            text: 'مشاهدة الفيديو',
+                            text: 'فتح الفيديو',
+                            icon: Icons.play_arrow,
                           ),
                         ),
                     ],

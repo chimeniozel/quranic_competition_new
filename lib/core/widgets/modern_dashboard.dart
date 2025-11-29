@@ -446,34 +446,66 @@ class QuickActionGrid extends StatelessWidget {
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: AppTheme.spacingS,
         mainAxisSpacing: AppTheme.spacingS,
-        childAspectRatio: 1.4,
+        childAspectRatio: 1.2,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
         final action = actions[index];
-        return ModernCard(
-          onTap: action.onTap,
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.1),
+        return SizedBox(
+          height: 100,
+          child: ModernCard(
+            onTap: action.onTap,
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              if (action.imagePath != null)
+                ClipRRect(
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  child: Image.asset(
+                    action.imagePath!,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: action.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        ),
+                        child: action.icon != null
+                            ? Icon(action.icon, color: action.color, size: 20)
+                            : const SizedBox.shrink(),
+                      );
+                    },
+                  ),
+                )
+              else if (action.icon != null)
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  ),
+                  child: Icon(action.icon, color: action.color, size: 20),
                 ),
-                child: Icon(action.icon, color: action.color, size: 20),
-              ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppTheme.spacingS),
               Text(
                 action.title,
-                style: AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                style: AppTheme.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryColor,
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -484,13 +516,15 @@ class QuickActionGrid extends StatelessWidget {
 /// Modèle pour les actions rapides
 class QuickAction {
   final String title;
-  final IconData icon;
+  final IconData? icon;
+  final String? imagePath;
   final Color color;
   final VoidCallback? onTap;
 
   const QuickAction({
     required this.title,
-    required this.icon,
+    this.icon,
+    this.imagePath,
     required this.color,
     this.onTap,
   });

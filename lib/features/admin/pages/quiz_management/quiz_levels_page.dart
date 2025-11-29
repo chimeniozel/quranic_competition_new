@@ -85,7 +85,6 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
   }
 
   Future<void> _deleteLevel(QuizLevel level) async {
-    
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -259,107 +258,106 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                       break;
                   }
                 },
-                itemBuilder:
-                    (context) {
-                      final items = <PopupMenuEntry<String>>[];
-                      final permissionService = PermissionService();
-                      
-                      // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
-                      if (permissionService.canModifySync()) {
-                        items.add(
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.edit,
-                                  size: 16,
-                                  color: AppTheme.primaryColor,
-                                ),
-                                SizedBox(width: 8),
-                                Text('تعديل'),
-                              ],
+                itemBuilder: (context) {
+                  final items = <PopupMenuEntry<String>>[];
+                  final permissionService = PermissionService();
+
+                  // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canModifySync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit,
+                              size: 16,
+                              color: AppTheme.primaryColor,
                             ),
-                          ),
-                        );
-                      }
-                      
-                      // عنصر الأسئلة متاح للجميع (للقراءة فقط)
-                      items.add(
-                        PopupMenuItem(
-                          value: 'questions',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.quiz,
-                                size: 16,
-                                color: AppTheme.successColor,
-                              ),
-                              SizedBox(width: 8),
-                              Text('إدارة الأسئلة'),
-                            ],
-                          ),
+                            SizedBox(width: 8),
+                            Text('تعديل'),
+                          ],
                         ),
-                      );
-                      
-                      // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
-                      if (permissionService.canModifySync()) {
-                        items.add(
-                          PopupMenuItem(
-                            value: 'toggle',
-                            child: Row(
-                              children: [
-                                Icon(
+                      ),
+                    );
+                  }
+
+                  // عنصر الأسئلة متاح للجميع (للقراءة فقط)
+                  items.add(
+                    PopupMenuItem(
+                      value: 'questions',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.quiz,
+                            size: 16,
+                            color: AppTheme.successColor,
+                          ),
+                          SizedBox(width: 8),
+                          Text('إدارة الأسئلة'),
+                        ],
+                      ),
+                    ),
+                  );
+
+                  // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canModifySync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'toggle',
+                        child: Row(
+                          children: [
+                            Icon(
+                              level.isActive
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              size: 16,
+                              color:
                                   level.isActive
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  size: 16,
-                                  color:
-                                      level.isActive
-                                          ? AppTheme.warningColor
-                                          : AppTheme.successColor,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                                  style: TextStyle(
-                                    color:
-                                        level.isActive
-                                            ? AppTheme.warningColor
-                                            : AppTheme.successColor,
-                                  ),
-                                ),
-                              ],
+                                      ? AppTheme.warningColor
+                                      : AppTheme.successColor,
                             ),
-                          ),
-                        );
-                      }
-                      
-                      // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
-                      if (permissionService.canDeleteSync()) {
-                        items.add(
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.delete,
-                                  size: 16,
-                                  color: AppTheme.errorColor,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'حذف',
-                                  style: TextStyle(color: AppTheme.errorColor),
-                                ),
-                              ],
+                            const SizedBox(width: 8),
+                            Text(
+                              level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                              style: TextStyle(
+                                color:
+                                    level.isActive
+                                        ? AppTheme.warningColor
+                                        : AppTheme.successColor,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-                      
-                      return items;
-                    },
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canDeleteSync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete,
+                              size: 16,
+                              color: AppTheme.errorColor,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'حذف',
+                              style: TextStyle(color: AppTheme.errorColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return items;
+                },
               ),
             ],
           ),
@@ -372,7 +370,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'مستويات المسابقة',
+        title: 'أسئلة و أجوبة في القرآن',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -399,8 +397,8 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                     children: [
                       // Header Section
                       DashboardSection(
-                        title: 'مستويات المسابقة',
-                        subtitle: 'إدارة مستويات مسابقة التجويد',
+                        title: 'المستويات',
+                        subtitle: 'إدارة المستويات',
                         child: Row(
                           children: [
                             Expanded(

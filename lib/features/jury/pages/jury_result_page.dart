@@ -194,7 +194,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const ModernAppBar(title: 'نتائج المسابقة'),
+      appBar: const ModernAppBar(title: 'نتائج النسخة'),
       body:
           _isLoading
               ? const ModernLoadingIndicator()
@@ -286,7 +286,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
                                 ? const Padding(
                                   padding: EdgeInsets.all(AppTheme.spacingS),
                                   child: Center(
-                                    child: CircularProgressIndicator(),
+                                    child: const CircularProgressIndicator(),
                                   ),
                                 )
                                 : const SizedBox(height: AppTheme.spacingL),
@@ -504,8 +504,8 @@ class _JuryResultPageState extends State<JuryResultPage> {
       return const SliverToBoxAdapter(
         child: Center(
           child: Padding(
-            padding: EdgeInsets.all(AppTheme.spacingS),
-            child: CircularProgressIndicator(),
+            padding: const EdgeInsets.all(AppTheme.spacingS),
+            child: const CircularProgressIndicator(),
           ),
         ),
       );

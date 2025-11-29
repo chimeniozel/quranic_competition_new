@@ -300,7 +300,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
                     ),
                     const SizedBox(height: AppTheme.spacingS),
                     Text(
-                      'لم يتم إنشاء أي جولات لهذه المسابقة بعد',
+                      'لم يتم إنشاء أي جولات لهذه النسخة بعد',
                       style: AppTheme.bodyMedium.copyWith(
                         color: AppTheme.textSecondaryColor,
                       ),

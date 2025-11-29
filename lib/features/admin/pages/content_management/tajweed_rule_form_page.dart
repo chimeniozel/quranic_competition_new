@@ -81,8 +81,9 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
 
   Future<void> _pickImage() async {
     // Demander la permission avant de charger l'image
-    final hasPermission =
-        await _permissionService.requestStoragePermission(context);
+    final hasPermission = await _permissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) {
       return; // L'utilisateur n'a pas accordé la permission
     }
@@ -250,7 +251,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
         try {
           final push = PushNotificationService();
           await push.sendNotification(
-            title: '📚 قاعدة تجويد جديدة',
+            title: '📚 حكم تجويد جديدة',
             body: _titleController.text.trim(),
             type: 'info',
             payload: jsonEncode({

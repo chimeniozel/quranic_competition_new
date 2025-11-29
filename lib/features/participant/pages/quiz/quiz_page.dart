@@ -98,7 +98,7 @@ class _QuizPageState extends State<QuizPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في تحميل المسابقة: $e'),
+            content: Text('خطأ في تحميل النسخة: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -227,7 +227,7 @@ class _QuizPageState extends State<QuizPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في إرسال المسابقة: $e'),
+            content: Text('خطأ في إرسال النسخة: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -508,7 +508,7 @@ class _QuizPageState extends State<QuizPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: _level?.name ?? 'المسابقة',
+        title: _level?.name ?? 'النسخة',
         actions: [
           if (_isSubmitting)
             const Padding(

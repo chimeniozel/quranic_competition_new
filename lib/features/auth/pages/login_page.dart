@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/widgets/ui_components.dart';
@@ -101,7 +102,11 @@ class _LoginPageState extends State<LoginPage> {
         return AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.error_outline, color: AppTheme.errorColor),
+              Icon(
+                FontAwesomeIcons.circleExclamation,
+                color: AppTheme.errorColor,
+                size: 20,
+              ),
               SizedBox(width: AppTheme.spacingS),
               Text('خطأ في تسجيل الدخول'),
             ],
@@ -125,7 +130,11 @@ class _LoginPageState extends State<LoginPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.verified_user_outlined, color: AppTheme.warningColor),
+              Icon(
+                FontAwesomeIcons.userCheck,
+                color: AppTheme.warningColor,
+                size: 20,
+              ),
               const SizedBox(width: AppTheme.spacingS),
               const Text('حساب غير محقق'),
             ],
@@ -187,7 +196,16 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const ModernAppBar(title: 'تسجيل الدخول'),
+      appBar: ModernAppBar(
+        title: 'تسجيل الدخول',
+        leading:
+            Navigator.of(context).canPop()
+                ? IconButton(
+                  icon: const Icon(FontAwesomeIcons.chevronRight, size: 20),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+                : null,
+      ),
       body: ModernPullToRefresh(
         onRefresh: () async {
           // Rafraîchir la page si nécessaire
@@ -231,7 +249,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: AppTheme.spacingS),
                       Text(
-                        'سجل دخولك للوصول إلى المسابقة القرآنية',
+                        'سجل دخولك للوصول إلى المسابقة أهل القرآن الواتسابية القرآنية',
                         style: AppTheme.bodyMedium.copyWith(
                           color: AppTheme.textSecondaryColor,
                         ),
@@ -251,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     labelText: 'البريد الإلكتروني',
                     hintText: 'أدخل بريدك الإلكتروني',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 20),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -299,12 +317,13 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور',
                     hintText: 'أدخل كلمة المرور',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                            ? FontAwesomeIcons.eyeSlash
+                            : FontAwesomeIcons.eye,
+                        size: 20,
                       ),
                       onPressed: () {
                         setState(() {
@@ -355,7 +374,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Bouton de connexion
                 PrimaryButton(
                   text: 'تسجيل الدخول',
-                  icon: Icons.login,
+                  icon: FontAwesomeIcons.rightToBracket,
                   onPressed: _submit,
                   isLoading: _isLoading,
                   fullWidth: true,
@@ -381,7 +400,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Bouton pour accéder à la page d'accueil
                 SecondaryButton(
                   text: 'العودة إلى الصفحة الرئيسية',
-                  icon: Icons.home,
+                  icon: FontAwesomeIcons.house,
                   onPressed: () => context.go('/participant_home_page'),
                   fullWidth: true,
                 ),
@@ -395,7 +414,7 @@ class _LoginPageState extends State<LoginPage> {
                       Row(
                         children: [
                           Icon(
-                            Icons.info_outline,
+                            FontAwesomeIcons.circleInfo,
                             color: AppTheme.infoColor,
                             size: 20,
                           ),
@@ -415,7 +434,7 @@ class _LoginPageState extends State<LoginPage> {
                       Row(
                         children: [
                           Icon(
-                            Icons.verified_user_outlined,
+                            FontAwesomeIcons.userCheck,
                             color: AppTheme.warningColor,
                             size: 20,
                           ),

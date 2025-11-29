@@ -166,7 +166,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                         : () {
                           String message;
                           if (!widget.version.isActive) {
-                            message = 'لا يمكن التعديل: المسابقة غير نشطة';
+                            message = 'لا يمكن التعديل: النسخة غير نشطة';
                           } else if (widget.version.juryEvaluationEnabled) {
                             message =
                                 'لا يمكن التعديل أثناء تفعيل تقييم المحكمين';
@@ -622,7 +622,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                     _isCheckingResults
                                         ? 'جاري التحقق من حالة النتائج...'
                                         : (!widget.version.isActive
-                                            ? 'لا يمكن تعديل معلومات المشارك: المسابقة غير نشطة'
+                                            ? 'لا يمكن تعديل معلومات المشارك: النسخة غير نشطة'
                                             : widget
                                                 .version
                                                 .juryEvaluationEnabled
@@ -966,7 +966,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                             ),
                             const SizedBox(width: AppTheme.spacingS),
                             Text(
-                              'معلومات المسابقة',
+                              'معلومات النسخة',
                               style: AppTheme.headingSmall.copyWith(
                                 color: Colors.purple[700],
                               ),
@@ -984,7 +984,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                             children: [
                               _buildInfoRow(
                                 icon: Icons.emoji_events,
-                                label: 'اسم المسابقة',
+                                label: 'اسم النسخة',
                                 value: widget.version.name,
                               ),
                               const SizedBox(height: AppTheme.spacingS),
@@ -1171,7 +1171,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
     if (!_canEditParticipant) {
       String message;
       if (!widget.version.isActive) {
-        message = 'لا يمكن إلغاء المشاركة: المسابقة غير نشطة';
+        message = 'لا يمكن إلغاء المشاركة: النسخة غير نشطة';
       } else if (widget.version.juryEvaluationEnabled) {
         message = 'لا يمكن إلغاء المشاركة أثناء تفعيل تقييم المحكمين';
       } else if (_areResultsPublished) {
@@ -1373,7 +1373,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
     if (!_canEditParticipant) {
       String message;
       if (!widget.version.isActive) {
-        message = 'لا يمكن قبول المشارك: المسابقة غير نشطة';
+        message = 'لا يمكن قبول المشارك: النسخة غير نشطة';
       } else if (widget.version.juryEvaluationEnabled) {
         message = 'لا يمكن قبول المشارك أثناء تفعيل تقييم المحكمين';
       } else if (_areResultsPublished) {
@@ -1495,7 +1495,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
     if (!_canEditParticipant) {
       String message;
       if (!widget.version.isActive) {
-        message = 'لا يمكن حفظ التعديلات: المسابقة غير نشطة';
+        message = 'لا يمكن حفظ التعديلات: النسخة غير نشطة';
       } else if (widget.version.juryEvaluationEnabled) {
         message = 'لا يمكن حفظ التعديلات أثناء تفعيل تقييم المحكمين';
       } else if (_areResultsPublished) {

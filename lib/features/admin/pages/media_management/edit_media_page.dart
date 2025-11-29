@@ -100,7 +100,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
     if (_needsVersionSelection && _selectedVersion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('يرجى اختيار مسابقة'),
+          content: Text('يرجى اختيار نسخة'),
           backgroundColor: Colors.red,
         ),
       );
@@ -113,7 +113,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
     if (finalVersionId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('خطأ: معرف المسابقة فارغ'),
+          content: Text('خطأ: معرف النسخة فارغ'),
           backgroundColor: Colors.red,
         ),
       );
@@ -553,7 +553,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                   DropdownButtonFormField<CompetitionVersion>(
                                     value: _selectedVersion,
                                     decoration: InputDecoration(
-                                      labelText: 'اختيار المسابقة',
+                                      labelText: 'اختيار النسخة',
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(
                                           AppTheme.radiusM,
@@ -579,7 +579,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                     },
                                     validator: (value) {
                                       if (value == null) {
-                                        return 'يرجى اختيار مسابقة';
+                                        return 'يرجى اختيار نسخة';
                                       }
                                       return null;
                                     },

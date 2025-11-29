@@ -14,7 +14,7 @@ class ArchiveMediaService {
           .eq('version_id', versionId)
           .order('order');
 
-      if (response == null || response.isEmpty) {
+      if (response.isEmpty) {
         return [];
       }
 
@@ -39,7 +39,7 @@ class ArchiveMediaService {
           .select('*')
           .order('order');
 
-      if (response == null || response.isEmpty) {
+      if (response.isEmpty) {
         return [];
       }
 
@@ -67,7 +67,7 @@ class ArchiveMediaService {
           )
           .order('order');
 
-      if (response == null) {
+      if (response.isEmpty) {
         return [];
       }
 

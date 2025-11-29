@@ -31,7 +31,7 @@ class ParticipantService {
         final int maxChildren = versionCheck['max_children'] as int;
 
         if (!isActive || !isRegistrationOpen) {
-          throw Exception('التسجيل غير متاح لهذه المسابقة');
+          throw Exception('التسجيل غير متاح لهذه النسخة');
         }
 
         // 0.1. Vérifier les limites de participants pour cette version spécifique

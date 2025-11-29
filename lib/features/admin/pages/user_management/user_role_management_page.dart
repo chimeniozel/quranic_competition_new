@@ -1017,64 +1017,76 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
             ),
             const SizedBox(height: AppTheme.spacingS),
             CanAssignRolesGuard(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  border: Border.all(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
-                    width: 1.5,
+              child: DropdownButtonFormField<UserRole>(
+                value: _selectedRole,
+                dropdownColor: Colors.white,
+                decoration: InputDecoration(
+                  labelText: 'اختر الدور الجديد',
+                  labelStyle: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.person_outline,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    borderSide: BorderSide(
+                      color: AppTheme.dividerColor,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    borderSide: BorderSide(
+                      color: AppTheme.dividerColor,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                    borderSide: BorderSide(
+                      color: AppTheme.primaryColor,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingS,
+                    vertical: AppTheme.spacingS,
                   ),
                 ),
-                child: DropdownButtonFormField<UserRole>(
-                  value: _selectedRole,
-                  decoration: InputDecoration(
-                    labelText: 'اختر الدور الجديد',
-                    labelStyle: AppTheme.bodyMedium.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingS,
-                      vertical: AppTheme.spacingXS,
-                    ),
-                  ),
-                  items:
-                      UserRole.values
-                          .map(
-                            (role) => DropdownMenuItem<UserRole>(
-                              value: role,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _getRoleIcon(role),
+                items:
+                    UserRole.values
+                        .map(
+                          (role) => DropdownMenuItem<UserRole>(
+                            value: role,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _getRoleIcon(role),
+                                  color: _getRoleColor(role),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: AppTheme.spacingS),
+                                Text(
+                                  role.displayName,
+                                  style: AppTheme.bodyMedium.copyWith(
                                     color: _getRoleColor(role),
-                                    size: 20,
                                   ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Text(
-                                    role.displayName,
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      color: _getRoleColor(role),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          )
-                          .where((entry) => entry.value != UserRole.superAdmin)
-                          .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _selectedRole = value;
-                    });
-                  },
-                  style: AppTheme.bodyMedium.copyWith(
-                    color: AppTheme.textPrimaryColor,
-                  ),
-                ),
+                          ),
+                        )
+                        .where((entry) => entry.value != UserRole.superAdmin)
+                        .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _selectedRole = value;
+                  });
+                },
               ),
             ),
             const SizedBox(height: AppTheme.spacingS),
@@ -1267,7 +1279,7 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
       (
         key: 'can_publish_content',
         title: 'نشر المحتوى',
-        description: 'إدارة ونشر الفوائد القرآنية، قواعد التجويد، والأرشيف.',
+        description: 'إدارة ونشر الفوائد القرآنية، أحكام التجويد، والأرشيف.',
       ),
       (
         key: 'can_validate_accounts',

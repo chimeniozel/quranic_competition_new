@@ -169,7 +169,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'مسابقة أهل القرآن الواتسابية',
+        title: 'مسابقة أهل القرآن الواتسابية الواتسابية',
         actions: [
           IconButton(
             icon: const Icon(Icons.login),
@@ -197,7 +197,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
               : ModernPullToRefresh(
                 onRefresh: _loadVersions,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  padding: const EdgeInsets.all(AppTheme.spacingXS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -219,7 +219,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                               ),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.all(AppTheme.spacingS),
+                              padding: const EdgeInsets.all(AppTheme.spacingXS),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -241,7 +241,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                           size: 24,
                                         ),
                                       ),
-                                      const SizedBox(width: AppTheme.spacingS),
+                                      const SizedBox(width: AppTheme.spacingXS),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -277,7 +277,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: AppTheme.spacingS),
+                                  const SizedBox(height: AppTheme.spacingXS),
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton.icon(
@@ -326,7 +326,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingS),
+                        const SizedBox(height: AppTheme.spacingXS),
                       ],
 
                       // Section d'inscription
@@ -358,14 +358,14 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   ),
                                   const SizedBox(width: AppTheme.spacingS),
                                   Text(
-                                    'التسجيل في المسابقة',
+                                    'التسجيل في النسخة',
                                     style: AppTheme.labelLarge.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: AppTheme.spacingS),
+                              const SizedBox(height: AppTheme.spacingXS),
 
                               // Boutons d'inscription ou message d'information
                               if (_hasActiveCompetition &&
@@ -390,7 +390,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                         text: 'فرع الصغار',
                                       ),
                                     ),
-                                    const SizedBox(width: AppTheme.spacingS),
+                                    const SizedBox(width: AppTheme.spacingXS),
                                     Expanded(
                                       child: PrimaryButton(
                                         onPressed:
@@ -415,7 +415,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                 // Message d'information si un groupe est complet
                                 if (!_childrenRegistrationOpen ||
                                     !_adultsRegistrationOpen) ...[
-                                  const SizedBox(height: AppTheme.spacingS),
+                                  const SizedBox(height: AppTheme.spacingXS),
                                   Container(
                                     padding: const EdgeInsets.all(
                                       AppTheme.spacingS,
@@ -440,7 +440,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                           size: 16,
                                         ),
                                         const SizedBox(
-                                          width: AppTheme.spacingS,
+                                          width: AppTheme.spacingXS,
                                         ),
                                         Expanded(
                                           child: Text(
@@ -492,22 +492,10 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                           height: AppTheme.spacingS,
                                         ),
                                         Text(
-                                          'التسجيل غير متاح حالياً',
+                                          'مرحبا بكم في تطبيق مسابقة أهل القرآن الواتسابية التسجيل غير متاح حاليا',
                                           style: AppTheme.labelLarge.copyWith(
                                             color: Colors.orange,
                                             fontWeight: FontWeight.w600,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(
-                                          height: AppTheme.spacingS,
-                                        ),
-                                        Text(
-                                          _activeVersion == null
-                                              ? 'لا توجد مسابقة نشطة حالياً'
-                                              : 'المسابقة الحالية مغلقة',
-                                          style: AppTheme.labelMedium.copyWith(
-                                            color: Colors.orange[700],
                                           ),
                                           textAlign: TextAlign.center,
                                         ),
@@ -524,7 +512,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                       // Section des résultats (toujours visible)
                       ModernCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          padding: const EdgeInsets.all(AppTheme.spacingXS),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -550,14 +538,14 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   ),
                                   const SizedBox(width: AppTheme.spacingS),
                                   Text(
-                                    'نتائج المسابقة',
+                                    'نتائج النسخة',
                                     style: AppTheme.labelLarge.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: AppTheme.spacingS),
+                              const SizedBox(height: AppTheme.spacingXS),
                               SizedBox(
                                 width: double.infinity,
                                 child: SecondaryButton(
@@ -575,7 +563,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                       // Section des services
                       ModernCard(
                         child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
+                          padding: const EdgeInsets.all(AppTheme.spacingXS),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -590,7 +578,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       Expanded(
                                         child: _buildServiceCard(
                                           title: 'الفوائد القرآنية',
-                                          icon: Icons.menu_book,
+                                          imagePath:
+                                              'assets/images/فوائد قرآنية.png',
                                           color: AppTheme.successColor,
                                           onTap: () {
                                             context.push(
@@ -603,7 +592,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       Expanded(
                                         child: _buildServiceCard(
                                           title: 'أحكام التجويد',
-                                          icon: Icons.auto_stories,
+                                          imagePath:
+                                              'assets/images/tejweed.png',
                                           color: AppTheme.primaryColor,
                                           onTap: () {
                                             context.push(
@@ -621,8 +611,9 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                     children: [
                                       Expanded(
                                         child: _buildServiceCard(
-                                          title: 'مسابقات التجويد',
-                                          icon: Icons.quiz,
+                                          title: 'أسئلة و أجوبة في القرآن',
+                                          imagePath:
+                                              'assets/images/أسئلة_وأجوبة_عن_القرآن_الكريم.png',
                                           color: AppTheme.warningColor,
                                           onTap: () {
                                             context.push('/participant/quiz');
@@ -633,7 +624,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       Expanded(
                                         child: _buildServiceCard(
                                           title: 'أرشيف المسابقات',
-                                          icon: Icons.archive,
+                                          imagePath:
+                                              'assets/images/archive.png',
                                           color: AppTheme.secondaryColor,
                                           onTap: () {
                                             context.push(
@@ -652,7 +644,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       Expanded(
                                         child: _buildServiceCard(
                                           title: 'من نحن',
-                                          icon: Icons.info,
+                                          imagePath:
+                                              'assets/images/about-us.png',
                                           color: Colors.teal,
                                           onTap: () {
                                             context.push(
@@ -713,7 +706,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                           ),
                                           Expanded(
                                             child: Text(
-                                              'يمكنك الآن الاطلاع على قائمة المشاركين في هذه المسابقة النشطة',
+                                              'يمكنك الآن الاطلاع على قائمة المشاركين في هذه النسخة النشطة',
                                               style: AppTheme.bodySmall
                                                   .copyWith(
                                                     color: Colors.blue[700],
@@ -741,40 +734,81 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
 
   Widget _buildServiceCard({
     required String title,
-    required IconData icon,
+    IconData? icon,
+    String? imagePath,
     required Color color,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
+        height: 130,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingS,
+          vertical: AppTheme.spacingM,
+        ),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingS),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.2),
+            if (imagePath != null)
+              ClipRRect(
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                child: Image.asset(
+                  imagePath,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      ),
+                      child:
+                          icon != null
+                              ? Icon(icon, color: color, size: 24)
+                              : const SizedBox.shrink(),
+                    );
+                  },
+                ),
+              )
+            else if (icon != null)
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              title,
-              style: AppTheme.labelMedium.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
+            const SizedBox(height: AppTheme.spacingXS),
+            Flexible(
+              child: Text(
+                title,
+                style: AppTheme.labelMedium.copyWith(
+                  color: AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
