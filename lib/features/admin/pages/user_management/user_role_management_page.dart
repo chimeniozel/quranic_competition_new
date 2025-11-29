@@ -705,7 +705,7 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
                 ),
                 if (user['phone'] != null &&
                     user['phone'].toString().isNotEmpty)
-                  _buildInfoChip('الهاتف', user['phone']),
+                  _buildPhoneChip(user['phone'].toString()),
               ],
             ),
           ],
@@ -787,6 +787,130 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildPhoneChip(String phone) {
+    final phoneData = _splitPhoneNumber(phone);
+    final countryCode = phoneData['countryCode'] ?? '';
+    final phoneNumber = phoneData['phoneNumber'] ?? '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingS,
+        vertical: AppTheme.spacingXS,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        border: Border.all(color: AppTheme.dividerColor, width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'الهاتف',
+            style: AppTheme.labelSmall.copyWith(
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(
+              countryCode.isNotEmpty && phoneNumber.isNotEmpty
+                  ? '$countryCode $phoneNumber'
+                  : phoneNumber.isNotEmpty
+                  ? phoneNumber
+                  : phone,
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.textPrimaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// فصل رمز الدولة عن رقم الهاتف
+  Map<String, String> _splitPhoneNumber(String phone) {
+    if (phone.isEmpty) {
+      return {'countryCode': '', 'phoneNumber': ''};
+    }
+
+    // إذا كان الرقم يبدأ بـ +، نفصل رمز الدولة
+    if (phone.startsWith('+')) {
+      final digits = phone.substring(1);
+
+      if (digits.isEmpty) {
+        return {'countryCode': '', 'phoneNumber': phone};
+      }
+
+      // تحديد رمز الدولة بناءً على أول رقم
+      String countryCode;
+      String phoneNumber;
+
+      // رموز الدول التي تبدأ بـ 2 (عادة 3 أرقام: +213, +212, +216, +222)
+      if (digits.startsWith('2') && digits.length >= 4) {
+        countryCode = '+${digits.substring(0, 3)}';
+        phoneNumber = digits.substring(3);
+      }
+      // رموز الدول التي تبدأ بـ 1 (عادة 1 رقم: +1)
+      else if (digits.startsWith('1') && digits.length >= 4) {
+        // +1 (أمريكا/كندا) - رمز دولة واحد
+        countryCode = '+${digits.substring(0, 1)}';
+        phoneNumber = digits.substring(1);
+      }
+      // رموز الدول الأخرى (عادة 2 أرقام: +33, +20, +44)
+      else if (digits.length >= 3) {
+        countryCode = '+${digits.substring(0, 2)}';
+        phoneNumber = digits.substring(2);
+      } else {
+        return {'countryCode': '', 'phoneNumber': phone};
+      }
+
+      // إزالة الصفر الأول من الرقم إن وجد
+      final cleanPhone =
+          phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber;
+
+      // تنسيق الرقم بفواصل
+      final formatted = _formatPhoneDigits(cleanPhone);
+      return {'countryCode': countryCode, 'phoneNumber': formatted};
+    }
+
+    return {'countryCode': '', 'phoneNumber': phone};
+  }
+
+  /// تنسيق أرقام الهاتف بفواصل
+  String _formatPhoneDigits(String digits) {
+    if (digits.isEmpty) return digits;
+    if (digits.length <= 3) return digits;
+
+    // للأرقام التي طولها 8 أرقام (مثل موريتانيا: 36361701)
+    // نستخدم التنسيق: XX XX XX XX
+    if (digits.length == 8) {
+      return '${digits.substring(0, 2)} ${digits.substring(2, 4)} ${digits.substring(4, 6)} ${digits.substring(6, 8)}';
+    }
+    // للأرقام التي طولها 9 أرقام: XX XXX XXXX
+    else if (digits.length == 9) {
+      return '${digits.substring(0, 2)} ${digits.substring(2, 5)} ${digits.substring(5, 9)}';
+    }
+    // للأرقام التي طولها 10 أرقام: XXX XXX XXXX
+    else if (digits.length == 10) {
+      return '${digits.substring(0, 3)} ${digits.substring(3, 6)} ${digits.substring(6, 10)}';
+    }
+    // للأرقام الأخرى: نستخدم فواصل كل 3 أرقام
+    else {
+      final buffer = StringBuffer();
+      for (int i = 0; i < digits.length; i += 3) {
+        if (i > 0) buffer.write(' ');
+        final end = (i + 3 < digits.length) ? i + 3 : digits.length;
+        buffer.write(digits.substring(i, end));
+      }
+      return buffer.toString();
+    }
   }
 
   Widget _buildValidationSection() {
@@ -1034,15 +1158,11 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: BorderSide(
-                      color: AppTheme.dividerColor,
-                    ),
+                    borderSide: BorderSide(color: AppTheme.dividerColor),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: BorderSide(
-                      color: AppTheme.dividerColor,
-                    ),
+                    borderSide: BorderSide(color: AppTheme.dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),

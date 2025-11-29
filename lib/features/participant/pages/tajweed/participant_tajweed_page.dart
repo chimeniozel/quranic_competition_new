@@ -31,7 +31,6 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   String _searchQuery = '';
   TajweedType? _selectedType;
   Timer? _debounceTimer;
-  String _searchText = '';
 
   @override
   void initState() {
@@ -51,7 +50,6 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     setState(() {
-      _searchText = value;
       _searchQuery = value;
       _applyFilters();
     });
@@ -299,37 +297,11 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
                   ],
                 ),
                 const SizedBox(height: AppTheme.spacingS),
-                TextField(
+                ModernSearchBar(
                   controller: _searchController,
+                  hintText: 'ابحث في أحكام التجويد...',
                   onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'ابحث في أحكام التجويد...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon:
-                        _searchText.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            )
-                            : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      borderSide: BorderSide(color: AppTheme.primaryColor),
-                    ),
-                    filled: true,
-                    fillColor: AppTheme.backgroundColor,
-                  ),
+                  onClear: () => _onSearchChanged(''),
                 ),
               ],
             ),

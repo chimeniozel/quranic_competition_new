@@ -482,19 +482,15 @@ class _JuryResultPageState extends State<JuryResultPage> {
 
   Widget _buildSearchBar() {
     return ModernCard(
-      child: TextField(
+      child: ModernSearchBar(
         controller: _searchController,
+        hintText: 'البحث برقم التسجيل...',
         onChanged: _onSearchChanged,
-        decoration: InputDecoration(
-          hintText: 'البحث برقم التسجيل...',
-          hintStyle: AppTheme.bodyMedium.copyWith(
-            color: AppTheme.textDisabledColor,
-          ),
-          prefixIcon: Icon(Icons.search, color: AppTheme.primaryColor),
-          border: InputBorder.none,
-          filled: false,
-        ),
-        style: AppTheme.bodyMedium,
+        onClear: () {
+          _searchController.clear();
+          _onSearchChanged('');
+        },
+        margin: EdgeInsets.zero,
       ),
     );
   }

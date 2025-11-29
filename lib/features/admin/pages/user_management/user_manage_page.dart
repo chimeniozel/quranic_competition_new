@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quranic_competition/core/services/user_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/app_user.dart';
+import 'package:quranic_competition/core/widgets/ui_components.dart';
 
 class UserManagePage extends StatefulWidget {
   const UserManagePage({super.key});
@@ -217,16 +218,19 @@ class _UserManagePageState extends State<UserManagePage> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'البحث عن المستخدمين...',
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
+    return ModernSearchBar(
+      controller: _searchController,
+      hintText: 'البحث عن المستخدمين...',
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = value;
+        });
+      },
+      onClear: () {
+        setState(() {
+          _searchQuery = '';
+        });
+      },
     );
   }
 

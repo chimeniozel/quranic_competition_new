@@ -483,27 +483,14 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
               ],
             ),
             const SizedBox(height: AppTheme.spacingS),
-            TextField(
+            ModernSearchBar(
               controller: _searchController,
+              hintText: 'ابحث بالاسم أو رقم التسجيل...',
               onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'ابحث بالاسم أو رقم التسجيل...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  borderSide: BorderSide(color: AppTheme.dividerColor),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  borderSide: BorderSide(color: AppTheme.dividerColor),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  borderSide: BorderSide(color: AppTheme.primaryColor),
-                ),
-                filled: true,
-                fillColor: AppTheme.backgroundColor,
-              ),
+              onClear: () {
+                _searchController.clear();
+                _onSearchChanged('');
+              },
             ),
           ],
         ),

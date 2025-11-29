@@ -51,9 +51,8 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     setState(() {
-      _searchText = value;
+      _searchQuery = value;
     });
-    _searchQuery = value;
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _loadRules(reset: true);
     });
@@ -201,29 +200,12 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
     return Column(
       children: [
         // Barre de recherche
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: 'البحث في أحكام التجويد...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon:
-                  _searchText.isNotEmpty
-                      ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                      : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
+        ModernSearchBar(
+          controller: _searchController,
+          hintText: 'البحث في أحكام التجويد...',
+          onChanged: _onSearchChanged,
+          onClear: () => _onSearchChanged(''),
+          margin: const EdgeInsets.all(16.0),
         ),
         // Filtres de type
         Padding(

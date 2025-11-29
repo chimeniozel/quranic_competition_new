@@ -16,6 +16,144 @@ class CompetitionVersionService {
         .toList();
   }
 
+  /// Récupère la version active ou la dernière version active
+  Future<CompetitionVersion?> getActiveOrLatestVersion() async {
+    try {
+      // Essayer d'abord de récupérer une version active
+      final activeResponse =
+          await _supabase
+              .from('competition_versions')
+              .select()
+              .eq('is_active', true)
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+
+      if (activeResponse != null) {
+        return CompetitionVersion.fromMap(activeResponse);
+      }
+
+      // Si aucune version active, récupérer la dernière version créée
+      final latestResponse =
+          await _supabase
+              .from('competition_versions')
+              .select()
+              .order('created_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
+
+      if (latestResponse != null) {
+        return CompetitionVersion.fromMap(latestResponse);
+      }
+
+      return null;
+    } catch (e) {
+      print('Erreur lors de la récupération de la version: $e');
+      return null;
+    }
+  }
+
+  /// Récupère les statistiques globales d'une version
+  Future<Map<String, dynamic>> getVersionStatistics(String versionId) async {
+    try {
+      // Nombre de participants par groupe d'âge
+      final participantCounts = await getParticipantCountsByAgeGroup(versionId);
+
+      // Nombre total de participants
+      final totalParticipants =
+          participantCounts['adults']! + participantCounts['children']!;
+
+      // Nombre de participants المقبولين
+      final acceptedAdults = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId)
+          .eq('age_group', 'كبار')
+          .eq('is_accepted', true)
+          .then((response) => response.length);
+
+      final acceptedChildren = await _supabase
+          .from('participants')
+          .select('id')
+          .eq('competition_id', versionId)
+          .eq('age_group', 'صغار')
+          .eq('is_accepted', true)
+          .then((response) => response.length);
+
+      final totalAccepted = acceptedAdults + acceptedChildren;
+
+      // Nombre de الجولات
+      final roundsCount = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId)
+          .then((response) => response.length);
+
+      // Nombre de الجولات النشطة
+      final activeRoundsCount = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId)
+          .eq('is_active', true)
+          .then((response) => response.length);
+
+      // Nombre de الجولات المنشورة
+      final publishedRoundsCount = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId)
+          .eq('result_is_published', true)
+          .then((response) => response.length);
+
+      // Récupérer les rounds de cette version pour compter les jurys correctement
+      final rounds = await _supabase
+          .from('rounds')
+          .select('id')
+          .eq('version_id', versionId);
+
+      final roundIds = rounds.map((r) => r['id'] as String).toList();
+
+      final jurysSet = <String>{};
+      if (roundIds.isNotEmpty) {
+        final assignments = await _supabase
+            .from('round_jury_assignments')
+            .select('user_id')
+            .inFilter('round_id', roundIds);
+
+        for (final assignment in assignments) {
+          jurysSet.add(assignment['user_id'] as String);
+        }
+      }
+
+      return {
+        'totalParticipants': totalParticipants,
+        'adultsCount': participantCounts['adults']!,
+        'childrenCount': participantCounts['children']!,
+        'totalAccepted': totalAccepted,
+        'acceptedAdults': acceptedAdults,
+        'acceptedChildren': acceptedChildren,
+        'roundsCount': roundsCount,
+        'activeRoundsCount': activeRoundsCount,
+        'publishedRoundsCount': publishedRoundsCount,
+        'jurysCount': jurysSet.length,
+      };
+    } catch (e) {
+      print('Erreur lors de la récupération des statistiques: $e');
+      return {
+        'totalParticipants': 0,
+        'adultsCount': 0,
+        'childrenCount': 0,
+        'totalAccepted': 0,
+        'acceptedAdults': 0,
+        'acceptedChildren': 0,
+        'roundsCount': 0,
+        'activeRoundsCount': 0,
+        'publishedRoundsCount': 0,
+        'jurysCount': 0,
+      };
+    }
+  }
+
   /// Récupère les compétitions actives avec inscription ouverte
   Future<List<CompetitionVersion>>
   fetchActiveVersionsWithOpenRegistration() async {
@@ -265,7 +403,7 @@ class CompetitionVersionService {
         'result_is_published': false,
       },
     ]);
-    
+
     // Note: La notification est envoyée dans version_management_page.dart après la création
   }
 

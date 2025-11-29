@@ -581,3 +581,103 @@ class ModernAlert extends StatelessWidget {
     }
   }
 }
+
+/// شريط بحث حديث مع تصميم متطور
+class ModernSearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final ValueChanged<String>? onChanged;
+  final VoidCallback? onClear;
+  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry? padding;
+
+  const ModernSearchBar({
+    super.key,
+    required this.controller,
+    required this.hintText,
+    this.onChanged,
+    this.onClear,
+    this.margin,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasText = controller.text.isNotEmpty;
+
+    return Container(
+      margin: margin ?? const EdgeInsets.all(AppTheme.spacingS),
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.backgroundColor,
+            AppTheme.backgroundColor.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusL),
+        border: Border.all(
+          color: AppTheme.primaryColor.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: AppTheme.bodyMedium.copyWith(
+            color: AppTheme.textDisabledColor,
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(AppTheme.spacingXS),
+            padding: const EdgeInsets.all(AppTheme.spacingXS),
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              boxShadow: AppTheme.shadowS,
+            ),
+            child: const Icon(
+              Icons.search,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          suffixIcon: hasText
+              ? IconButton(
+                  icon: const Icon(
+                    Icons.clear,
+                    color: AppTheme.textSecondaryColor,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    controller.clear();
+                    onChanged?.call('');
+                    onClear?.call();
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.spacingS,
+            vertical: AppTheme.spacingS,
+          ),
+          filled: false,
+        ),
+        style: AppTheme.bodyMedium.copyWith(
+          color: AppTheme.textPrimaryColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}

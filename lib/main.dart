@@ -160,7 +160,7 @@ class _MyAppState extends State<MyApp> {
             top: false,
             left: false,
             right: false,
-            bottom: true,
+            bottom: Theme.of(context).platform == TargetPlatform.android,
             child: child,
           );
         },

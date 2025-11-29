@@ -10,7 +10,9 @@ import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/services/evaluation_stats_service.dart';
 import 'package:quranic_competition/core/services/user_service.dart';
+import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/models/app_user.dart';
+import 'package:quranic_competition/models/competition_version.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -24,6 +26,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   bool _isLoading = false; // بدء بـ false لعرض الصفحة فوراً
   List<EvaluationStats> _evaluationStats = [];
   final EvaluationStatsService _statsService = EvaluationStatsService();
+  final CompetitionVersionService _versionService = CompetitionVersionService();
+  CompetitionVersion? _activeVersion;
 
   @override
   void initState() {
@@ -42,17 +46,28 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
 
     try {
-      // Charger les statistiques d'évaluation réelles
-      _evaluationStats =
-          await _statsService.getEvaluationStatsForAllActiveVersions();
-      print(
-        '📊 Statistiques chargées: ${_evaluationStats.length} groupes d\'âge',
-      );
+      // Charger la version active uniquement
+      final version = await _versionService.getActiveOrLatestVersion();
 
-      for (final stat in _evaluationStats) {
+      // Ne garder que si elle est vraiment active
+      if (version != null && version.isActive) {
+        _activeVersion = version;
+
+        // Charger les statistiques d'évaluation réelles seulement si une version active existe
+        _evaluationStats =
+            await _statsService.getEvaluationStatsForAllActiveVersions();
         print(
-          '📊 ${stat.ageGroup}: ${stat.evaluatedParticipants}/${stat.totalParticipants} (${(stat.progressPercentage * 100).toInt()}%)',
+          '📊 Statistiques chargées: ${_evaluationStats.length} groupes d\'âge',
         );
+
+        for (final stat in _evaluationStats) {
+          print(
+            '📊 ${stat.ageGroup}: ${stat.evaluatedParticipants}/${stat.totalParticipants} (${(stat.progressPercentage * 100).toInt()}%)',
+          );
+        }
+      } else {
+        _activeVersion = null;
+        _evaluationStats = [];
       }
     } catch (e) {
       print('❌ Erreur lors du chargement des statistiques: $e');
@@ -85,6 +100,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   List<Widget> _buildEvaluationProgressCards() {
+    // Ne pas afficher de cartes si aucune version active n'existe
+    if (_activeVersion == null || !_activeVersion!.isActive) {
+      return [];
+    }
+
     if (_evaluationStats.isEmpty) {
       // Afficher des cartes par défaut si aucune donnée n'est disponible
       return [
@@ -100,7 +120,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         _buildDefaultProgressCard(
           'تقييم المشاركين - الصغار',
           'صغار',
-          Icons.school,
+          Icons.people_alt,
           AppTheme.infoColor,
           0,
           0,
@@ -362,7 +382,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                     QuickAction(
                       title: 'أسئلة و أجوبة في القرآن',
-                      imagePath: 'assets/images/أسئلة_وأجوبة_عن_القرآن_الكريم.png',
+                      imagePath:
+                          'assets/images/أسئلة_وأجوبة_عن_القرآن_الكريم.png',
                       color: AppTheme.infoColor,
                       onTap: () => context.push('/admin/quiz/levels'),
                     ),
@@ -389,17 +410,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ),
               ),
 
-              // const SizedBox(height: AppTheme.spacingL),
+              const SizedBox(height: AppTheme.spacingM),
 
-              // Progression des activités (sans titre de section)
-              _isLoading
-                  ? const Padding(
-                    padding: EdgeInsets.all(AppTheme.spacingL),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                  : Column(children: _buildEvaluationProgressCards()),
-
-              // const SizedBox(height: AppTheme.spacingL),
+              // Progression des évaluations (déplacé en bas) - afficher seulement si une version active existe
+              if (_activeVersion != null && _activeVersion!.isActive) ...[
+                DashboardSection(
+                  title: 'تقدم تقييمات المشاركين',
+                  subtitle: 'حالة التقييمات حسب المجموعات العمرية',
+                  child:
+                      _isLoading
+                          ? const Padding(
+                            padding: EdgeInsets.all(AppTheme.spacingL),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                          : Column(children: _buildEvaluationProgressCards()),
+                ),
+              ],
             ],
           ),
         ),

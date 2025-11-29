@@ -40,10 +40,11 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   Round? _selectedRound;
   List<Round> _allRounds = [];
 
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_applyFilter);
     _loadParticipantsWithEvaluationStatus();
   }
 
@@ -361,7 +362,7 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
   }
 
   void _applyFilter() {
-    final searchQuery = _searchController.text.trim();
+    final searchQuery = _searchQuery.trim();
     final hasSearch = searchQuery.isNotEmpty;
 
     // Toujours filtrer par groupe d'âge sélectionné
@@ -585,23 +586,22 @@ class _JuryVersionDetailPageState extends State<JuryVersionDetailPage> {
                       _buildRoundSelector(),
 
                       // Champ de recherche
-                      ModernCard(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'ابحث برقم التسجيل...',
-                            hintStyle: AppTheme.bodyMedium.copyWith(
-                              color: AppTheme.textDisabledColor,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: AppTheme.primaryColor,
-                            ),
-                            border: InputBorder.none,
-                            filled: false,
-                          ),
-                          style: AppTheme.bodyMedium,
-                        ),
+                      ModernSearchBar(
+                        controller: _searchController,
+                        hintText: 'ابحث برقم التسجيل...',
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                            _applyFilter();
+                          });
+                        },
+                        onClear: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                        margin: EdgeInsets.zero,
                       ),
 
                       // Filtres : Groupe d'âge et Statut d'évaluation

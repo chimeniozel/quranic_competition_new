@@ -160,14 +160,15 @@ class ProfileMenuButton extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            PopupMenuItem(
-              value: 'settings',
-              child: const ListTile(
-                leading: Icon(Icons.settings, size: 20),
-                title: Text('الإعدادات'),
-                contentPadding: EdgeInsets.zero,
+            if (onSettingsTap != null)
+              PopupMenuItem(
+                value: 'settings',
+                child: const ListTile(
+                  leading: Icon(Icons.settings, size: 20),
+                  title: Text('الإعدادات'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-            ),
             const PopupMenuDivider(),
             PopupMenuItem(
               value: 'logout',

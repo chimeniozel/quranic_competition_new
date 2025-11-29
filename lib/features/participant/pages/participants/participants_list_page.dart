@@ -330,26 +330,18 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
+    return ModernSearchBar(
+      controller: _searchController,
+      hintText: 'البحث بالاسم، الهاتف أو رقم التسجيل',
+      onChanged: (value) {
+        _onSearchChanged();
+      },
+      onClear: () {
+        _onSearchChanged();
+      },
       margin: const EdgeInsets.symmetric(
         horizontal: AppTheme.spacingS,
         vertical: AppTheme.spacingS,
-      ),
-      child: ModernCard(
-        child: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'البحث بالاسم، الهاتف أو رقم التسجيل',
-            hintStyle: AppTheme.bodyMedium.copyWith(color: Colors.grey[500]),
-            prefixIcon: Icon(Icons.search, color: AppTheme.primaryColor),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.all(AppTheme.spacingS),
-          ),
-          style: AppTheme.bodyMedium,
-          onChanged: (value) {
-            // Le changement est géré par _onSearchChanged
-          },
-        ),
       ),
     );
   }

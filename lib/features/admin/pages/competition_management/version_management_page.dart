@@ -27,11 +27,13 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   final _maxChildrenController = TextEditingController();
   final _successAverageAdultsController = TextEditingController();
   final _successAverageChildrenController = TextEditingController();
+  final _searchController = TextEditingController();
 
   bool _isRegistrationOpen = true;
   bool _isAddingLoad = false;
 
   List<CompetitionVersion> _versions = [];
+  String _searchQuery = '';
   bool _isLoading = false;
   bool _canCreateVersions = false;
   bool _permissionsLoaded = false;
@@ -50,11 +52,34 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
     }
   }
 
+  // Filtrer les versions selon la recherche
+  List<CompetitionVersion> get _filteredVersions {
+    if (_searchQuery.isEmpty) {
+      return _versions;
+    }
+    final query = _searchQuery.toLowerCase();
+    return _versions.where((version) {
+      return version.name.toLowerCase().contains(query) ||
+          version.year.toString().contains(query);
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
     _checkPermissions();
     _loadVersions();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _maxAdultsController.dispose();
+    _maxChildrenController.dispose();
+    _successAverageAdultsController.dispose();
+    _successAverageChildrenController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkPermissions() async {
@@ -747,10 +772,34 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
 
                       const SizedBox(height: AppTheme.spacingL),
 
+                      // Search Bar
+                      if (_versions.isNotEmpty)
+                        ModernSearchBar(
+                          controller: _searchController,
+                          hintText: 'البحث في النسخ...',
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                          onClear: () {
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                          margin: EdgeInsets.zero,
+                        ),
+
+                      if (_versions.isNotEmpty)
+                        const SizedBox(height: AppTheme.spacingS),
+
                       // Versions List
                       DashboardSection(
                         title: 'قائمة النسخ',
-                        subtitle: '${_versions.length} نسخة',
+                        subtitle:
+                            _versions.isEmpty
+                                ? '${_versions.length} نسخة'
+                                : '${_filteredVersions.length} من ${_versions.length} نسخة',
                         child:
                             _versions.isEmpty
                                 ? Container(
@@ -784,9 +833,41 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                     ),
                                   ),
                                 )
+                                : _filteredVersions.isEmpty
+                                ? Container(
+                                  height: 200,
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.search_off,
+                                          size: 48,
+                                          color: AppTheme.textSecondaryColor,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'لا توجد نتائج للبحث',
+                                          style: AppTheme.bodyLarge.copyWith(
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'جرب تغيير كلمات البحث',
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
                                 : Column(
                                   children: [
-                                    ..._versions.map(
+                                    ..._filteredVersions.map(
                                       (version) => _buildVersionCard(version),
                                     ),
                                     const SizedBox(height: AppTheme.spacingS),

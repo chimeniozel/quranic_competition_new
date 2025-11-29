@@ -1069,7 +1069,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إدارة المستخدمين والأدوار'),
+        title: const Text('إدارة المستخدمين'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,

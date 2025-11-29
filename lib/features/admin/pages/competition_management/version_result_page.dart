@@ -897,21 +897,15 @@ class _VersionResultPageState extends State<VersionResultPage> {
   }
 
   Widget _buildSearchBar() {
-    return ModernCard(
-      child: TextField(
-        controller: _searchController,
-        onChanged: _onSearchChanged,
-        decoration: InputDecoration(
-          hintText: 'البحث برقم التسجيل...',
-          hintStyle: AppTheme.bodyMedium.copyWith(
-            color: AppTheme.textDisabledColor,
-          ),
-          prefixIcon: Icon(Icons.search, color: AppTheme.primaryColor),
-          border: InputBorder.none,
-          filled: false,
-        ),
-        style: AppTheme.bodyMedium,
-      ),
+    return ModernSearchBar(
+      controller: _searchController,
+      hintText: 'البحث برقم التسجيل...',
+      onChanged: _onSearchChanged,
+      onClear: () {
+        _searchController.clear();
+        _onSearchChanged('');
+      },
+      margin: EdgeInsets.zero,
     );
   }
 

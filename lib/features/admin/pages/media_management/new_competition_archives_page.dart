@@ -29,6 +29,7 @@ class _NewCompetitionArchivesPageState
   bool _isLoading = true;
   String _searchQuery = '';
   Timer? _debounceTimer;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _NewCompetitionArchivesPageState
 
   @override
   void dispose() {
+    _searchController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
   }
@@ -352,19 +354,15 @@ class _NewCompetitionArchivesPageState
                       DashboardSection(
                         title: 'البحث والتصفية',
                         subtitle: 'البحث في المسابقات',
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'البحث في المسابقات...',
-                            prefixIcon: const Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: AppTheme.backgroundColor,
-                          ),
+                        child: ModernSearchBar(
+                          controller: _searchController,
+                          hintText: 'البحث في المسابقات...',
                           onChanged: _onSearchChanged,
+                          onClear: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                          margin: EdgeInsets.zero,
                         ),
                       ),
 
