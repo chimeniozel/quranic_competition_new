@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
+import '../../../core/widgets/ui_components.dart';
 
 class SecuritySettingsPage extends StatefulWidget {
   const SecuritySettingsPage({super.key});
@@ -82,55 +83,11 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
   }
 
   Future<bool?> _showConfirmDialog(String title, String content) async {
-    return showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              const SizedBox(width: 8),
-              Text(title),
-            ],
-          ),
-          content: Text(content),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('إلغاء'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('تأكيد'),
-            ),
-          ],
-        );
-      },
-    );
+    return ModernDialog.showConfirm(context, title: title, message: content);
   }
 
   void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.red),
-              SizedBox(width: 8),
-              Text('خطأ'),
-            ],
-          ),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
-    );
+    ModernDialog.showError(context, title: 'خطأ', message: error);
   }
 
   @override

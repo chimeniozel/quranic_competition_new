@@ -6,6 +6,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/widgets/password_field_widget.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/ui_components.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -53,60 +54,23 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(
-                FontAwesomeIcons.circleExclamation,
-                color: Colors.red,
-                size: 20,
-              ),
-              SizedBox(width: 8),
-              Text('خطأ في التسجيل'),
-            ],
-          ),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    ModernDialog.showError(
+      context,
+      title: 'خطأ في التسجيل',
+      message: error,
     );
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(FontAwesomeIcons.circleCheck, color: Colors.green, size: 20),
-              SizedBox(width: 8),
-              Text('تم التسجيل بنجاح'),
-            ],
-          ),
-          content: const Text(
-            'تم إنشاء حسابك بنجاح!\n\n'
-            'في انتظار توثيق حسابك من قبل الإدارة.\n'
-            'بعد ذلك، ستتمكن من تسجيل الدخول.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                context.go('/login');
-              },
-              child: const Text('موافق'),
-            ),
-          ],
-        );
+    ModernDialog.showSuccess(
+      context,
+      title: 'تم التسجيل بنجاح',
+      message: 'تم إنشاء حسابك بنجاح!\n\n'
+          'في انتظار توثيق حسابك من قبل الإدارة.\n'
+          'بعد ذلك، ستتمكن من تسجيل الدخول.',
+      onConfirm: () {
+        Navigator.of(context).pop();
+        context.go('/login');
       },
     );
   }

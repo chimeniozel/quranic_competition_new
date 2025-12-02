@@ -254,36 +254,13 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     await _checkRegistrationStatus();
 
     if (!_isRegistrationAllowed) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text(
-              'التسجيل غير متاح',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              _registrationErrorMessage ?? 'التسجيل غير متاح حالياً',
-              style: const TextStyle(fontSize: 16),
-            ),
-            backgroundColor: Colors.white,
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Fermer le dialog
-                  Navigator.of(context).pop(); // Retourner à la page précédente
-                },
-                child: const Text(
-                  'موافق',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-              ),
-            ],
-          );
+      ModernDialog.showWarning(
+        context,
+        title: 'التسجيل غير متاح',
+        message: _registrationErrorMessage ?? 'التسجيل غير متاح حالياً',
+        onConfirm: () {
+          Navigator.of(context).pop(); // Fermer le dialog
+          Navigator.of(context).pop(); // Retourner à la page précédente
         },
       );
       return;
@@ -578,7 +555,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                   await Future.delayed(const Duration(milliseconds: 500));
                 },
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
                   child: Form(
                     key: _formKey,
                     child: Column(

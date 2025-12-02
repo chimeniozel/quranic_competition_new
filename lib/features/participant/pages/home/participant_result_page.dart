@@ -742,7 +742,7 @@ class _ParticipantResultPageState extends State<ParticipantResultPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ModernAppBar(title: 'نتائج النسخة'),
+      appBar: ModernAppBar(title: 'نتائج المسابقة'),
       body:
           _isLoading
               ? const LoadingOverlay(child: SizedBox())

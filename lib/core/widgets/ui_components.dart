@@ -681,3 +681,287 @@ class ModernSearchBar extends StatelessWidget {
     );
   }
 }
+
+/// Helper functions for modern dialogs using AppTheme
+class ModernDialog {
+  /// Shows a modern error dialog
+  static void showError(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String? confirmText,
+    VoidCallback? onConfirm,
+    bool barrierDismissible = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          ),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: AppTheme.errorColor,
+                size: 24,
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+              Flexible(
+                child: Text(
+                  title,
+                  style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: onConfirm ?? () => Navigator.of(context).pop(),
+              child: Text(
+                confirmText ?? 'موافق',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Shows a modern success dialog
+  static void showSuccess(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String? confirmText,
+    VoidCallback? onConfirm,
+    bool barrierDismissible = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          ),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                color: AppTheme.successColor,
+                size: 24,
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+              Flexible(
+                child: Text(
+                  title,
+                  style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: onConfirm ?? () => Navigator.of(context).pop(),
+              child: Text(
+                confirmText ?? 'موافق',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Shows a modern warning dialog
+  static void showWarning(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String? confirmText,
+    VoidCallback? onConfirm,
+    bool barrierDismissible = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          ),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.warning_amber_outlined,
+                color: AppTheme.warningColor,
+                size: 24,
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+              Flexible(
+                child: Text(
+                  title,
+                  style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: onConfirm ?? () => Navigator.of(context).pop(),
+              child: Text(
+                confirmText ?? 'موافق',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Shows a modern info dialog
+  static void showInfo(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String? confirmText,
+    VoidCallback? onConfirm,
+    bool barrierDismissible = false,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          ),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppTheme.infoColor,
+                size: 24,
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+              Flexible(
+                child: Text(
+                  title,
+                  style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: onConfirm ?? () => Navigator.of(context).pop(),
+              child: Text(
+                confirmText ?? 'موافق',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Shows a modern confirmation dialog
+  static Future<bool?> showConfirm(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String? confirmText,
+    String? cancelText,
+    Color? confirmColor,
+    bool barrierDismissible = true,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          ),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.help_outline,
+                color: AppTheme.warningColor,
+                size: 24,
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+              Flexible(
+                child: Text(
+                  title,
+                  style: AppTheme.headingSmall.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: AppTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                cancelText ?? 'إلغاء',
+                style: TextStyle(color: AppTheme.textSecondaryColor),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                confirmText ?? 'تأكيد',
+                style: TextStyle(
+                  color: confirmColor ?? AppTheme.primaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

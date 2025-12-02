@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
+import '../../../core/widgets/ui_components.dart';
 import '../../../core/services/unified_user_service.dart';
 import '../../../models/app_user.dart';
 
@@ -92,50 +93,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.red),
-              SizedBox(width: 8),
-              Text('خطأ'),
-            ],
-          ),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    ModernDialog.showError(
+      context,
+      title: 'خطأ',
+      message: error,
     );
   }
 
   void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.green),
-              SizedBox(width: 8),
-              Text('نجح'),
-            ],
-          ),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    ModernDialog.showSuccess(
+      context,
+      title: 'نجح',
+      message: message,
     );
   }
 

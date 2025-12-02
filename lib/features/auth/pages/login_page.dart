@@ -96,76 +96,20 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(
-                FontAwesomeIcons.circleExclamation,
-                color: AppTheme.errorColor,
-                size: 20,
-              ),
-              SizedBox(width: AppTheme.spacingS),
-              Text('خطأ في تسجيل الدخول'),
-            ],
-          ),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    ModernDialog.showError(
+      context,
+      title: 'خطأ في تسجيل الدخول',
+      message: error,
     );
   }
 
   void _showVerificationRequiredDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                FontAwesomeIcons.userCheck,
-                color: AppTheme.warningColor,
-                size: 20,
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-              const Text('حساب غير محقق'),
-            ],
-          ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'حسابك غير محقق حالياً. يجب أن يتم التحقق من حسابك من قبل الإدارة للوصول إلى المنصة.',
-                style: TextStyle(fontSize: 16),
-              ),
-              SizedBox(height: AppTheme.spacingS),
-              Text(
-                'يرجى التواصل مع الإدارة أو المحاولة لاحقاً.',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    ModernDialog.showWarning(
+      context,
+      title: 'حساب غير محقق',
+      message:
+          'حسابك غير محقق حالياً. يجب أن يتم التحقق من حسابك من قبل الإدارة للوصول إلى المنصة.\n\n'
+          'يرجى التواصل مع الإدارة أو المحاولة لاحقاً.',
     );
   }
 
@@ -211,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
           // Rafraîchir la page si nécessaire
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
+          padding: const EdgeInsets.all(AppTheme.spacingM),
           child: Form(
             key: _formKey,
             child: Column(
@@ -249,7 +193,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: AppTheme.spacingS),
                       Text(
-                        'سجل دخولك للوصول إلى المسابقة أهل القرآن الواتسابية القرآنية',
+                        'سجل دخولك للوصول إلى مسابقة أهل القرآن الواتسابية',
                         style: AppTheme.bodyMedium.copyWith(
                           color: AppTheme.textSecondaryColor,
                         ),
@@ -398,61 +342,9 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: AppTheme.spacingS),
 
                 // Bouton pour accéder à la page d'accueil
-                SecondaryButton(
-                  text: 'العودة إلى الصفحة الرئيسية',
-                  icon: FontAwesomeIcons.house,
+                TextButton(
                   onPressed: () => context.go('/participant_home_page'),
-                  fullWidth: true,
-                ),
-                const SizedBox(height: AppTheme.spacingL),
-
-                // Informations supplémentaires
-                ModernCard(
-                  backgroundColor: AppTheme.infoColor.withOpacity(0.1),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            FontAwesomeIcons.circleInfo,
-                            color: AppTheme.infoColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: Text(
-                              'تأكد من استخدام بيانات الدخول الصحيحة للوصول إلى حسابك',
-                              style: TextStyle(
-                                color: AppTheme.infoColor,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-                      Row(
-                        children: [
-                          Icon(
-                            FontAwesomeIcons.userCheck,
-                            color: AppTheme.warningColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: Text(
-                              'يجب أن يكون حسابك محققاً من قبل الإدارة للوصول',
-                              style: TextStyle(
-                                color: AppTheme.warningColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  child: const Text('العودة إلى الصفحة الرئيسية'),
                 ),
               ],
             ),

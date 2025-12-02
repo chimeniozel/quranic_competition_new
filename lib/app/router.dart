@@ -32,6 +32,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/pages/login_page.dart';
 import '../features/auth/pages/forgot_password_page.dart';
 import '../features/auth/pages/reset_password_page.dart';
+import '../features/auth/pages/verify_otp_page.dart';
 import '../features/auth/pages/change_password_page.dart';
 import '../features/auth/pages/waiting_verification_page.dart';
 import '../features/shared/pages/user_profile_page.dart';
@@ -152,6 +153,7 @@ final GoRouter appRouter = GoRouter(
           '/login',
           '/register',
           '/forgot-password',
+          '/verify-otp',
           '/reset-password',
           '/participant/register',
           '/participant_home_page',
@@ -185,23 +187,25 @@ final GoRouter appRouter = GoRouter(
     if (user != null) {
       // استخدام metadata أولاً (متوفر فوراً، لا يحتاج انتظار)
       userRole = user.userMetadata?['role'] as String?;
-      
+
       // إذا لم يكن متوفراً في metadata، استخدام cache
       if (userRole == null) {
         final cachedRole = PermissionService().currentUserRoleSync;
         userRole = cachedRole?.code;
       }
-      
+
       // تحديث cache من قاعدة البيانات في الخلفية (للاستخدام المستقبلي)
       // هذا لا يمنع عرض الصفحة
-      _getUserRoleFromProfiles(user.id).then((role) {
-        if (role != null && role != userRole) {
-          final permissionService = PermissionService();
-          permissionService.setUserRole(UserRole.fromString(role));
-        }
-      }).catchError((e) {
-        // تجاهل الأخطاء في التحديث الخلفي
-      });
+      _getUserRoleFromProfiles(user.id)
+          .then((role) {
+            if (role != null && role != userRole) {
+              final permissionService = PermissionService();
+              permissionService.setUserRole(UserRole.fromString(role));
+            }
+          })
+          .catchError((e) {
+            // تجاهل الأخطاء في التحديث الخلفي
+          });
     }
 
     final normalizedRole = _normalizeRole(userRole);
@@ -253,8 +257,18 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => ForgotPasswordPage(),
     ),
     GoRoute(
+      path: '/verify-otp',
+      builder: (context, state) {
+        final email = state.extra as String? ?? '';
+        return VerifyOtpPage(email: email);
+      },
+    ),
+    GoRoute(
       path: '/reset-password',
-      builder: (context, state) => const ResetPasswordPage(),
+      builder: (context, state) {
+        final email = state.extra as String?;
+        return ResetPasswordPage(email: email);
+      },
     ),
     GoRoute(
       path: '/change-password',

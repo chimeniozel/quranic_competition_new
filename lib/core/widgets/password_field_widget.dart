@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../services/password_validation_service.dart';
 import '../services/error_service.dart';
 import '../theme/app_theme.dart';
@@ -74,7 +75,8 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
             obscureText: _obscurePassword,
             decoration: InputDecoration(
               labelText: widget.labelText,
-              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+              hintText: 'أدخل ${widget.labelText.toLowerCase()}',
+              prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -94,7 +96,9 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                     ),
                   IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? FontAwesomeIcons.eyeSlash
+                          : FontAwesomeIcons.eye,
                       size: 20,
                     ),
                     onPressed: () {
@@ -354,10 +358,13 @@ class _ConfirmPasswordFieldWidgetState
         obscureText: _obscurePassword,
         decoration: InputDecoration(
           labelText: widget.labelText,
-          prefixIcon: const Icon(Icons.lock_outline, size: 20),
+          hintText: 'أدخل ${widget.labelText.toLowerCase()}',
+          prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
           suffixIcon: IconButton(
             icon: Icon(
-              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+              _obscurePassword
+                  ? FontAwesomeIcons.eyeSlash
+                  : FontAwesomeIcons.eye,
               size: 20,
             ),
             onPressed: () {

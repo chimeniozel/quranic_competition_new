@@ -30,24 +30,11 @@ class _JuryHomePageState extends State<JuryHomePage> {
   }
 
   Future<void> _showLogoutConfirmation() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('تأكيد تسجيل الخروج'),
-          content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('إلغاء'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('تسجيل الخروج'),
-            ),
-          ],
-        );
-      },
+    final confirmed = await ModernDialog.showConfirm(
+      context,
+      title: 'تأكيد تسجيل الخروج',
+      message: 'هل أنت متأكد من رغبتك في تسجيل الخروج؟',
+      confirmText: 'تسجيل الخروج',
     );
 
     if (confirmed == true) {

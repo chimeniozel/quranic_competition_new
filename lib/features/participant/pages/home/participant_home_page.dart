@@ -295,7 +295,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       ),
                                       label: Text(
                                         _activeEidSession!.isOpen
-                                            ? 'التسجيل في الفسحة'
+                                            ? 'التسجيل في المسابقة'
                                             : 'عرض الفائزين',
                                         style: const TextStyle(
                                           color: Colors.white,

@@ -173,25 +173,12 @@ class _QuizPageState extends State<QuizPage> {
   Future<void> _submitQuiz() async {
     if (_answers.length < _questions.length) {
       final unanswered = _questions.length - _answers.length;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('تأكيد الإرسال'),
-              content: Text(
-                'لديك $unanswered سؤال لم تجب عليه. هل تريد المتابعة؟',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('العودة'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('إرسال'),
-                ),
-              ],
-            ),
+      final confirmed = await ModernDialog.showConfirm(
+        context,
+        title: 'تأكيد الإرسال',
+        message: 'لديك $unanswered سؤال لم تجب عليه. هل تريد المتابعة؟',
+        cancelText: 'العودة',
+        confirmText: 'إرسال',
       );
 
       if (confirmed != true) return;

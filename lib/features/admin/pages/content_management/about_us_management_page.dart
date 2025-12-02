@@ -269,26 +269,12 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
   }
 
   Future<void> _deleteAboutUs() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: const Text('هل أنت متأكد من حذف معلومات "من نحن"؟'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.errorColor,
-                ),
-                child: const Text('حذف'),
-              ),
-            ],
-          ),
+    final confirmed = await ModernDialog.showConfirm(
+      context,
+      title: 'تأكيد الحذف',
+      message: 'هل أنت متأكد من حذف معلومات "من نحن"؟',
+      confirmText: 'حذف',
+      confirmColor: AppTheme.errorColor,
     );
 
     if (confirmed != true) return;

@@ -110,7 +110,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل الفوائد القرآنية: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -140,32 +140,19 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('ليس لديك صلاحية حذف الفوائد القرآنية'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: Text(
-              'هل أنت متأكد من حذف الفائدة القرآنية "${benefit.title}"؟ لا يمكن التراجع عن هذه العملية.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('حذف', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+    final confirmed = await ModernDialog.showConfirm(
+      context,
+      title: 'تأكيد الحذف',
+      message: 'هل أنت متأكد من حذف الفائدة القرآنية "${benefit.title}"؟ لا يمكن التراجع عن هذه العملية.',
+      confirmText: 'حذف',
+      confirmColor: AppTheme.errorColor,
     );
 
     if (confirmed == true) {
@@ -183,7 +170,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('تم حذف الفائدة القرآنية بنجاح'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppTheme.successColor,
               ),
             );
           }
@@ -192,7 +179,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('خطأ في حذف الفائدة القرآنية'),
-                backgroundColor: Colors.red,
+                backgroundColor: AppTheme.errorColor,
               ),
             );
           }
@@ -203,7 +190,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('خطأ في حذف الفائدة القرآنية: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -230,7 +217,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
             content: Text(
               benefit.isActive ? 'تم إلغاء تفعيل الفائدة' : 'تم تفعيل الفائدة',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       }
@@ -239,7 +226,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('خطأ في تغيير حالة الفائدة'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -340,9 +327,9 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete, color: Colors.red),
+                              Icon(Icons.delete, color: AppTheme.errorColor),
                               SizedBox(width: 8),
-                              Text('حذف', style: TextStyle(color: Colors.red)),
+                              Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
                             ],
                           ),
                         ),

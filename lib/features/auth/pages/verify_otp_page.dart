@@ -6,105 +6,122 @@ import '../../../core/services/password_reset_otp_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/ui_components.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
+class VerifyOtpPage extends StatefulWidget {
+  final String email;
+
+  const VerifyOtpPage({super.key, required this.email});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  State<VerifyOtpPage> createState() => _VerifyOtpPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+class _VerifyOtpPageState extends State<VerifyOtpPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
   final _errorService = ErrorService();
   final _otpService = PasswordResetOtpService();
 
   bool _isLoading = false;
+  bool _isVerified = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtpCode() async {
+  Future<void> _verifyOtp() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final result = await _otpService.sendOtpCode(
-        _emailController.text.trim(),
+      final result = await _otpService.verifyOtpCode(
+        widget.email,
+        _otpController.text.trim(),
       );
 
-      setState(() {
-        _isLoading = false;
-      });
-
-      print('📧 OTP Service result: $result');
+      setState(() => _isLoading = false);
 
       if (result['success'] == true) {
-        print('✅ Showing success dialog');
+        setState(() => _isVerified = true);
         _showSuccessDialog();
       } else {
-        print('❌ Showing error dialog: ${result['message']}');
-        _showErrorDialog(result['message'] ?? 'حدث خطأ أثناء إرسال رمز التحقق');
+        _showErrorDialog(result['message'] ?? 'رمز التحقق غير صحيح');
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      print('❌ Exception in _sendOtpCode: $e');
       _showErrorDialog(_errorService.analyzeException(e));
     }
   }
 
   void _showSuccessDialog() {
-    print('✅ _showSuccessDialog called');
-    final email = _emailController.text.trim();
     ModernDialog.showSuccess(
       context,
-      title: 'تم إرسال رمز التحقق',
+      title: 'تم التحقق من الرمز',
       message:
-          'تم إرسال رمز التحقق إلى $email\n\n'
-          'يرجى التحقق من صندوق الوارد الخاص بك وإدخال الرمز المكون من 6 أرقام.',
+          'تم التحقق من رمز التحقق بنجاح!\n\n'
+          'يمكنك الآن إعادة تعيين كلمة المرور.',
       barrierDismissible: false,
+      confirmText: 'متابعة',
       onConfirm: () {
         Navigator.of(context).pop();
-        Future.microtask(() {
-          context.push('/verify-otp', extra: email);
-        });
+        context.push('/reset-password', extra: widget.email);
       },
     );
   }
 
   void _showErrorDialog(String error) {
-    print('❌ _showErrorDialog called with error: $error');
     ModernDialog.showError(
       context,
-      title: 'خطأ في إعادة تعيين كلمة المرور',
+      title: 'خطأ في التحقق',
       message: error,
       barrierDismissible: false,
     );
   }
 
-  String? _validateEmail(String? value) {
+  String? _validateOtp(String? value) {
     if (value == null || value.isEmpty) {
-      return _errorService.getErrorMessage('VALIDATION_REQUIRED');
+      return 'يرجى إدخال رمز التحقق';
     }
-    if (!_isValidEmail(value)) {
-      return _errorService.getErrorMessage('AUTH_INVALID_EMAIL');
+    if (value.length != 6) {
+      return 'رمز التحقق يجب أن يكون 6 أرقام';
+    }
+    if (!RegExp(r'^\d+$').hasMatch(value)) {
+      return 'رمز التحقق يجب أن يحتوي على أرقام فقط';
     }
     return null;
   }
 
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  Future<void> _resendOtp() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _otpService.sendOtpCode(widget.email);
+
+      setState(() => _isLoading = false);
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('تم إرسال رمز جديد إلى بريدك الإلكتروني'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      } else {
+        _showErrorDialog(result['message'] ?? 'فشل إرسال رمز جديد');
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog(_errorService.analyzeException(e));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('استعادة كلمة المرور'),
+        title: const Text('التحقق من الرمز'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -140,7 +157,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'استعادة كلمة المرور',
+                      'التحقق من الرمز',
                       style: AppTheme.headingLarge.copyWith(
                         color: AppTheme.primaryColor,
                       ),
@@ -148,7 +165,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'أدخل بريدك الإلكتروني وسنرسل لك رمز تحقق لإعادة تعيين كلمة المرور',
+                      'أدخل رمز التحقق المكون من 6 أرقام الذي تم إرساله إلى\n${widget.email}',
                       style: AppTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -157,14 +174,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
               const SizedBox(height: AppTheme.spacingXL),
               TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+                controller: _otpController,
+                keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
-                validator: _validateEmail,
+                textAlign: TextAlign.center,
+                maxLength: 6,
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 8,
+                ),
+                validator: _validateOtp,
                 decoration: InputDecoration(
-                  labelText: 'البريد الإلكتروني',
-                  hintText: 'أدخل بريدك الإلكتروني',
-                  prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 20),
+                  labelText: 'رمز التحقق',
+                  hintText: '000000',
+                  prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -197,13 +221,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     horizontal: AppTheme.spacingS,
                     vertical: AppTheme.spacingS,
                   ),
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: AppTheme.spacingS),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
-                    onPressed: _sendOtpCode,
+                    onPressed: _isVerified ? null : _verifyOtp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
@@ -216,10 +241,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                     ),
                     child: const Text(
-                      'إرسال رمز التحقق',
+                      'التحقق من الرمز',
                       style: TextStyle(fontSize: 16),
                     ),
                   ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'لم تستلم الرمز؟',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  TextButton(
+                    onPressed: _isLoading ? null : _resendOtp,
+                    child: const Text('إعادة إرسال'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => context.go('/login'),

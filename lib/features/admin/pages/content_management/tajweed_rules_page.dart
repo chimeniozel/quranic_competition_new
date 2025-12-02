@@ -105,7 +105,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل أحكام التجويد: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -131,7 +131,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(rule.isActive ? 'تم إلغاء التفعيل' : 'تم التفعيل'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       }
@@ -140,7 +140,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تغيير الحالة : $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -152,23 +152,12 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
   }
 
   Future<void> _deleteRule(TajweedRule rule) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: Text('هل أنت متأكد من الحذف "${rule.title}"؟'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('حذف', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+    final confirmed = await ModernDialog.showConfirm(
+      context,
+      title: 'تأكيد الحذف',
+      message: 'هل أنت متأكد من الحذف "${rule.title}"؟',
+      confirmText: 'حذف',
+      confirmColor: AppTheme.errorColor,
     );
 
     if (confirmed == true) {
@@ -179,7 +168,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم الحذف بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.successColor,
             ),
           );
         }
@@ -188,7 +177,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('خطأ في الحذف : $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }

@@ -100,25 +100,12 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
 
   Future<void> _deleteQuestion(QuizQuestion question) async {
     
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: Text(
-              'هل أنت متأكد من حذف السؤال "${question.question.length > 50 ? '${question.question.substring(0, 50)}...' : question.question}"؟',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('إلغاء'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('حذف', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+    final confirmed = await ModernDialog.showConfirm(
+      context,
+      title: 'تأكيد الحذف',
+      message: 'هل أنت متأكد من حذف السؤال "${question.question.length > 50 ? '${question.question.substring(0, 50)}...' : question.question}"؟',
+      confirmText: 'حذف',
+      confirmColor: AppTheme.errorColor,
     );
 
     if (confirmed == true) {

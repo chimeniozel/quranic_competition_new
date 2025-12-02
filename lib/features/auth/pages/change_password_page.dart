@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/services/password_validation_service.dart';
 import '../../../core/widgets/password_field_widget.dart';
+import '../../../core/widgets/ui_components.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -93,56 +94,24 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.green),
-              SizedBox(width: 8),
-              Text('تم تغيير كلمة المرور'),
-            ],
-          ),
-          content: const Text(
-            'تم تغيير كلمة المرور بنجاح!\n\n'
-            'ستحتاج إلى تسجيل الدخول مرة أخرى بكلمة المرور الجديدة.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                context.go('/login');
-              },
-              child: const Text('موافق'),
-            ),
-          ],
-        );
+    ModernDialog.showSuccess(
+      context,
+      title: 'تم تغيير كلمة المرور',
+      message:
+          'تم تغيير كلمة المرور بنجاح!\n\n'
+          'ستحتاج إلى تسجيل الدخول مرة أخرى بكلمة المرور الجديدة.',
+      onConfirm: () {
+        Navigator.of(context).pop();
+        context.go('/login');
       },
     );
   }
 
   void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.red),
-              SizedBox(width: 8),
-              Text('خطأ في تغيير كلمة المرور'),
-            ],
-          ),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    ModernDialog.showError(
+      context,
+      title: 'خطأ في تغيير كلمة المرور',
+      message: error,
     );
   }
 

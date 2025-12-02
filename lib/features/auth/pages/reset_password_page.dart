@@ -4,9 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/services/password_validation_service.dart';
 import '../../../core/widgets/password_field_widget.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/ui_components.dart';
 
 class ResetPasswordPage extends StatefulWidget {
-  const ResetPasswordPage({super.key});
+  final String? email;
+
+  const ResetPasswordPage({super.key, this.email});
 
   @override
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -22,13 +26,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _isProcessing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkRecoverySession();
-  }
 
   @override
   void dispose() {
@@ -37,50 +34,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
-  /// Vérifie si une session de récupération est active
-  Future<void> _checkRecoverySession() async {
-    setState(() => _isProcessing = true);
-
-    try {
-      // Vérifier si l'utilisateur a une session de récupération active
-      final session = _supabase.auth.currentSession;
-      
-      // Si pas de session, essayer de vérifier avec le hash de l'URL
-      if (session == null) {
-        // Attendre un peu pour que Supabase traite le lien de récupération
-        await Future.delayed(const Duration(seconds: 1));
-        
-        // Vérifier à nouveau
-        final newSession = _supabase.auth.currentSession;
-        if (newSession == null) {
-          if (mounted) {
-            _showErrorDialog(
-              'لم يتم العثور على رابط إعادة تعيين صالح.\n\n'
-              'يرجى فتح رابط إعادة التعيين من البريد الإلكتروني داخل التطبيق، أو طلب رابط جديد.',
-            );
-            // Ne pas rediriger, permettre à l'utilisateur d'entrer manuellement le token
-            setState(() => _isProcessing = false);
-            return;
-          }
-          return;
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorDialog(
-          'خطأ في التحقق من رابط إعادة التعيين: ${_errorService.analyzeException(e)}',
-        );
-        setState(() => _isProcessing = false);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
-  }
-
   Future<void> _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (widget.email == null || widget.email!.isEmpty) {
+      _showErrorDialog('البريد الإلكتروني غير متوفر. يرجى المحاولة مرة أخرى.');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -94,19 +54,75 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         throw Exception(validationResult.errors.first);
       }
 
-      // Mettre à jour le mot de passe
-      await _supabase.auth.updateUser(
-        UserAttributes(password: _newPasswordController.text),
-      );
+      // ملاحظة: البريد الإلكتروني موجود في auth.users وليس في profiles
+      // لا يمكن البحث في profiles بالبريد الإلكتروني
+      // Edge Function ستتحقق من وجود المستخدم في auth.users
 
-      // Déconnexion pour forcer une nouvelle connexion avec le nouveau mot de passe
-      await _supabase.auth.signOut();
+      print('🔐 Starting password reset for email: ${widget.email}');
 
-      if (mounted) {
-        _showSuccessDialog();
+      // استخدام Edge Function لإعادة تعيين كلمة المرور
+      try {
+        print('🔐 Calling reset-password Edge Function...');
+        final response = await _supabase.functions.invoke(
+          'reset-password',
+          body: {
+            'user_email': widget.email!,
+            'new_password': _newPasswordController.text,
+          },
+        );
+
+        print('🔐 Edge Function response status: ${response.status}');
+        print('🔐 Edge Function response data: ${response.data}');
+
+        // التحقق من response.data أيضاً
+        final responseData = response.data as Map<String, dynamic>?;
+        final isSuccess =
+            response.status == 200 &&
+            (responseData?['success'] == true ||
+                responseData?['success'] == null);
+
+        if (!isSuccess) {
+          final errorData = responseData ?? response.data;
+          final errorMessage =
+              errorData?['error'] ??
+              errorData?['message'] ??
+              'فشل إعادة تعيين كلمة المرور';
+          print('❌ Edge Function error: $errorMessage');
+          throw Exception(errorMessage);
+        }
+
+        print('✅ Password reset successful');
+      } catch (e, stackTrace) {
+        print('❌ Error in reset password: $e');
+        print('❌ Stack trace: $stackTrace');
+
+        // إذا فشلت Edge Function، نعرض رسالة خطأ واضحة
+        throw Exception(
+          'لا يمكن تغيير كلمة المرور حالياً. يرجى المحاولة مرة أخرى.\n\n'
+          'التفاصيل: ${e.toString()}',
+        );
       }
-    } catch (e) {
+
       if (mounted) {
+        print('✅ Calling _showSuccessDialog');
+        try {
+          _showSuccessDialog();
+          print('✅ Success dialog shown successfully');
+        } catch (dialogError, dialogStack) {
+          print('❌ Error showing success dialog: $dialogError');
+          print('❌ Dialog stack trace: $dialogStack');
+          // لا نرمي exception هنا، لأن العملية نجحت بالفعل
+          // فقط نعرض error dialog كبديل
+          _showErrorDialog(
+            'تم إعادة تعيين كلمة المرور بنجاح، لكن حدث خطأ في عرض الرسالة.',
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      print('❌ Exception in _resetPassword: $e');
+      print('❌ Stack trace: $stackTrace');
+      if (mounted) {
+        print('❌ Calling _showErrorDialog');
         _showErrorDialog(_errorService.analyzeException(e));
       }
     } finally {
@@ -117,107 +133,97 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.green),
-              SizedBox(width: 8),
-              Text('تم إعادة تعيين كلمة المرور'),
-            ],
-          ),
-          content: const Text(
-            'تم إعادة تعيين كلمة المرور بنجاح!\n\n'
+    print('✅ _showSuccessDialog called');
+    print('✅ Context mounted: $mounted');
+
+    if (!mounted) {
+      print('❌ Context not mounted, cannot show dialog');
+      return;
+    }
+
+    try {
+      ModernDialog.showSuccess(
+        context,
+        title: 'تم إعادة تعيين كلمة المرور',
+        message: 'تم إعادة تعيين كلمة المرور بنجاح!\n\n'
             'يرجى تسجيل الدخول بكلمة المرور الجديدة.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                context.go('/login');
-              },
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
-    );
+        barrierDismissible: false,
+        onConfirm: () {
+          Navigator.of(context).pop();
+          context.go('/login');
+        },
+      );
+      print('✅ Success dialog shown');
+    } catch (e, stackTrace) {
+      print('❌ Error in _showSuccessDialog: $e');
+      print('❌ Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.red),
-              SizedBox(width: 8),
-              Text('خطأ في إعادة تعيين كلمة المرور'),
-            ],
-          ),
-          content: Text(error),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('موافق'),
-            ),
-          ],
-        );
-      },
+    print('❌ _showErrorDialog called with error: $error');
+    ModernDialog.showError(
+      context,
+      title: 'خطأ في إعادة تعيين كلمة المرور',
+      message: error,
+      barrierDismissible: false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isProcessing) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('جاري التحقق...'),
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('إعادة تعيين كلمة المرور'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppTheme.spacingM),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header avec icône
-              Icon(
-                Icons.lock_reset,
-                size: 80,
-                color: Colors.deepPurple.shade300,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'إعادة تعيين كلمة المرور',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+              // Header avec logo
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'أدخل كلمة المرور الجديدة',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/images/logos/logo.png',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'إعادة تعيين كلمة المرور',
+                      style: AppTheme.headingLarge.copyWith(
+                        color: AppTheme.primaryColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'أدخل كلمة المرور الجديدة',
+                      style: AppTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -228,7 +234,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 showStrengthIndicator: true,
                 showSuggestions: true,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.spacingS),
 
               // Confirmation du nouveau mot de passe
               ConfirmPasswordFieldWidget(
@@ -236,26 +242,29 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 passwordController: _newPasswordController,
                 labelText: 'تأكيد كلمة المرور الجديدة',
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppTheme.spacingXL),
 
               // Bouton de réinitialisation
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
-                      onPressed: _resetPassword,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    onPressed: _resetPassword,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingL,
+                        vertical: AppTheme.spacingS,
                       ),
-                      child: const Text(
-                        'إعادة تعيين كلمة المرور',
-                        style: TextStyle(fontSize: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
                       ),
                     ),
+                    child: const Text(
+                      'إعادة تعيين كلمة المرور',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => context.go('/login'),
@@ -268,4 +277,3 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     );
   }
 }
-
