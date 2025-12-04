@@ -178,6 +178,37 @@ class RoundJuryService {
     try {
       print('➕ Assignation du jury $juryId au round $roundId');
 
+      // Vérifier que l'utilisateur existe dans profiles et a le rôle محكم
+      final userProfile = await _supabase
+          .from('profiles')
+          .select('id, role, is_verified')
+          .eq('id', juryId)
+          .maybeSingle();
+
+      if (userProfile == null) {
+        print('❌ L\'utilisateur avec l\'ID $juryId n\'existe pas dans profiles');
+        throw Exception('المستخدم غير موجود في قاعدة البيانات');
+      }
+
+      final userRole = userProfile['role'] as String? ?? '';
+      final isVerified = userProfile['is_verified'] as bool? ?? false;
+
+      // Vérifier que le rôle est محكم (jury)
+      final isJuryRole = userRole.trim().toLowerCase() == 'jury' ||
+          userRole.trim().toLowerCase().contains('jury');
+
+      if (!isJuryRole) {
+        print(
+          '❌ L\'utilisateur $juryId n\'a pas le rôle محكم (role: $userRole)',
+        );
+        throw Exception('المستخدم ليس لديه دور محكم');
+      }
+
+      if (!isVerified) {
+        print('❌ L\'utilisateur $juryId n\'est pas vérifié');
+        throw Exception('المستخدم غير محقق');
+      }
+
       final response =
           await _supabase.from('round_jury_assignments').insert({
             'user_id': juryId,
@@ -193,7 +224,7 @@ class RoundJuryService {
       }
     } catch (e) {
       print('❌ Erreur lors de l\'assignation du jury: $e');
-      return false;
+      rethrow;
     }
   }
 

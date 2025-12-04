@@ -169,7 +169,8 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'مسابقة أهل القرآن الواتسابية الواتسابية',
+        title: 'مسابقة أهل القرآن الواتسابية',
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.login),
@@ -295,7 +296,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                       ),
                                       label: Text(
                                         _activeEidSession!.isOpen
-                                            ? 'التسجيل في المسابقة'
+                                            ? 'التسجيل في الفسحة'
                                             : 'عرض الفائزين',
                                         style: const TextStyle(
                                           color: Colors.white,
@@ -358,7 +359,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   ),
                                   const SizedBox(width: AppTheme.spacingS),
                                   Text(
-                                    'التسجيل في النسخة',
+                                    'التسجيل في المسابقة',
                                     style: AppTheme.labelLarge.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -538,7 +539,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                   ),
                                   const SizedBox(width: AppTheme.spacingS),
                                   Text(
-                                    'نتائج النسخة',
+                                    'نتائج المسابقة',
                                     style: AppTheme.labelLarge.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -593,7 +594,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                         child: _buildServiceCard(
                                           title: 'أحكام التجويد',
                                           imagePath:
-                                              'assets/images/tejweed.png',
+                                              'assets/images/tajweed_rules.png',
                                           color: AppTheme.primaryColor,
                                           onTap: () {
                                             context.push(
@@ -770,8 +771,11 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                   imagePath,
                   width: 48,
                   height: 48,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
+                  cacheWidth: 96,
+                  cacheHeight: 96,
                   errorBuilder: (context, error, stackTrace) {
+                    print('❌ Error loading image: $imagePath - $error');
                     return Container(
                       width: 48,
                       height: 48,

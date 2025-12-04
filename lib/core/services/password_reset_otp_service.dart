@@ -96,6 +96,21 @@ class PasswordResetOtpService {
             };
           }
 
+          // إذا كان الخطأ متعلقاً بالقيود على البريد الإلكتروني
+          if (errorMessage.toString().contains('restricted') ||
+              errorMessage.toString().contains('not allowed') ||
+              errorMessage.toString().contains('domain') ||
+              errorMessage.toString().contains('verification')) {
+            print('❌ Returning error: Email sending restricted');
+            return {
+              'success': false,
+              'message':
+                  'لا يمكن إرسال البريد الإلكتروني إلى هذا العنوان حالياً. يرجى التحقق من عنوان بريدك الإلكتروني أو التواصل مع الدعم الفني.',
+              'error': 'Email sending restricted',
+              'details': errorMessage.toString(),
+            };
+          }
+
           // إذا كان هناك خطأ واضح من Edge Function، نعرضه
           if (responseData?['success'] == false) {
             print('❌ Returning error from Edge Function');

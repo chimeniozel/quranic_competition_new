@@ -176,7 +176,7 @@ class _JuryHomePageState extends State<JuryHomePage> {
               : ModernPullToRefresh(
                 onRefresh: _loadData,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  // padding: const EdgeInsets.all(AppTheme.spacingS),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -213,10 +213,15 @@ class _JuryHomePageState extends State<JuryHomePage> {
                 Container(
                   padding: const EdgeInsets.all(AppTheme.spacingS),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(AppTheme.radiusM),
                   ),
-                  child: const Icon(Icons.gavel, color: Colors.white, size: 32),
+                  child: Image.asset(
+                    'assets/images/logos/logo.png',
+                    height: 40,
+                    width: 40,
+                    fit: BoxFit.contain,
+                  ),
                 ),
                 const SizedBox(width: AppTheme.spacingS),
                 Expanded(
@@ -255,38 +260,41 @@ class _JuryHomePageState extends State<JuryHomePage> {
   }
 
   Widget _buildStatisticsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'إحصائيات التقييم',
-          style: AppTheme.headingSmall.copyWith(
-            color: AppTheme.textPrimaryColor,
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'إحصائيات التقييم',
+            style: AppTheme.headingSmall.copyWith(
+              color: AppTheme.textPrimaryColor,
+            ),
           ),
-        ),
-        const SizedBox(height: AppTheme.spacingS),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'إجمالي التقييمات',
-                '${_statistics['total_evaluations'] ?? 0}',
-                Icons.rate_review,
-                AppTheme.infoColor,
+          const SizedBox(height: AppTheme.spacingS),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'إجمالي التقييمات',
+                  '${_statistics['total_evaluations'] ?? 0}',
+                  Icons.rate_review,
+                  AppTheme.infoColor,
+                ),
               ),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
-            Expanded(
-              child: _buildStatCard(
-                'النسخ النشطة',
-                '${_statistics['completed_versions'] ?? 0}',
-                Icons.event,
-                AppTheme.successColor,
+              const SizedBox(width: AppTheme.spacingS),
+              Expanded(
+                child: _buildStatCard(
+                  'النسخ النشطة',
+                  '${_statistics['completed_versions'] ?? 0}',
+                  Icons.event,
+                  AppTheme.successColor,
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -340,35 +348,40 @@ class _JuryHomePageState extends State<JuryHomePage> {
   }
 
   Widget _buildVersionsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'النسخ المحكمة من طرفي',
-              style: AppTheme.headingSmall.copyWith(
-                color: AppTheme.textPrimaryColor,
+    return Padding(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'النسخ المحكمة من طرفي',
+                style: AppTheme.headingSmall.copyWith(
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
-            ),
-            SecondaryButton(
-              text: 'عرض الكل',
-              icon: Icons.arrow_forward,
-              onPressed: () => context.push('/jury/version_page'),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.spacingS),
-        if (_myVersions.isEmpty)
-          EmptyState(
-            icon: Icons.event_available,
-            title: 'لا توجد نسخ محكمة حالياً',
-            subtitle: 'لم يتم تعيين أي نسخ للتحكيم بعد',
-          )
-        else
-          ...(_myVersions.take(3).map((version) => _buildVersionCard(version))),
-      ],
+              SecondaryButton(
+                text: 'عرض الكل',
+                icon: Icons.arrow_forward,
+                onPressed: () => context.push('/jury/version_page'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.spacingS),
+          if (_myVersions.isEmpty)
+            EmptyState(
+              icon: Icons.event_available,
+              title: 'لا توجد نسخ محكمة حالياً',
+              subtitle: 'لم يتم تعيين أي نسخ للتحكيم بعد',
+            )
+          else
+            ...(_myVersions
+                .take(3)
+                .map((version) => _buildVersionCard(version))),
+        ],
+      ),
     );
   }
 

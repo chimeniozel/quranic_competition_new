@@ -299,9 +299,43 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         'version_name': widget.version.name,
       });
 
-      // Envoyer une notification à chaque jury
+      // Envoyer une notification à chaque jury SEULEMENT s'il a vraiment le rôle محكم
+      final supabase = Supabase.instance.client;
       for (final jury in jurys) {
         try {
+          // Vérifier que le jury a vraiment le rôle محكم avant d'envoyer la notification
+          final juryProfile = await supabase
+              .from('profiles')
+              .select('role, is_verified')
+              .eq('id', jury.id)
+              .maybeSingle();
+
+          if (juryProfile == null) {
+            print('⚠️ Le profil du jury ${jury.fullName} n\'existe pas');
+            continue;
+          }
+
+          final juryRole = juryProfile['role'] as String? ?? '';
+          final isVerified = juryProfile['is_verified'] as bool? ?? false;
+
+          // Vérifier que le rôle est محكم (jury)
+          final isJuryRole = juryRole.trim().toLowerCase() == 'jury' ||
+              juryRole.trim().toLowerCase().contains('jury');
+
+          if (!isJuryRole) {
+            print(
+              '⚠️ L\'utilisateur ${jury.fullName} n\'a pas le rôle محكم (role: $juryRole). Notification non envoyée.',
+            );
+            continue;
+          }
+
+          if (!isVerified) {
+            print(
+              '⚠️ L\'utilisateur ${jury.fullName} n\'est pas vérifié. Notification non envoyée.',
+            );
+            continue;
+          }
+
           await _pushNotificationService.sendNotification(
             title: 'تم فتح تقييم المحكمين',
             body:

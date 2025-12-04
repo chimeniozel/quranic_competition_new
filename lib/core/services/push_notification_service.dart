@@ -21,7 +21,6 @@ class PushNotificationService {
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
   RealtimeChannel? _notificationsChannel;
   bool _isListening = false;
-  bool _isPolling = false;
   bool _isFCMInitialized = false;
   String? _deviceId;
   Timer? _iosAPNSRetryTimer;
@@ -31,6 +30,7 @@ class PushNotificationService {
   _lastRegisteredUserId; // user_id utilisé lors du dernier enregistrement
   final Set<String> _displayedNotificationIds =
       <String>{}; // IDs des notifications déjà affichées
+  DateTime? _loginTimestamp; // Timestamp de la dernière connexion
 
   /// Initialise le service et démarre l'écoute des notifications
   Future<void> initialize() async {
@@ -58,6 +58,9 @@ class PushNotificationService {
         print(
           '🔐 Utilisateur connecté, redémarrage de l\'écoute des notifications',
         );
+        // Enregistrer le timestamp de connexion pour ne pas recevoir d'anciennes notifications
+        _loginTimestamp = DateTime.now();
+        print('📅 Timestamp de connexion enregistré: $_loginTimestamp');
         _restartListening();
         // Réinitialiser les variables pour forcer une mise à jour du token avec le nouvel user_id
         _lastRegisteredToken = null;
@@ -82,8 +85,8 @@ class PushNotificationService {
       }
     });
 
-    // Démarrer le polling pour récupérer les notifications manquées
-    _startPolling();
+    // Polling désactivé - Les notifications seront reçues uniquement via Realtime et FCM
+    // _startPolling();
   }
 
   /// Initialise Firebase Cloud Messaging
@@ -561,12 +564,38 @@ class PushNotificationService {
               // Vérifier si la notification est pour tous (user_id = NULL) ou pour cet utilisateur spécifique
               // Pour les utilisateurs non connectés, on ne reçoit que les notifications générales (user_id = NULL)
               bool shouldDisplay = false;
-              if (notificationUserId == null) {
-                // Notification pour tous les utilisateurs
+              final isPublicNotification = notificationUserId == null;
+
+              if (isPublicNotification) {
+                // Notification générale (user_id = NULL) - للجميع
                 shouldDisplay = true;
               } else if (userId != null && notificationUserId == userId) {
                 // Notification spécifique pour cet utilisateur connecté
                 shouldDisplay = true;
+              }
+
+              // Vérifier si la notification a été créée après la dernière connexion
+              // هذا التحقق يطبق على جميع الإشعارات (العامة والمخصصة)
+              // لا تصل الإشعارات القديمة (تم إنشاؤها قبل تسجيل الدخول)
+              if (shouldDisplay && _loginTimestamp != null) {
+                final notificationCreatedAt =
+                    notification['created_at'] as String?;
+                if (notificationCreatedAt != null) {
+                  try {
+                    final createdAt = DateTime.parse(notificationCreatedAt);
+                    if (createdAt.isBefore(_loginTimestamp!)) {
+                      print(
+                        '⚠️ Notification ancienne ignorée (créée avant la connexion): ${notification['title']}',
+                      );
+                      shouldDisplay = false;
+                    }
+                  } catch (e) {
+                    print(
+                      '⚠️ Erreur lors du parsing de la date de création: $e',
+                    );
+                    // En cas d'erreur, afficher quand même pour éviter de perdre des notifications
+                  }
+                }
               }
 
               // Afficher la notification seulement si elle est destinée à cet utilisateur
@@ -596,96 +625,6 @@ class PushNotificationService {
     } catch (e) {
       print('❌ Erreur lors du démarrage de l\'écoute: $e');
       _isListening = false;
-    }
-  }
-
-  /// Démarre le polling pour récupérer les notifications manquées
-  /// Note: Ce polling fonctionne seulement quand l'app est ouverte ou en arrière-plan
-  /// Pour les notifications quand l'app est fermée, il faut Firebase Cloud Messaging (FCM)
-  void _startPolling() {
-    if (_isPolling) return;
-    _isPolling = true;
-
-    // Poller toutes les 30 secondes pour récupérer les notifications non lues
-    // Ce polling fonctionne quand l'app est ouverte ou en arrière-plan
-    // Mais ne fonctionne PAS quand l'app est complètement fermée (limitation Flutter/Supabase)
-    // Note: Le polling est surtout utile pour récupérer les notifications manquées
-    // Le Realtime devrait normalement capter toutes les nouvelles notifications
-    Future.delayed(const Duration(seconds: 30), () async {
-      // Premier polling après 30 secondes pour éviter de détecter les notifications déjà reçues via Realtime
-      while (_isPolling) {
-        try {
-          await _checkForNewNotifications();
-        } catch (e) {
-          print('❌ Erreur lors du polling des notifications: $e');
-        }
-        // Polling toutes les 30 secondes
-        await Future.delayed(const Duration(seconds: 30));
-      }
-    });
-  }
-
-  /// Vérifie s'il y a de nouvelles notifications non lues
-  /// Fonctionne même pour les utilisateurs non connectés
-  Future<void> _checkForNewNotifications() async {
-    final userId = _supabase.auth.currentUser?.id;
-
-    try {
-      // Récupérer les notifications non lues créées dans les dernières 5 minutes
-      final fiveMinutesAgo =
-          DateTime.now().subtract(const Duration(minutes: 5)).toIso8601String();
-
-      // Pour les utilisateurs non connectés, on récupère uniquement les notifications générales (user_id = NULL)
-      // Pour les utilisateurs connectés, on récupère les notifications générales + leurs notifications spécifiques
-      final response =
-          userId != null
-              ? await _supabase
-                  .from('notifications')
-                  .select()
-                  .or('user_id.is.null,user_id.eq.$userId')
-                  .eq('is_read', false)
-                  .gte('created_at', fiveMinutesAgo)
-                  .order('created_at', ascending: false)
-                  .limit(10)
-              : await _supabase
-                  .from('notifications')
-                  .select()
-                  .isFilter('user_id', null)
-                  .eq('is_read', false)
-                  .gte('created_at', fiveMinutesAgo)
-                  .order('created_at', ascending: false)
-                  .limit(10);
-
-      final notifications = List<Map<String, dynamic>>.from(response);
-
-      for (final notification in notifications) {
-        final notificationId = notification['id'] as String?;
-        if (notificationId == null) continue;
-
-        // Vérifier si cette notification a déjà été affichée
-        if (_displayedNotificationIds.contains(notificationId)) {
-          continue; // Ignorer si déjà affichée
-        }
-
-        print('📬 Notification trouvée via polling: ${notification['title']}');
-        await _handleNewNotification(notification);
-
-        // Marquer comme déjà affichée pour éviter les doublons
-        _displayedNotificationIds.add(notificationId);
-      }
-
-      // Nettoyer les anciens IDs (garder seulement les 100 derniers pour éviter la croissance infinie)
-      if (_displayedNotificationIds.length > 100) {
-        final idsToRemove =
-            _displayedNotificationIds
-                .take(_displayedNotificationIds.length - 100)
-                .toList();
-        for (final id in idsToRemove) {
-          _displayedNotificationIds.remove(id);
-        }
-      }
-    } catch (e) {
-      print('❌ Erreur lors de la vérification des notifications: $e');
     }
   }
 
@@ -739,7 +678,9 @@ class PushNotificationService {
           if (currentUserId != null &&
               payloadData != null &&
               payloadData['created_by'] == currentUserId) {
-            print('ℹ️ Notification ignorée (créée par l\'utilisateur courant): $title');
+            print(
+              'ℹ️ Notification ignorée (créée par l\'utilisateur courant): $title',
+            );
             if (notificationId != null) {
               try {
                 await markAsRead(notificationId);
@@ -845,6 +786,26 @@ class PushNotificationService {
     String? userId, // NULL pour notifier tous les utilisateurs
   }) async {
     try {
+      // Si userId est spécifié, vérifier que l'utilisateur existe dans profiles
+      if (userId != null && userId.isNotEmpty) {
+        final userExists =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', userId)
+                .maybeSingle();
+
+        if (userExists == null) {
+          print(
+            '⚠️ L\'utilisateur avec l\'ID $userId n\'existe pas dans profiles. Notification non envoyée.',
+          );
+          print('⚠️ Titre de la notification: $title');
+          return; // Ne pas envoyer l'notification si l'utilisateur n'existe pas
+        }
+
+        print('✅ Utilisateur vérifié: $userId existe dans profiles');
+      }
+
       // Construire/augmenter le payload pour inclure le créateur afin de filtrer côté client
       final creatorId = _supabase.auth.currentUser?.id;
       String? payloadValue;
@@ -1069,7 +1030,6 @@ class PushNotificationService {
       _isListening = false;
       print('🛑 Écoute des notifications arrêtée');
     }
-    _isPolling = false;
 
     // Arrêter le timer iOS si actif
     if (_iosAPNSRetryTimer != null) {

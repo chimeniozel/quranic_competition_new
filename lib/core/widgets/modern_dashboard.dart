@@ -467,8 +467,11 @@ class QuickActionGrid extends StatelessWidget {
                     action.imagePath!,
                     width: 40,
                     height: 40,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
+                    cacheWidth: 80,
+                    cacheHeight: 80,
                     errorBuilder: (context, error, stackTrace) {
+                      print('❌ Error loading image: ${action.imagePath} - $error');
                       return Container(
                         width: 40,
                         height: 40,

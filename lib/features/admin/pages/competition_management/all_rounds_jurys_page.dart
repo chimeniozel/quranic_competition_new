@@ -287,8 +287,42 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
         // Recharger la liste des jurys pour ce round
         await _refreshRoundJurys(round.id);
 
-        // Envoyer une notification au jury
+        // Envoyer une notification au jury SEULEMENT s'il a vraiment le rôle محكم
         try {
+          // Vérifier que le jury a vraiment le rôle محكم avant d'envoyer la notification
+          final supabase = Supabase.instance.client;
+          final juryProfile = await supabase
+              .from('profiles')
+              .select('role, is_verified')
+              .eq('id', jury.id)
+              .maybeSingle();
+
+          if (juryProfile == null) {
+            print('⚠️ Le profil du jury ${jury.fullName} n\'existe pas');
+            return;
+          }
+
+          final juryRole = juryProfile['role'] as String? ?? '';
+          final isVerified = juryProfile['is_verified'] as bool? ?? false;
+
+          // Vérifier que le rôle est محكم (jury)
+          final isJuryRole = juryRole.trim().toLowerCase() == 'jury' ||
+              juryRole.trim().toLowerCase().contains('jury');
+
+          if (!isJuryRole) {
+            print(
+              '⚠️ L\'utilisateur ${jury.fullName} n\'a pas le rôle محكم (role: $juryRole). Notification non envoyée.',
+            );
+            return;
+          }
+
+          if (!isVerified) {
+            print(
+              '⚠️ L\'utilisateur ${jury.fullName} n\'est pas vérifié. Notification non envoyée.',
+            );
+            return;
+          }
+
           final roundName = round.name ?? 'الجولة ${round.number}';
           final payload = jsonEncode({
             'type': 'jury_assigned_to_round',

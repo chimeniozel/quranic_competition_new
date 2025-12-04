@@ -325,10 +325,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          FontAwesomeIcons.hand,
-                          color: AppTheme.primaryColor,
-                          size: 24,
+                        Image.asset(
+                          'assets/images/logos/logo.png',
+                          height: 50,
+                          width: 50,
                         ),
                         const SizedBox(width: AppTheme.spacingS),
                         Expanded(
@@ -370,7 +370,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                     QuickAction(
                       title: 'أحكام التجويد',
-                      imagePath: 'assets/images/tejweed.png',
+                      imagePath: 'assets/images/tajweed_rules.png',
                       color: AppTheme.warningColor,
                       onTap: () => context.push('/admin/tajweed-rules'),
                     ),
