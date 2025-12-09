@@ -373,7 +373,8 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     // Déterminer la raison de refus
     String? rejectionReason;
     if (shouldAutoReject) {
-      rejectionReason = 'حصوله على المرتبة الأولى أو الثانية في مسابقة أهل القرآن الواتسابية سابقة';
+      rejectionReason =
+          'حصوله على المرتبة الأولى أو الثانية في مسابقة أهل القرآن الواتسابية سابقا';
       print('🚫 Raison de refus déterminée: $rejectionReason');
     }
 
@@ -429,7 +430,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       String message;
       if (shouldAutoReject) {
         message =
-            'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة أهل القرآن الواتسابية سابقة';
+            'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber\n\nلكن تم رفض طلبك تلقائياً لأنك حصلت على المرتبة الأولى أو الثانية في مسابقة أهل القرآن الواتسابية سابقا';
       } else {
         message =
             'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber';

@@ -149,3 +149,5 @@ curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/send-password-reset-o
 3. راجع `RESEND_DNS_SETUP.md` للتحقق من إعدادات DNS
 4. راجع `RESEND_EMAIL_RESTRICTIONS_FIX.md` لحل مشاكل القيود
 
+
+

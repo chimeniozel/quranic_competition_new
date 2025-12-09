@@ -22,8 +22,10 @@ class AuthService {
   }) async {
     try {
       final normalizedCountryCode = countryCode.trim();
-      final countryDigits =
-          normalizedCountryCode.replaceAll(RegExp(r'[^\d]'), '');
+      final countryDigits = normalizedCountryCode.replaceAll(
+        RegExp(r'[^\d]'),
+        '',
+      );
       if (countryDigits.isEmpty) {
         return 'رمز الدولة غير صالح';
       }
@@ -59,7 +61,7 @@ class AuthService {
         email: email,
         password: password,
         emailRedirectTo: 'com.coranehel.quranicCompetition://login-callback',
-        data: {'full_name': fullName, 'role': role, 'is_verified': false},
+        data: {'full_name': fullName, 'role': role, 'is_validated': false},
       );
 
       final user = res.user;
@@ -136,33 +138,38 @@ class AuthService {
   Future<void> _initializeUserPermissions(String userId) async {
     try {
       // Récupérer le rôle et les permissions en une seule requête
-      final response = await _supabase
-          .from('profiles')
-          .select(
-            'role, can_create_versions, can_publish_content, '
-            'can_validate_accounts, can_delete, can_modify, '
-            'can_modify_versions, can_assign_roles, can_view_content',
-          )
-          .eq('id', userId)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('profiles')
+              .select(
+                'role, can_create_versions, can_publish_content, '
+                'can_validate_accounts, can_delete, can_modify, '
+                'can_modify_versions, can_assign_roles, can_view_content',
+              )
+              .eq('id', userId)
+              .maybeSingle();
 
       final roleCode = response?['role'] as String?;
       if (roleCode != null) {
         final userRole = UserRole.fromString(roleCode);
         final basePermissions = UserPermissions.forRole(userRole);
-        
+
         // Utiliser les permissions de la DB si disponibles, sinon utiliser les permissions par défaut
         UserPermissions permissions = basePermissions;
-        
+
         // Vérifier si les colonnes de permissions existent (non null)
-        final hasCustomPermissions = response?['can_create_versions'] != null ||
+        final hasCustomPermissions =
+            response?['can_create_versions'] != null ||
             response?['can_publish_content'] != null ||
             response?['can_validate_accounts'] != null;
-        
+
         if (hasCustomPermissions && response != null) {
-          permissions = UserPermissions.withOverrides(basePermissions, response);
+          permissions = UserPermissions.withOverrides(
+            basePermissions,
+            response,
+          );
         }
-        
+
         PermissionService().setUserRole(
           userRole,
           customPermissions: permissions,

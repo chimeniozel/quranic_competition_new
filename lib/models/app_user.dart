@@ -28,7 +28,7 @@ class AppUser {
       role: map['role'] ?? 'membre',
       isVerified:
           map['is_validated'] ??
-          map['is_verified'] ??
+          map['is_validated'] ??
           false, // Support des deux formats
       createdAt: DateTime.parse(map['created_at']),
     );

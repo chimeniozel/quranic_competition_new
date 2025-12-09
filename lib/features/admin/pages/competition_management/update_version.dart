@@ -306,7 +306,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
           // Vérifier que le jury a vraiment le rôle محكم avant d'envoyer la notification
           final juryProfile = await supabase
               .from('profiles')
-              .select('role, is_verified')
+              .select('role, is_validated')
               .eq('id', jury.id)
               .maybeSingle();
 
@@ -316,7 +316,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
           }
 
           final juryRole = juryProfile['role'] as String? ?? '';
-          final isVerified = juryProfile['is_verified'] as bool? ?? false;
+          final isVerified = juryProfile['is_validated'] as bool? ?? false;
 
           // Vérifier que le rôle est محكم (jury)
           final isJuryRole = juryRole.trim().toLowerCase() == 'jury' ||

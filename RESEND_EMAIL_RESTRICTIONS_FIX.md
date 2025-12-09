@@ -120,3 +120,5 @@ Resend يفرض قيوداً على البريد الافتراضي `onboarding@
 2. تحقق من [وثائق Resend](https://resend.com/docs)
 3. تواصل مع دعم Resend إذا لزم الأمر
 
+
+

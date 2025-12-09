@@ -293,7 +293,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
           final supabase = Supabase.instance.client;
           final juryProfile = await supabase
               .from('profiles')
-              .select('role, is_verified')
+              .select('role, is_validated')
               .eq('id', jury.id)
               .maybeSingle();
 
@@ -303,7 +303,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
           }
 
           final juryRole = juryProfile['role'] as String? ?? '';
-          final isVerified = juryProfile['is_verified'] as bool? ?? false;
+          final isVerified = juryProfile['is_validated'] as bool? ?? false;
 
           // Vérifier que le rôle est محكم (jury)
           final isJuryRole = juryRole.trim().toLowerCase() == 'jury' ||

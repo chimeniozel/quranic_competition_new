@@ -181,7 +181,7 @@ class RoundJuryService {
       // Vérifier que l'utilisateur existe dans profiles et a le rôle محكم
       final userProfile = await _supabase
           .from('profiles')
-          .select('id, role, is_verified')
+          .select('id, role, is_validated')
           .eq('id', juryId)
           .maybeSingle();
 
@@ -191,7 +191,7 @@ class RoundJuryService {
       }
 
       final userRole = userProfile['role'] as String? ?? '';
-      final isVerified = userProfile['is_verified'] as bool? ?? false;
+      final isVerified = userProfile['is_validated'] as bool? ?? false;
 
       // Vérifier que le rôle est محكم (jury)
       final isJuryRole = userRole.trim().toLowerCase() == 'jury' ||
