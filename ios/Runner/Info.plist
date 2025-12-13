@@ -59,7 +59,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.coranehel.quranicCompetition</string>
+				<string>com.chemeni.quranic-competitions</string>
 			</array>
 		</dict>
 	</array>

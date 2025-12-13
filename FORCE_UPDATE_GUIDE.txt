@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    GUIDE: MISE À JOUR FORCÉE DE L'APPLICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. CRÉATION DE LA TABLE DANS SUPABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Exécutez le fichier SQL suivant dans Supabase SQL Editor:
+
+Fichier: create_app_settings_table.sql
+
+Ce fichier crée:
+  - Table app_settings pour gérer les paramètres de mise à jour
+  - Insertion d'une ligne par défaut
+  - Trigger pour mettre à jour updated_at automatiquement
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. STRUCTURE DE LA TABLE app_settings
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Colonnes:
+  - id: UUID (clé primaire)
+  - minimum_version_code: INTEGER (version code minimale requise)
+  - force_update_enabled: BOOLEAN (activer/désactiver la mise à jour forcée)
+  - update_message: TEXT (message affiché à l'utilisateur)
+  - update_url_android: TEXT (URL Google Play Store)
+  - update_url_ios: TEXT (URL App Store)
+  - created_at: TIMESTAMP
+  - updated_at: TIMESTAMP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. COMMENT ACTIVER LA MISE À JOUR FORCÉE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans Supabase SQL Editor, exécutez:
+
+UPDATE app_settings
+SET 
+  minimum_version_code = 9,  -- Version code minimale requise
+  force_update_enabled = true,  -- Activer la mise à jour forcée
+  update_message = 'يجب تحديث التطبيق إلى أحدث إصدار للاستمرار في الاستخدام.',
+  update_url_android = 'https://play.google.com/store/apps/details?id=com.chemeni.quranic_competition',
+  update_url_ios = 'https://apps.apple.com/app/id[YOUR_APP_ID]'
+WHERE id = (SELECT id FROM app_settings LIMIT 1);
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. COMMENT DÉSACTIVER LA MISE À JOUR FORCÉE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans Supabase SQL Editor, exécutez:
+
+UPDATE app_settings
+SET force_update_enabled = false
+WHERE id = (SELECT id FROM app_settings LIMIT 1);
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. COMMENT ÇA FONCTIONNE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Au démarrage de l'application, le système vérifie:
+   - La version code actuelle de l'application (depuis package_info_plus)
+   - La version code minimale requise (depuis Supabase)
+
+2. Si force_update_enabled = true ET version actuelle < minimum_version_code:
+   - Un dialogue modal s'affiche (impossible à fermer)
+   - L'utilisateur doit cliquer sur "تحديث الآن"
+   - Cela ouvre le Google Play Store / App Store
+   - L'application ne peut pas être utilisée tant que la mise à jour n'est pas faite
+
+3. Si force_update_enabled = false OU version actuelle >= minimum_version_code:
+   - L'application fonctionne normalement
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. EXEMPLE D'UTILISATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Scénario: Vous avez publié la version 6.1.0+9 et vous voulez forcer tous les
+utilisateurs à mettre à jour depuis la version 8 ou moins.
+
+1. Assurez-vous que la version actuelle dans pubspec.yaml est 6.1.0+9
+2. Dans Supabase, exécutez:
+
+UPDATE app_settings
+SET 
+  minimum_version_code = 9,
+  force_update_enabled = true,
+  update_message = 'تم إصدار تحديث جديد مهم. يرجى التحديث للاستمرار.'
+WHERE id = (SELECT id FROM app_settings LIMIT 1);
+
+3. Tous les utilisateurs avec version code < 9 verront le dialogue de mise à jour
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. FICHIERS CRÉÉS/MODIFIÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nouveaux fichiers:
+  - lib/core/services/app_version_service.dart
+  - lib/core/widgets/force_update_dialog.dart
+  - create_app_settings_table.sql
+  - FORCE_UPDATE_GUIDE.txt
+
+Fichiers modifiés:
+  - pubspec.yaml (ajout de package_info_plus)
+  - lib/main.dart (ajout de la vérification au démarrage)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. NOTES IMPORTANTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ATTENTION:
+  - Ne mettez jamais force_update_enabled = true sans avoir publié la nouvelle
+    version sur Google Play / App Store
+  - Testez toujours avec force_update_enabled = false d'abord
+  - La version code doit être un nombre entier (pas de décimales)
+
+✅ BONNES PRATIQUES:
+  - Augmentez toujours la version code dans pubspec.yaml avant de publier
+  - Testez la mise à jour forcée sur un appareil de test avant de l'activer
+  - Informez les utilisateurs à l'avance si possible (via notifications)
+
+═══════════════════════════════════════════════════════════════════════════════
+                        FIN DU GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+

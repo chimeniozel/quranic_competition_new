@@ -151,30 +151,17 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     if (_searchQuery.isEmpty) {
       _filteredParticipants = List.from(ageGroupFiltered);
     } else {
-      final query = _searchQuery.toLowerCase().trim();
+      final query = _searchQuery.toLowerCase();
       _filteredParticipants =
           ageGroupFiltered.where((participant) {
             final name = participant.fullName.toLowerCase();
             final phone = participant.phone.toLowerCase();
-            // Gérer le cas où registrationNumber est null
             final registrationNumber =
-                participant.registrationNumber != null
-                    ? participant.registrationNumber.toString().toLowerCase()
-                    : '';
+                participant.registrationNumber.toString().toLowerCase();
 
-            // Recherche dans le nom
-            if (name.contains(query)) return true;
-
-            // Recherche dans le téléphone
-            if (phone.contains(query)) return true;
-
-            // Recherche dans le numéro d'enregistrement (seulement si non null)
-            if (registrationNumber.isNotEmpty &&
-                registrationNumber.contains(query)) {
-              return true;
-            }
-
-            return false;
+            return name.contains(query) ||
+                phone.contains(query) ||
+                registrationNumber.contains(query);
           }).toList();
     }
   }

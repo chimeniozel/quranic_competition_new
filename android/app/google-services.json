@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:251765097007:android:9201b1ac54f67e5e6bbcda",
+        "mobilesdk_app_id": "1:251765097007:android:1a3c74ab2c7d0fe06bbcda",
         "android_client_info": {
-          "package_name": "com.coranehel.quranicCompetition"
+          "package_name": "com.chemeni.quranic_competition"
         }
       },
       "oauth_client": [

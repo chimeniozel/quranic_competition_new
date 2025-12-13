@@ -60,7 +60,7 @@ class AuthService {
       final res = await _supabase.auth.signUp(
         email: email,
         password: password,
-        emailRedirectTo: 'com.coranehel.quranicCompetition://login-callback',
+        emailRedirectTo: 'com.chemeni.quranic-competitions://login-callback',
         data: {'full_name': fullName, 'role': role, 'is_validated': false},
       );
 

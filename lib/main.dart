@@ -3,6 +3,8 @@ import 'package:quranic_competition/core/widgets/auth_initializer.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/core/services/notification_service.dart';
 import 'package:quranic_competition/core/services/push_notification_service.dart';
+import 'package:quranic_competition/core/services/app_version_service.dart';
+import 'package:quranic_competition/core/widgets/force_update_dialog.dart';
 import 'package:quranic_competition/app/router.dart' as router;
 import 'package:quranic_competition/firebase_options.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -90,6 +92,24 @@ class _MyAppState extends State<MyApp> {
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;
+
+    // Vérifier si une mise à jour est requise
+    try {
+      final appVersionService = AppVersionService();
+      final updateRequired = await appVersionService.isUpdateRequired();
+
+      if (updateRequired && mounted) {
+        final updateMessage = await appVersionService.getUpdateMessage();
+        final updateUrl = await appVersionService.getUpdateUrl();
+
+        // Afficher le dialogue de mise à jour forcée
+        ForceUpdateDialog.show(context, updateMessage, updateUrl);
+        return; // Ne pas continuer l'initialisation si une mise à jour est requise
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la vérification de la version: $e');
+      // Continuer même en cas d'erreur pour ne pas bloquer l'application
+    }
 
     // Initialiser le service de notifications push via Supabase
     try {

@@ -17,7 +17,10 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -25,9 +28,15 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -40,19 +49,9 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCmHFi6P0V-tVm6pLpTfmu1w5QpvAIWLE4',
-    appId: '1:251765097007:web:492e3995618a31ef6bbcda',
-    messagingSenderId: '251765097007',
-    projectId: 'quranic-competition-supabase',
-    authDomain: 'quranic-competition-supabase.firebaseapp.com',
-    storageBucket: 'quranic-competition-supabase.firebasestorage.app',
-    measurementId: 'G-2CP98ZBZ6V',
-  );
-
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDs0sbtJe1RAhbUSu5WRfMIky2DxpFJ3bk',
-    appId: '1:251765097007:android:9201b1ac54f67e5e6bbcda',
+    appId: '1:251765097007:android:1a3c74ab2c7d0fe06bbcda',
     messagingSenderId: '251765097007',
     projectId: 'quranic-competition-supabase',
     storageBucket: 'quranic-competition-supabase.firebasestorage.app',
@@ -60,30 +59,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyC05WMPVGdXsUdFVVxyI0WYLctWT0GNJoI',
-    appId: '1:251765097007:ios:cb23a3d7e9482cef6bbcda',
+    appId: '1:251765097007:ios:d781424db85b5ae96bbcda',
     messagingSenderId: '251765097007',
     projectId: 'quranic-competition-supabase',
     storageBucket: 'quranic-competition-supabase.firebasestorage.app',
-    iosBundleId: 'com.coranehel.quranicCompetition',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC05WMPVGdXsUdFVVxyI0WYLctWT0GNJoI',
-    appId: '1:251765097007:ios:cb23a3d7e9482cef6bbcda',
-    messagingSenderId: '251765097007',
-    projectId: 'quranic-competition-supabase',
-    storageBucket: 'quranic-competition-supabase.firebasestorage.app',
-    iosBundleId: 'com.coranehel.quranicCompetition',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCmHFi6P0V-tVm6pLpTfmu1w5QpvAIWLE4',
-    appId: '1:251765097007:web:4c64b228ebd915976bbcda',
-    messagingSenderId: '251765097007',
-    projectId: 'quranic-competition-supabase',
-    authDomain: 'quranic-competition-supabase.firebaseapp.com',
-    storageBucket: 'quranic-competition-supabase.firebasestorage.app',
-    measurementId: 'G-E75G8V17FM',
+    iosBundleId: 'com.chemeni.quranic-competitions',
   );
 }
-
