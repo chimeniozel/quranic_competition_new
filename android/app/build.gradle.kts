@@ -36,9 +36,16 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = 35 // Android 15 (API level 35) - Required by Google Play
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+    
+    // Support for 16 KB memory page sizes (required for Android 15+)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
 
     signingConfigs {

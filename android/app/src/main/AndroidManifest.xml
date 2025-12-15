@@ -1,9 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Permissions pour l'accès aux photos et fichiers -->
-    <!-- Android 13+ (API 33+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Android < 13 -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- 
+        Note: READ_MEDIA_IMAGES and READ_EXTERNAL_STORAGE permissions removed
+        to comply with Google Play Photo and Video Permissions policy.
+        The app uses image_picker and file_picker which use Android Photo Picker
+        (no permissions required for one-time access).
+    -->
     
     <!-- Permissions pour les notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

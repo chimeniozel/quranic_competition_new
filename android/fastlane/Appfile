@@ -1,0 +1,5 @@
+# Path to the json secret file - Follow FASTLANE_SETUP.md to get one
+# Place your service account JSON file in the android/ directory
+json_key_file("quranic-competition-supabase-5aa762608dee.json")
+
+package_name("com.chemeni.quranic_competition")
