@@ -80,7 +80,7 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
   }
 
   Future<void> _initializePermissions() async {
-    final hasAccess = await PermissionService().isSuperAdmin();
+    final hasAccess = await PermissionService().isAdmin();
     _currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     setState(() {

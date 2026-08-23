@@ -6,6 +6,10 @@
         (no permissions required for one-time access).
     -->
     
+    <!-- Accès réseau : chargement des images/vidéos de l'archive et des
+         appels Supabase (obligatoire en build release) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Permissions pour les notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />

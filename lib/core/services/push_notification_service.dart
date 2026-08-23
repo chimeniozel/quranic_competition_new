@@ -674,6 +674,10 @@ class PushNotificationService {
       if (payload != null) {
         try {
           final payloadData = jsonDecode(payload) as Map<String, dynamic>?;
+          // TEMPORAIRE : Désactiver le filtrage pour permettre les tests
+          // Les notifications créées par l'utilisateur courant seront affichées
+          // TODO: Réactiver le filtrage après les tests si nécessaire
+          /*
           // Filtrer les notifications créées par l'utilisateur courant
           if (currentUserId != null &&
               payloadData != null &&
@@ -688,6 +692,7 @@ class PushNotificationService {
             }
             return;
           }
+          */
 
           if (payloadData != null && payloadData['type'] == 'version_created') {
             final versionId = payloadData['version_id'] as String?;
@@ -826,16 +831,69 @@ class PushNotificationService {
         payloadValue = base.isEmpty ? null : jsonEncode(base);
       }
 
-      await _supabase.from('notifications').insert({
-        'title': title,
-        'body': body,
-        'type': type,
-        'payload': payloadValue,
-        'user_id': userId,
-        'is_read': false,
-      });
+      // Insérer la notification dans la base de données
+      final notificationResponse =
+          await _supabase
+              .from('notifications')
+              .insert({
+                'title': title,
+                'body': body,
+                'type': type,
+                'payload': payloadValue,
+                'user_id': userId,
+                'is_read': false,
+              })
+              .select()
+              .single();
 
       print('✅ Notification envoyée dans la base de données: $title');
+
+      // Envoyer les notifications FCM push via une Edge Function Supabase
+      // Cette fonction enverra les notifications FCM aux appareils enregistrés
+      try {
+        final notificationId = notificationResponse['id'] as String?;
+
+        if (notificationId == null) {
+          print(
+            '⚠️ notificationId est null, impossible d\'appeler l\'Edge Function',
+          );
+          return;
+        }
+
+        print(
+          '📞 Appel de l\'Edge Function send-fcm-notification avec notification_id: $notificationId',
+        );
+
+        // Appeler l'Edge Function Supabase pour envoyer les notifications FCM
+        // L'Edge Function utilise l'API FCM HTTP v1 et accepte notification_id ou notificationId
+        final response = await _supabase.functions.invoke(
+          'send-fcm-notification',
+          body: {
+            'notification_id': notificationId, // Format snake_case (préféré)
+            // Alternative: 'notificationId': notificationId, // Format camelCase aussi supporté
+          },
+        );
+
+        print('📥 Réponse Edge Function reçue - Status: ${response.status}');
+
+        if (response.data != null) {
+          print('✅ Notification FCM envoyée via Edge Function: $title');
+          print('📊 Résultat: ${response.data}');
+        } else {
+          print(
+            '⚠️ Edge Function répondue mais sans données (status: ${response.status})',
+          );
+        }
+      } catch (e, stackTrace) {
+        // Si l'Edge Function n'existe pas ou échoue, continuer quand même
+        // Les notifications Realtime fonctionneront toujours
+        print('❌ Erreur lors de l\'appel à l\'Edge Function FCM: $e');
+        print('📋 Stack trace: $stackTrace');
+        print('ℹ️ Les notifications Realtime fonctionneront toujours');
+        print(
+          '💡 Vérifie que l\'Edge Function est déployée dans Supabase Dashboard',
+        );
+      }
     } catch (e) {
       print('❌ Erreur lors de l\'envoi de la notification: $e');
       rethrow;
@@ -911,6 +969,11 @@ class PushNotificationService {
         if (payload != null) {
           try {
             final payloadData = jsonDecode(payload) as Map<String, dynamic>?;
+            // TEMPORAIRE : Désactiver le filtrage pour permettre les tests
+            // Les notifications créées par l'utilisateur courant seront affichées
+            // TODO: Réactiver le filtrage après les tests si nécessaire
+            // Le code de filtrage est commenté ci-dessous pour permettre les tests
+            /*
             // Exclure les notifications créées par l'utilisateur courant
             if (userId != null &&
                 payloadData != null &&
@@ -923,6 +986,7 @@ class PushNotificationService {
               }
               shouldInclude = false;
             }
+            */
             if (payloadData != null &&
                 payloadData['type'] == 'version_created') {
               final versionId = payloadData['version_id'] as String?;

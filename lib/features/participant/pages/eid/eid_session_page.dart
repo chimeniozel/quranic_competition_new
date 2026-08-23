@@ -97,10 +97,19 @@ class _EidSessionPageState extends State<EidSessionPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
+        // Les erreurs métier (numéro déjà inscrit, inscription fermée...)
+        // portent déjà un message clair : on l'affiche tel quel, sans
+        // préfixe ni détail technique.
+        final message =
+            e is EidRegistrationException
+                ? e.message
+                : 'تعذّر إتمام التسجيل. يرجى المحاولة مرة أخرى.';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ في التسجيل: $e'),
+            content: Text(message),
             backgroundColor: AppTheme.errorColor,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

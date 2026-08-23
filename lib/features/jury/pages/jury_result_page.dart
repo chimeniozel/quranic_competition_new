@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:quranic_competition/models/round_result.dart';
 import 'package:quranic_competition/models/round.dart';
@@ -33,6 +35,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
   int _currentPage = 0;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   String _selectedAgeGroup = 'كبار';
   CompetitionVersion? _selectedVersion;
   Round? _selectedRound;
@@ -49,6 +52,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -121,13 +125,21 @@ class _JuryResultPageState extends State<JuryResultPage> {
       setState(() => _isLoadingMore = true);
     }
 
+    // Permet d'ignorer la réponse d'une recherche déjà remplacée par une autre.
+    final requestedQuery = _searchQuery;
+
     try {
       final result = await _resultsService.getResultsWithPagination(
         roundId: _selectedRound!.id,
         ageGroup: _selectedAgeGroup,
         page: reset ? 0 : _currentPage,
         limit: 20,
+        searchQuery: _searchQuery,
+        // Cet écran cherche uniquement par numéro d'inscription.
+        includeNameInSearch: false,
       );
+
+      if (!mounted || requestedQuery != _searchQuery) return;
 
       setState(() {
         if (reset) {
@@ -143,11 +155,13 @@ class _JuryResultPageState extends State<JuryResultPage> {
       print('Erreur lors du chargement des résultats: $e');
       _showErrorSnackBar('خطأ أثناء تحميل النتائج');
     } finally {
-      setState(() {
-        _isLoading = false;
-        _isLoadingMore = false;
-        _isLoadingFilters = false;
-      });
+      if (mounted && requestedQuery == _searchQuery) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+          _isLoadingFilters = false;
+        });
+      }
     }
   }
 
@@ -173,21 +187,22 @@ class _JuryResultPageState extends State<JuryResultPage> {
     );
   }
 
-  List<RoundResult> get _filteredResults {
-    if (_searchQuery.isEmpty) {
-      return _results;
-    }
-    return _results.where((result) {
-      final registrationNumber =
-          result.participant.registrationNumber?.toString().toLowerCase() ?? '';
-      final query = _searchQuery.toLowerCase();
-      return registrationNumber.contains(query);
-    }).toList();
-  }
+  // La recherche est effectuée en base de données : la liste reçue du
+  // serveur est déjà filtrée, il n'y a plus de filtrage local à faire.
+  List<RoundResult> get _filteredResults => _results;
 
   void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query;
+    if (query == _searchQuery) return;
+
+    setState(() => _searchQuery = query);
+
+    // On attend une courte pause de saisie avant d'interroger la base.
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      _currentPage = 0;
+      _hasMore = true;
+      _loadResults(isFilterChange: true);
     });
   }
 
@@ -535,7 +550,12 @@ class _JuryResultPageState extends State<JuryResultPage> {
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           final result = filteredResults[index];
-          return _buildResultCard(result, index + 1);
+          return _buildResultCard(
+            result,
+            // Rang réel calculé côté serveur (reste juste même quand le
+            // résultat provient d'une recherche sur toute la base).
+            result.rank ?? index + 1,
+          );
         }, childCount: filteredResults.length),
       ),
     );

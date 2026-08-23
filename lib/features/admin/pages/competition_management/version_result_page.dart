@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:quranic_competition/models/competition_version.dart';
@@ -43,6 +45,15 @@ class _VersionResultPageState extends State<VersionResultPage> {
   bool _isPublishing = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+
+  // Résultats de la recherche : ils viennent directement de la base de
+  // données (donc de toute la جولة) et sont chargés page par page.
+  List<RoundResult> _searchResults = [];
+  bool _isSearching = false;
+  bool _isSearchingMore = false;
+  bool _searchHasMore = false;
+  int _searchPage = 0;
   String _selectedAgeGroup = 'كبار';
   late bool _published;
   bool _isLockedByNextRound = false;
@@ -59,6 +70,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -138,7 +150,74 @@ class _VersionResultPageState extends State<VersionResultPage> {
   }
 
   void _onScroll() {
-    // Plus besoin de pagination car on charge tous les résultats d'un coup
+    // La liste complète est déjà chargée en entier ; seule la recherche
+    // (qui interroge la base) a besoin d'un chargement progressif.
+    if (_searchQuery.isEmpty || !_searchHasMore || _isSearchingMore) return;
+
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreSearchResults();
+    }
+  }
+
+  /// Lance la recherche directement dans la base de données, sur l'ensemble
+  /// des participants de la جولة et non sur les seuls résultats affichés.
+  Future<void> _runSearch({bool reset = true}) async {
+    final query = _searchQuery;
+    if (query.isEmpty) return;
+
+    setState(() {
+      if (reset) {
+        _isSearching = true;
+        _searchPage = 0;
+      } else {
+        _isSearchingMore = true;
+      }
+    });
+
+    try {
+      final result = await _resultsService.getResultsWithPagination(
+        roundId: widget.round.id,
+        ageGroup: _selectedAgeGroup,
+        page: _searchPage,
+        limit: 20,
+        searchQuery: query,
+        // Cet écran cherche uniquement par numéro d'inscription.
+        includeNameInSearch: false,
+      );
+
+      if (!mounted || query != _searchQuery) return;
+
+      setState(() {
+        final page = result['results'] as List<RoundResult>;
+        if (reset) {
+          _searchResults = page;
+        } else {
+          _searchResults.addAll(page);
+        }
+        _searchHasMore = result['hasMore'] as bool;
+        _searchPage = result['currentPage'] as int;
+      });
+    } catch (e) {
+      print('Erreur lors de la recherche des résultats: $e');
+      if (mounted && query == _searchQuery) {
+        _showErrorSnackBar('خطأ أثناء البحث');
+      }
+    } finally {
+      // Une réponse périmée (l'utilisateur a continué à taper) ne doit pas
+      // masquer le chargement de la recherche en cours.
+      if (mounted && query == _searchQuery) {
+        setState(() {
+          _isSearching = false;
+          _isSearchingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreSearchResults() async {
+    _searchPage++;
+    await _runSearch(reset: false);
   }
 
   void _showErrorSnackBar(String message) {
@@ -571,21 +650,31 @@ class _VersionResultPageState extends State<VersionResultPage> {
     }
   }
 
-  List<RoundResult> get _filteredResults {
-    if (_searchQuery.isEmpty) {
-      return _results;
-    }
-    return _results.where((result) {
-      final registrationNumber =
-          result.participant.registrationNumber?.toString().toLowerCase() ?? '';
-      final query = _searchQuery.toLowerCase();
-      return registrationNumber.contains(query);
-    }).toList();
-  }
+  // Hors recherche : la liste complète déjà chargée. Pendant une recherche :
+  // les résultats renvoyés par la base pour toute la جولة.
+  List<RoundResult> get _filteredResults =>
+      _searchQuery.isEmpty ? _results : _searchResults;
 
   void _onSearchChanged(String query) {
+    final trimmed = query.trim();
+    if (trimmed == _searchQuery) return;
+
+    _searchDebounce?.cancel();
+
     setState(() {
-      _searchQuery = query;
+      _searchQuery = trimmed;
+      _searchResults = [];
+      _searchHasMore = false;
+      _searchPage = 0;
+      _isSearching = trimmed.isNotEmpty;
+    });
+
+    if (trimmed.isEmpty) return;
+
+    // On attend une courte pause de saisie avant d'interroger la base.
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      _runSearch();
     });
   }
 
@@ -870,6 +959,8 @@ class _VersionResultPageState extends State<VersionResultPage> {
             _selectedAgeGroup = label;
           });
           _filterResultsByAgeGroup();
+          // La recherche en cours porte sur le groupe d'âge sélectionné.
+          if (_searchQuery.isNotEmpty) _runSearch();
         }
       },
       child: Container(
@@ -910,6 +1001,15 @@ class _VersionResultPageState extends State<VersionResultPage> {
   }
 
   Widget _buildResultsSliver() {
+    if (_isSearching) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(AppTheme.spacingXL),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     final filteredResults = _filteredResults;
 
     if (filteredResults.isEmpty) {
@@ -929,13 +1029,26 @@ class _VersionResultPageState extends State<VersionResultPage> {
       );
     }
 
+    final showLoadMore = _searchHasMore || _isSearchingMore;
+
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
+          if (index >= filteredResults.length) {
+            return const Padding(
+              padding: EdgeInsets.all(AppTheme.spacingL),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
           final result = filteredResults[index];
-          return _buildResultCard(result, index + 1);
-        }, childCount: filteredResults.length),
+          return _buildResultCard(
+            result,
+            // Rang réel dans le classement complet (juste également pour un
+            // résultat trouvé par la recherche).
+            result.rank ?? index + 1,
+          );
+        }, childCount: filteredResults.length + (showLoadMore ? 1 : 0)),
       ),
     );
   }

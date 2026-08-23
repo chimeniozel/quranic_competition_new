@@ -183,14 +183,13 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     try {
       List<Participant> participants;
 
-      // Si _displayedVersionId est null, récupérer tous les participants
+      // Aucune version à afficher : on ne montre aucun participant. Chaque
+      // version possède sa propre liste, on ne mélange jamais les versions.
       if (_displayedVersionId == null) {
-        participants =
-            await _participantService.getAllParticipantsFromAllVersions();
-        // Pour 'all', on charge tout d'un coup (pas de pagination)
+        participants = [];
         _hasMoreData = false;
       } else {
-        // Sinon, utiliser la pagination normale avec la version déterminée
+        // Participants de cette version uniquement, chargés page par page
         participants = await _participantService.getParticipantsByVersion(
           _displayedVersionId!,
           page: _currentPage,

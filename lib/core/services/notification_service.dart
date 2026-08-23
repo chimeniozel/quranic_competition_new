@@ -57,6 +57,13 @@ class NotificationService {
         await _requestAndroidPermissions();
       }
 
+      // Sur iOS, les permissions sont déjà demandées via DarwinInitializationSettings
+      // avec requestAlertPermission, requestBadgePermission, requestSoundPermission
+      // Pas besoin de demander explicitement ici
+      if (Platform.isIOS) {
+        print('📱 Permissions iOS notifications locales demandées via DarwinInitializationSettings');
+      }
+
       return true;
     }
 

@@ -379,7 +379,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
   String _searchQuery = '';
   String _selectedRoleFilter = 'all';
   String _selectedValidationFilter = 'all'; // all, validated, unvalidated
-  bool? _isSuperAdmin;
+  bool? _isAdmin;
   bool _isSummaryExpanded = false;
 
   @override
@@ -389,12 +389,12 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   Future<void> _initializePermissions() async {
-    final isSuperAdmin = await PermissionService().isSuperAdmin();
+    final isAdmin = await PermissionService().isAdmin();
     setState(() {
-      _isSuperAdmin = isSuperAdmin;
+      _isAdmin = isAdmin;
     });
 
-    if (isSuperAdmin) {
+    if (isAdmin) {
       _loadUsers();
     } else {
       setState(() {
@@ -404,7 +404,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   Future<void> _loadUsers() async {
-    if (_isSuperAdmin != true) {
+    if (_isAdmin != true) {
       setState(() => _isLoading = false);
       return;
     }
@@ -1059,11 +1059,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
   @override
   Widget build(BuildContext context) {
     // Attendre que les permissions soient chargées
-    if (_isSuperAdmin == null) {
+    if (_isAdmin == null || _isAdmin == false) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (_isSuperAdmin == false) {
+    if (_isAdmin == false) {
       return const AccessDeniedPage();
     }
 

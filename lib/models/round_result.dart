@@ -13,6 +13,11 @@ class RoundResult {
   final Participant participant;
   final Round round;
 
+  /// Rang réel du participant dans le classement complet du round.
+  /// Renseigné par le service : il reste correct même quand le résultat
+  /// provient d'une recherche et non de la liste paginée.
+  final int? rank;
+
   RoundResult({
     required this.id,
     required this.participantId,
@@ -24,7 +29,24 @@ class RoundResult {
     required this.createdAt,
     required this.participant,
     required this.round,
+    this.rank,
   });
+
+  RoundResult copyWith({int? rank}) {
+    return RoundResult(
+      id: id,
+      participantId: participantId,
+      roundId: roundId,
+      versionId: versionId,
+      score: score,
+      passed: passed,
+      ageGroup: ageGroup,
+      createdAt: createdAt,
+      participant: participant,
+      round: round,
+      rank: rank ?? this.rank,
+    );
+  }
 
   factory RoundResult.fromMap(Map<String, dynamic> map) {
     return RoundResult(

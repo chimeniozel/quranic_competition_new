@@ -33,6 +33,9 @@ class _QuizPageState extends State<QuizPage> {
   bool _isSubmitting = false;
   int _consecutiveCorrectAnswers =
       0; // Compteur de bonnes réponses consécutives
+  // Questions déjà prises en compte par le compteur : revenir en arrière puis
+  // avancer de nouveau ne doit pas compter deux fois la même question.
+  final Set<String> _countedQuestionIds = {};
 
   @override
   void initState() {
@@ -108,37 +111,50 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   void _selectAnswer(String questionId, String optionId) {
+    // La correction est affichée dès le choix : la réponse est donc
+    // verrouillée, on ne peut plus la changer après avoir vu la solution.
+    if (_answers.containsKey(questionId)) return;
+
     setState(() {
       _answers[questionId] = optionId;
     });
   }
 
+  /// Retourne la bonne option d'une question (null si aucune n'est marquée).
+  QuizOption? _correctOption(List<QuizOption> options) {
+    for (final option in options) {
+      if (option.isCorrect) return option;
+    }
+    return null;
+  }
+
   Future<void> _nextQuestion() async {
-    // Vérifier si la réponse actuelle est correcte
     final currentQuestion = _questions[_currentQuestionIndex];
     final selectedOptionId = _answers[currentQuestion.id];
 
-    if (selectedOptionId != null) {
-      final currentOptions = _options[_currentQuestionIndex];
-      final selectedOption = currentOptions.firstWhere(
-        (opt) => opt.id == selectedOptionId,
-        orElse: () => currentOptions.first,
-      );
+    // Le compteur de bonnes réponses consécutives ne prend chaque question en
+    // compte qu'une seule fois : revenir en arrière puis avancer de nouveau
+    // ne doit pas recompter la même question.
+    if (_countedQuestionIds.add(currentQuestion.id)) {
+      final selectedOption =
+          selectedOptionId == null
+              ? null
+              : _options[_currentQuestionIndex].firstWhere(
+                (opt) => opt.id == selectedOptionId,
+                orElse: () => _options[_currentQuestionIndex].first,
+              );
 
-      if (selectedOption.isCorrect) {
+      if (selectedOption != null && selectedOption.isCorrect) {
         _consecutiveCorrectAnswers++;
 
-        // Afficher un message d'encouragement après chaque 10 bonnes réponses consécutives
+        // Message d'encouragement à chaque 10 bonnes réponses consécutives
         if (_consecutiveCorrectAnswers % 10 == 0) {
           await _showEncouragementMessage(_consecutiveCorrectAnswers);
         }
       } else {
-        // Réinitialiser le compteur si la réponse est incorrecte
+        // Réponse fausse ou absente : la série est interrompue
         _consecutiveCorrectAnswers = 0;
       }
-    } else {
-      // Si aucune réponse n'est sélectionnée, réinitialiser le compteur
-      _consecutiveCorrectAnswers = 0;
     }
 
     if (_currentQuestionIndex < _questions.length - 1) {
@@ -384,20 +400,59 @@ class _QuizPageState extends State<QuizPage> {
             // Options de réponses
             ...options.map((option) {
               final isSelected = selectedOptionId == option.id;
+              final hasAnswered = selectedOptionId != null;
+
+              // Dès qu'une réponse est donnée : la bonne option passe en vert
+              // (qu'elle ait été choisie ou non) et l'option choisie à tort
+              // passe en rouge. Les autres restent neutres.
+              final showAsCorrect = hasAnswered && option.isCorrect;
+              final showAsWrong =
+                  hasAnswered && isSelected && !option.isCorrect;
+              final isHighlighted = showAsCorrect || showAsWrong;
+
+              Color backgroundColor;
+              Color borderColor;
+              Color textColor;
+              Color markerColor;
+              IconData? markerIcon;
+
+              if (showAsCorrect) {
+                backgroundColor = Colors.green[50]!;
+                borderColor = Colors.green[400]!;
+                textColor = Colors.green[800]!;
+                markerColor = Colors.green[600]!;
+                markerIcon = Icons.check;
+              } else if (showAsWrong) {
+                backgroundColor = Colors.red[50]!;
+                borderColor = Colors.red[400]!;
+                textColor = Colors.red[800]!;
+                markerColor = Colors.red[600]!;
+                markerIcon = Icons.close;
+              } else {
+                backgroundColor = Colors.grey[50]!;
+                borderColor = Colors.grey[300]!;
+                textColor = Colors.black87;
+                markerColor = Colors.grey[400]!;
+                markerIcon = null;
+              }
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
-                  onTap: () => _selectAnswer(question.id, option.id),
+                  // Plus de changement possible une fois la correction visible
+                  onTap:
+                      hasAnswered
+                          ? null
+                          : () => _selectAnswer(question.id, option.id),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.blue[50] : Colors.grey[50],
+                      color: backgroundColor,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color:
-                            isSelected ? Colors.blue[300]! : Colors.grey[300]!,
-                        width: isSelected ? 2 : 1,
+                        color: borderColor,
+                        width: isHighlighted ? 2 : 1,
                       ),
                     ),
                     child: Row(
@@ -407,15 +462,12 @@ class _QuizPageState extends State<QuizPage> {
                           height: 24,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color:
-                                isSelected
-                                    ? Colors.blue[600]
-                                    : Colors.grey[400],
+                            color: markerColor,
                           ),
                           child:
-                              isSelected
-                                  ? const Icon(
-                                    Icons.check,
+                              markerIcon != null
+                                  ? Icon(
+                                    markerIcon,
                                     color: Colors.white,
                                     size: 16,
                                   )
@@ -427,25 +479,90 @@ class _QuizPageState extends State<QuizPage> {
                             option.text,
                             style: TextStyle(
                               fontSize: 16,
-                              color:
-                                  isSelected
-                                      ? Colors.blue[700]
-                                      : Colors.black87,
+                              color: textColor,
                               fontWeight:
-                                  isSelected
+                                  isHighlighted
                                       ? FontWeight.w500
                                       : FontWeight.normal,
                             ),
                           ),
                         ),
+                        // Libellé explicite à côté de l'option concernée
+                        if (showAsCorrect || showAsWrong) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            showAsCorrect ? 'إجابة صحيحة' : 'إجابة خاطئة',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: markerColor,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
               );
             }).toList(),
+
+            // Message de correction affiché dès qu'une réponse est choisie
+            if (selectedOptionId != null)
+              _buildAnswerFeedback(options, selectedOptionId),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Bandeau indiquant si la réponse choisie est juste, et rappelant la bonne
+  /// réponse lorsqu'elle est fausse.
+  Widget _buildAnswerFeedback(List<QuizOption> options, String selectedId) {
+    final correctOption = _correctOption(options);
+    final isCorrect = correctOption != null && correctOption.id == selectedId;
+
+    final color = isCorrect ? Colors.green[700]! : Colors.red[700]!;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: (isCorrect ? Colors.green[50] : Colors.red[50]),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color, width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isCorrect ? Icons.check_circle : Icons.cancel,
+            color: color,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCorrect ? 'إجابة صحيحة' : 'إجابة خاطئة',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                if (!isCorrect && correctOption != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'الإجابة الصحيحة: ${correctOption.text}',
+                    style: TextStyle(fontSize: 14, color: Colors.green[800]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

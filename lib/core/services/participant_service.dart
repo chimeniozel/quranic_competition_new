@@ -395,7 +395,13 @@ class ParticipantService {
         print(
           '🔍 Round 1 ou pas de round: Récupération ${includeRejected ? 'de tous les participants' : 'des participants acceptés'}',
         );
-        var query = _supabase.from('participants').select('*');
+        // Chaque version a sa propre liste : on filtre impérativement sur
+        // competition_id, sinon les participants des autres versions
+        // apparaissent dans celle-ci.
+        var query = _supabase
+            .from('participants')
+            .select('*')
+            .eq('competition_id', versionId);
 
         if (!includeRejected) {
           query = query.eq('is_accepted', true);
@@ -422,6 +428,7 @@ class ParticipantService {
         final allParticipantsResponse = await _supabase
             .from('participants')
             .select('*')
+            .eq('competition_id', versionId)
             .eq('is_accepted', true);
 
         final allParticipants =
@@ -484,10 +491,11 @@ class ParticipantService {
         '🔍 ParticipantService - getParticipantsByVersion pour version: $versionId, page: $page, pageSize: $pageSize',
       );
 
-      // Récupérer directement depuis la table participants
+      // Uniquement les participants inscrits à CETTE version
       final response = await _supabase
           .from('participants')
           .select('*')
+          .eq('competition_id', versionId)
           .order('created_at', ascending: false)
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -515,10 +523,11 @@ class ParticipantService {
         '🔍 ParticipantService - getAllParticipantsByVersion pour version: $versionId',
       );
 
-      // Récupérer directement depuis la table participants
+      // Uniquement les participants inscrits à CETTE version
       final response = await _supabase
           .from('participants')
           .select('*')
+          .eq('competition_id', versionId)
           .order('created_at', ascending: false);
 
       final participants =
@@ -533,43 +542,6 @@ class ParticipantService {
     } catch (e) {
       print('❌ Erreur dans getAllParticipantsByVersion: $e');
       rethrow;
-    }
-  }
-
-  /// Récupère tous les participants de toutes les versions (pour versionId = 'default')
-  Future<List<Participant>> getAllParticipantsFromAllVersions() async {
-    try {
-      print('🔍 ParticipantService - getAllParticipantsFromAllVersions');
-
-      // Récupérer directement depuis la table participants
-      final response = await _supabase
-          .from('participants')
-          .select('*')
-          .order('created_at', ascending: false);
-
-      final participants =
-          response.map<Participant>((record) {
-            return Participant.fromMap(record);
-          }).toList();
-
-      print(
-        '🔍 ParticipantService - getAllParticipantsFromAllVersions: ${participants.length} participants récupérés',
-      );
-      return participants;
-    } catch (e) {
-      print('❌ Erreur dans getAllParticipantsFromAllVersions: $e');
-
-      // Gestion spécifique des erreurs de connexion
-      if (e.toString().contains('SocketException') ||
-          e.toString().contains('Failed host lookup')) {
-        throw Exception(
-          'مشكلة في الاتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى.',
-        );
-      } else if (e.toString().contains('timeout')) {
-        throw Exception('انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
-      } else {
-        throw Exception('حدث خطأ في تحميل البيانات. يرجى المحاولة مرة أخرى.');
-      }
     }
   }
 }

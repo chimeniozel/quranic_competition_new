@@ -3,6 +3,17 @@ import 'package:quranic_competition/models/eid_session.dart';
 import 'package:quranic_competition/models/eid_participant.dart';
 import 'dart:math';
 
+/// Erreur d'inscription « فسحة العيد » destinée à être affichée telle quelle
+/// à l'utilisateur (message en arabe, sans détail technique).
+class EidRegistrationException implements Exception {
+  final String message;
+
+  const EidRegistrationException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class EidSessionService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
@@ -11,11 +22,12 @@ class EidSessionService {
   /// Récupère la session active (une seule à la fois)
   Future<EidSession?> getActiveSession() async {
     try {
-      final response = await _supabase
-          .from('eid_sessions')
-          .select('*')
-          .eq('is_active', true)
-          .maybeSingle();
+      final response =
+          await _supabase
+              .from('eid_sessions')
+              .select('*')
+              .eq('is_active', true)
+              .maybeSingle();
 
       if (response == null) return null;
       return EidSession.fromMap(response);
@@ -70,11 +82,12 @@ class EidSessionService {
         'updated_at': now.toIso8601String(),
       };
 
-      final response = await _supabase
-          .from('eid_sessions')
-          .insert(sessionData)
-          .select()
-          .single();
+      final response =
+          await _supabase
+              .from('eid_sessions')
+              .insert(sessionData)
+              .select()
+              .single();
 
       return EidSession.fromMap(response);
     } catch (e) {
@@ -109,17 +122,19 @@ class EidSessionService {
 
       if (name != null) updateData['name'] = name;
       if (description != null) updateData['description'] = description;
-      if (startDate != null) updateData['start_date'] = startDate.toIso8601String();
+      if (startDate != null)
+        updateData['start_date'] = startDate.toIso8601String();
       if (endDate != null) updateData['end_date'] = endDate.toIso8601String();
       if (isActive != null) updateData['is_active'] = isActive;
       if (isOpen != null) updateData['is_open'] = isOpen;
 
-      final response = await _supabase
-          .from('eid_sessions')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single();
+      final response =
+          await _supabase
+              .from('eid_sessions')
+              .update(updateData)
+              .eq('id', id)
+              .select()
+              .single();
 
       return EidSession.fromMap(response);
     } catch (e) {
@@ -141,7 +156,9 @@ class EidSessionService {
   // ========== PARTICIPANTS ==========
 
   /// Récupère tous les participants d'une session
-  Future<List<EidParticipant>> getParticipantsBySession(String sessionId) async {
+  Future<List<EidParticipant>> getParticipantsBySession(
+    String sessionId,
+  ) async {
     try {
       final response = await _supabase
           .from('eid_participants')
@@ -165,50 +182,90 @@ class EidSessionService {
   }) async {
     try {
       // 1. Récupérer la session par ID et vérifier son statut
-      final sessionData = await _supabase
-          .from('eid_sessions')
-          .select('*')
-          .eq('id', sessionId)
-          .maybeSingle();
+      final sessionData =
+          await _supabase
+              .from('eid_sessions')
+              .select('*')
+              .eq('id', sessionId)
+              .maybeSingle();
 
       if (sessionData == null) {
-        throw Exception('الفسحة أو الدورة غير موجودة');
+        throw const EidRegistrationException('الفسحة أو الدورة غير موجودة');
       }
 
       final session = EidSession.fromMap(sessionData);
 
       // 2. Vérifier que la session est active (visible)
       if (!session.isActive) {
-        throw Exception('الفسحة أو الدورة غير مفعلة حالياً');
+        throw const EidRegistrationException(
+          'الفسحة أو الدورة غير مفعلة حالياً',
+        );
       }
 
       // 3. Vérifier que l'inscription est ouverte
       if (!session.isOpen) {
-        throw Exception('التسجيل مغلق لهذه الفسحة أو الدورة');
+        throw const EidRegistrationException(
+          'التسجيل مغلق لهذه الفسحة أو الدورة',
+        );
+      }
+
+      // 4. Vérifier que ce numéro n'est pas déjà inscrit à cette session.
+      // Les espaces sont retirés pour que « 22 33 44 55 » et « 22334455 »
+      // soient reconnus comme le même numéro.
+      final normalizedPhone = phone.replaceAll(RegExp(r'\s'), '');
+
+      final existing = await _supabase
+          .from('eid_participants')
+          .select('id')
+          .eq('session_id', sessionId)
+          .eq('phone', normalizedPhone)
+          .limit(1);
+
+      if (existing.isNotEmpty) {
+        throw const EidRegistrationException(_phoneAlreadyRegisteredMessage);
       }
 
       final now = DateTime.now();
       final participantData = {
         'session_id': sessionId,
         'full_name': fullName,
-        'phone': phone,
+        'phone': normalizedPhone,
         'gender': gender,
         'is_winner': false,
         'created_at': now.toIso8601String(),
       };
 
-      final response = await _supabase
-          .from('eid_participants')
-          .insert(participantData)
-          .select()
-          .single();
+      final response =
+          await _supabase
+              .from('eid_participants')
+              .insert(participantData)
+              .select()
+              .single();
 
       return EidParticipant.fromMap(response);
+    } on PostgrestException catch (e) {
+      print(
+        '❌ Erreur Postgrest lors de l\'inscription: ${e.code} ${e.message}',
+      );
+
+      // 23505 = violation de contrainte d'unicité : deux inscriptions
+      // simultanées avec le même numéro peuvent passer la vérification
+      // ci-dessus, la base reste donc le garde-fou final.
+      if (e.code == '23505') {
+        throw const EidRegistrationException(_phoneAlreadyRegisteredMessage);
+      }
+
+      throw const EidRegistrationException(
+        'تعذّر إتمام التسجيل. يرجى المحاولة مرة أخرى.',
+      );
     } catch (e) {
       print('❌ Erreur lors de l\'inscription: $e');
       rethrow;
     }
   }
+
+  static const String _phoneAlreadyRegisteredMessage =
+      'هذا الرقم مسجّل مسبقاً في هذه الفسحة. لا يمكن التسجيل بنفس الرقم مرتين.';
 
   /// Sélectionne des gagnants aléatoirement (loterie)
   /// Les nouveaux gagnants remplacent les anciens gagnants de la session
@@ -219,24 +276,27 @@ class EidSessionService {
   }) async {
     try {
       // 1. Vérifier que la session est active et que l'inscription est fermée
-      final session = await _supabase
-          .from('eid_sessions')
-          .select('*')
-          .eq('id', sessionId)
-          .maybeSingle();
+      final session =
+          await _supabase
+              .from('eid_sessions')
+              .select('*')
+              .eq('id', sessionId)
+              .maybeSingle();
 
       if (session == null) {
         throw Exception('الفسحة أو الدورة غير موجودة');
       }
 
       final sessionData = EidSession.fromMap(session);
-      
+
       if (!sessionData.isActive) {
         throw Exception('لا يمكن إجراء القرعة لأن الفسحة أو الدورة غير مفعلة');
       }
 
       if (sessionData.isOpen) {
-        throw Exception('لا يمكن إجراء القرعة لأن التسجيل لا يزال مفتوحاً. يجب إغلاق التسجيل أولاً');
+        throw Exception(
+          'لا يمكن إجراء القرعة لأن التسجيل لا يزال مفتوحاً. يجب إغلاق التسجيل أولاً',
+        );
       }
 
       // 2. Réinitialiser tous les anciens gagnants de cette session
@@ -262,7 +322,9 @@ class EidSessionService {
       }
 
       if (allParticipants.length < numberOfWinners) {
-        throw Exception('عدد المتسابقين (${allParticipants.length}) أقل من عدد الفائزين المطلوبة ($numberOfWinners)');
+        throw Exception(
+          'عدد المتسابقين (${allParticipants.length}) أقل من عدد الفائزين المطلوبة ($numberOfWinners)',
+        );
       }
 
       // 3. Randomiser tous les participants
@@ -286,9 +348,7 @@ class EidSessionService {
           .select('*')
           .inFilter('id', winnerIds);
 
-      return updatedWinners
-          .map((row) => EidParticipant.fromMap(row))
-          .toList();
+      return updatedWinners.map((row) => EidParticipant.fromMap(row)).toList();
     } catch (e) {
       print('❌ Erreur lors de la sélection des gagnants: $e');
       rethrow;
@@ -350,4 +410,3 @@ class EidSessionService {
     }
   }
 }
-

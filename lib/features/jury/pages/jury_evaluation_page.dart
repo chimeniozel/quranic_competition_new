@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:quranic_competition/models/note_model.dart';
 import 'package:quranic_competition/models/evaluation.dart';
 import 'package:quranic_competition/models/round.dart';
@@ -22,6 +23,10 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   final _formKey = GlobalKey<FormState>();
   late NoteModel _noteModel;
   final _notesController = TextEditingController();
+
+  // Un contrôleur de saisie par critère, pour permettre de taper une note
+  // décimale (8.5, 9,5...) en plus du curseur.
+  final Map<String, TextEditingController> _scoreControllers = {};
   final EvaluationService _evaluationService = EvaluationService();
 
   Evaluation? _existingEvaluation;
@@ -43,6 +48,9 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
   @override
   void dispose() {
     _notesController.dispose();
+    for (final controller in _scoreControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -75,6 +83,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
           _noteModel.noteIltizamRiwaya = eval.noteModel.noteIltizamRiwaya;
         }
 
+        _syncScoreControllers();
         _recalculateTotal();
       }
     } catch (e) {
@@ -227,7 +236,9 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
     }
   }
 
-  Widget _buildSlider(
+  /// Affiche une note : saisie directe (décimales autorisées : 8.5 / 8,5)
+  /// et curseur par pas de 0.5 pour un réglage rapide.
+  Widget _buildScoreInput(
     String label,
     double max,
     void Function(double) onChanged,
@@ -236,6 +247,7 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
     final isDisabled =
         !widget.args.version.juryEvaluationEnabled || _isReadOnly;
     final currentValue = _getValueForLabel(label);
+    final controller = _controllerForLabel(label);
 
     return ModernCard(
       child: Column(
@@ -244,27 +256,57 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: AppTheme.labelLarge.copyWith(
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTheme.labelLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingS,
-                  vertical: AppTheme.spacingXS,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                ),
-                child: Text(
-                  '${currentValue.toStringAsFixed(1)} / $max',
+              const SizedBox(width: AppTheme.spacingS),
+              SizedBox(
+                width: 110,
+                child: TextFormField(
+                  controller: controller,
+                  enabled: !isDisabled,
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.ltr,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    // Chiffres avec au plus un séparateur décimal (point ou
+                    // virgule) et deux décimales : 8 / 8.5 / 8,5 / 8,75
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      return RegExp(
+                            r'^\d{0,3}([.,]\d{0,2})?$',
+                          ).hasMatch(newValue.text)
+                          ? newValue
+                          : oldValue;
+                    }),
+                  ],
                   style: AppTheme.labelMedium.copyWith(
                     color: AppTheme.primaryColor,
                     fontWeight: FontWeight.bold,
                   ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    suffixText: '/ ${_formatScore(max)}',
+                    suffixStyle: AppTheme.labelMedium.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingXS,
+                      vertical: AppTheme.spacingXS,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                    ),
+                  ),
+                  onChanged:
+                      (text) => _onScoreTyped(text, max, controller, onChanged),
                 ),
               ),
             ],
@@ -287,14 +329,16 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
             child: Slider(
               min: 0,
               max: max,
-              divisions: max.toInt(),
-              label: currentValue.toStringAsFixed(1),
-              value: currentValue,
+              // Pas de 0.5 pour permettre les demi-points (8.5, 9.5...)
+              divisions: (max * 2).toInt(),
+              label: _formatScore(currentValue),
+              value: currentValue.clamp(0, max).toDouble(),
               onChanged:
                   isDisabled
                       ? null
                       : (value) {
                         onChanged(value);
+                        _setControllerText(controller, value);
                         _recalculateTotal();
                       },
             ),
@@ -302,6 +346,68 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
         ],
       ),
     );
+  }
+
+  TextEditingController _controllerForLabel(String label) {
+    return _scoreControllers.putIfAbsent(
+      label,
+      () => TextEditingController(text: _formatScore(_getValueForLabel(label))),
+    );
+  }
+
+  /// Recopie les notes du modèle dans les champs de saisie (après chargement
+  /// d'une évaluation existante).
+  void _syncScoreControllers() {
+    for (final entry in _scoreControllers.entries) {
+      _setControllerText(entry.value, _getValueForLabel(entry.key));
+    }
+  }
+
+  void _setControllerText(TextEditingController controller, double value) {
+    final text = _formatScore(value);
+    if (controller.text == text) return;
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  /// Note saisie au clavier : la virgule est acceptée comme séparateur
+  /// décimal, et la valeur est bornée par la note maximale du critère.
+  void _onScoreTyped(
+    String text,
+    double max,
+    TextEditingController controller,
+    void Function(double) onChanged,
+  ) {
+    final normalized = text.trim().replaceAll(',', '.');
+
+    if (normalized.isEmpty) {
+      onChanged(0);
+      _recalculateTotal();
+      return;
+    }
+
+    final value = double.tryParse(normalized);
+    if (value == null) return; // saisie encore incomplète, on attend la suite
+
+    if (value > max) {
+      // On ramène à la note maximale du critère et on corrige le champ
+      onChanged(max);
+      _setControllerText(controller, max);
+      _recalculateTotal();
+      return;
+    }
+
+    onChanged(value < 0 ? 0 : value);
+    _recalculateTotal();
+  }
+
+  String _formatScore(double value) {
+    final rounded = (value * 100).round() / 100;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toString();
   }
 
   double _getValueForLabel(String label) {
@@ -405,29 +511,29 @@ class _JuryEvaluationPageState extends State<JuryEvaluationPage> {
                             ],
                           ),
                         ),
-                      _buildSlider(
+                      _buildScoreInput(
                         'التجويد',
                         isAdult ? 70 : 15,
                         (v) => _noteModel.noteTajwid = v,
                       ),
-                      _buildSlider(
+                      _buildScoreInput(
                         'حسن الصوت',
                         isAdult ? 5 : 3,
                         (v) => _noteModel.noteHousnSawtt = v,
                       ),
                       if (isAdult) ...[
-                        _buildSlider(
+                        _buildScoreInput(
                           'عذوبة الصوت',
                           5,
                           (v) => _noteModel.noteOu4oubetSawtt = v,
                         ),
-                        _buildSlider(
+                        _buildScoreInput(
                           'الوقف والإبتداء',
                           20,
                           (v) => _noteModel.noteWaqfAndIbtidaa = v,
                         ),
                       ] else
-                        _buildSlider(
+                        _buildScoreInput(
                           'الإلتزام بالرواية',
                           2,
                           (v) => _noteModel.noteIltizamRiwaya = v,

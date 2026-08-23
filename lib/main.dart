@@ -1,4 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:quranic_competition/core/widgets/auth_initializer.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/core/services/notification_service.dart';
@@ -43,6 +47,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  _enableAndroidPhotoPicker();
+
   // Initialiser Firebase (doit être fait avant Supabase)
   try {
     await Firebase.initializeApp(
@@ -54,6 +60,14 @@ void main() async {
     // DOIT être fait après l'initialisation de Firebase
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     print('✅ Handler background pour notifications FCM enregistré');
+
+    // iOS : s'assurer que les notifications s'affichent aussi quand l'app est au premier plan
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
   } catch (e) {
     print('⚠️ Firebase non initialisé (pas de fichier de configuration) : $e');
     print(
@@ -68,6 +82,21 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsd2dtcHFwZXZzb2R0Y3RwbXd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NTYzMjIsImV4cCI6MjA2NjAzMjMyMn0.UpWBLYVgu2-e5I25UTSUewrZiunMTo2xX3Ggb_y4TpI',
   );
   runApp(const MyApp());
+}
+
+/// Active le sélecteur de photos officiel d'Android (Android Photo Picker).
+///
+/// Il n'exige aucune permission de stockage et n'expose que le fichier choisi,
+/// ce qui correspond à la politique Google Play sur les photos et vidéos.
+/// Sans cet appel, image_picker retombe sur ACTION_GET_CONTENT.
+void _enableAndroidPhotoPicker() {
+  if (!Platform.isAndroid) return;
+
+  final implementation = ImagePickerPlatform.instance;
+  if (implementation is ImagePickerAndroid) {
+    implementation.useAndroidPhotoPicker = true;
+    print('✅ Android Photo Picker activé');
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -88,8 +117,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _initializeServices() async {
-    // Attendre un court délai pour s'assurer que le contexte est prêt
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Attendre un court délai pour s'assurer que le contexte et MaterialApp sont prêts
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     if (!mounted) return;
 
@@ -131,10 +160,26 @@ class _MyAppState extends State<MyApp> {
       print('❌ Erreur lors de l\'initialisation des notifications push: $e');
     }
 
-    // Demander la permission de stockage
-    if (mounted) {
-      final filePermissionService = FilePermissionService();
-      await filePermissionService.requestStoragePermission(context);
+    // Demander la permission de stockage (seulement si le contexte est monté et MaterialApp est prêt)
+    // Attendre un délai إضافي pour s'assurer que MaterialApp est complètement initialisé
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (mounted && context.mounted) {
+      try {
+        // Vérifier que MaterialApp est prêt en vérifiant le contexte
+        final scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
+        if (scaffoldMessenger != null) {
+          final filePermissionService = FilePermissionService();
+          await filePermissionService.requestStoragePermission(context);
+        } else {
+          print(
+            '⚠️ MaterialApp pas encore prêt, permission ignorée pour cette fois',
+          );
+        }
+      } catch (e) {
+        print('⚠️ Erreur lors de la demande de permission (ignorée): $e');
+        // Ignorer l'erreur pour ne pas bloquer l'application
+      }
     }
   }
 

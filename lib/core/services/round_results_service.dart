@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/models/round.dart';
 import 'package:quranic_competition/models/participant.dart';
@@ -112,12 +114,13 @@ class RoundResultsService {
 
       // Rounds >= 2: participants qui ont passé le round précédent
       final previousRoundNumber = round.number - 1;
-      final previousRoundResponse = await _supabase
-          .from('rounds')
-          .select('id')
-          .eq('version_id', round.versionId)
-          .eq('number', previousRoundNumber)
-          .maybeSingle();
+      final previousRoundResponse =
+          await _supabase
+              .from('rounds')
+              .select('id')
+              .eq('version_id', round.versionId)
+              .eq('number', previousRoundNumber)
+              .maybeSingle();
 
       if (previousRoundResponse == null) {
         throw Exception(
@@ -145,13 +148,11 @@ class RoundResultsService {
         return response.map((record) => Participant.fromMap(record)).toList();
       }
 
-      return qualifiedResponse
-          .map((row) {
-            final participantMap =
-                row['participants'] as Map<String, dynamic>? ?? {};
-            return Participant.fromMap(participantMap);
-          })
-          .toList();
+      return qualifiedResponse.map((row) {
+        final participantMap =
+            row['participants'] as Map<String, dynamic>? ?? {};
+        return Participant.fromMap(participantMap);
+      }).toList();
     } catch (e) {
       print('❌ Erreur lors de la récupération des participants éligibles: $e');
       return [];
@@ -402,39 +403,147 @@ class RoundResultsService {
     required String ageGroup,
     int page = 0,
     int limit = 20,
+    String searchQuery = '',
+    bool includeNameInSearch = true,
   }) async {
     try {
-      // Récupérer tous les résultats d'abord
-      final allResults = await _supabase
-          .from('round_results')
-          .select('*, participants(*), rounds(*)')
-          .eq('round_id', roundId)
-          .eq('age_group', ageGroup)
-          .order('score', ascending: false);
+      final search = searchQuery.trim();
+      final searchFilter =
+          search.isEmpty
+              ? ''
+              : _buildParticipantSearchFilter(
+                search,
+                includeName: includeNameInSearch,
+              );
 
+      // Recherche saisie mais aucun critère exploitable (ex: seulement des
+      // caractères ignorés) : aucun résultat, inutile d'interroger la base.
+      if (search.isNotEmpty && searchFilter.isEmpty) {
+        return {
+          'results': <RoundResult>[],
+          'totalCount': 0,
+          'hasMore': false,
+          'currentPage': page,
+        };
+      }
+
+      final from = page * limit;
+      final to = from + limit - 1;
+
+      var query = _supabase
+          .from('round_results')
+          .select('*, participants!inner(*), rounds(*)')
+          .eq('round_id', roundId)
+          .eq('age_group', ageGroup);
+
+      // La recherche est faite directement en base : elle porte donc sur
+      // l'ensemble des participants du round, pas seulement sur la page
+      // déjà chargée dans l'interface.
+      if (searchFilter.isNotEmpty) {
+        query = query.or(searchFilter, referencedTable: 'participants');
+      }
+
+      final response = await query
+          .order('score', ascending: false)
+          // Départage stable des ex-aequo : indispensable pour que la
+          // pagination ne saute ni ne duplique de lignes.
+          .order('id', ascending: true)
+          .range(from, to)
+          .count(CountOption.exact);
+
+      final totalCount = response.count;
       List<RoundResult> results =
-          allResults
+          response.data
               .map<RoundResult>((row) => RoundResult.fromMap(row))
               .toList();
 
-      final totalCount = results.length;
-      final startIndex = page * limit;
-      final endIndex = (startIndex + limit).clamp(0, totalCount);
-
-      // Pagination côté client
-      final paginatedResults = results.sublist(startIndex, endIndex);
-      final hasMore = endIndex < totalCount;
+      if (searchFilter.isEmpty) {
+        // Liste complète : le rang correspond à la position dans la page.
+        results = [
+          for (var i = 0; i < results.length; i++)
+            results[i].copyWith(rank: from + i + 1),
+        ];
+      } else {
+        // Résultats de recherche : le rang réel doit être calculé en base.
+        results = await _attachRealRanks(
+          results,
+          roundId: roundId,
+          ageGroup: ageGroup,
+        );
+      }
 
       return {
-        'results': paginatedResults,
+        'results': results,
         'totalCount': totalCount,
-        'hasMore': hasMore,
+        'hasMore': from + results.length < totalCount,
         'currentPage': page,
       };
     } catch (e) {
       print('Erreur lors de la récupération des résultats avec pagination: $e');
       throw Exception('Impossible de récupérer les résultats avec pagination');
     }
+  }
+
+  /// Construit le filtre PostgREST appliqué à la table `participants`.
+  ///
+  /// - nom complet : correspondance partielle (ilike), seulement si
+  ///   [includeName] est vrai (certains écrans cherchent par numéro seul)
+  /// - numéro d'inscription : la colonne étant numérique, on cherche les
+  ///   numéros qui commencent par les chiffres saisis (ex: "40" trouve 40,
+  ///   404, 4012...) à l'aide d'intervalles.
+  String _buildParticipantSearchFilter(
+    String search, {
+    bool includeName = true,
+  }) {
+    // Les virgules et parenthèses sont des séparateurs de la syntaxe `or`.
+    final sanitized = search.replaceAll(RegExp(r'[,()."*]'), ' ').trim();
+    if (sanitized.isEmpty) return '';
+
+    final filters = <String>[if (includeName) 'full_name.ilike.*$sanitized*'];
+
+    final digits = sanitized.replaceAll(RegExp(r'\D'), '');
+    if (digits.isNotEmpty && digits.length <= 9) {
+      final prefix = int.parse(digits);
+      for (var extraDigits = 0; extraDigits <= 3; extraDigits++) {
+        final factor = math.pow(10, extraDigits).toInt();
+        final start = prefix * factor;
+        filters.add(
+          'and(registration_number.gte.$start,'
+          'registration_number.lt.${start + factor})',
+        );
+      }
+    }
+
+    return filters.join(',');
+  }
+
+  /// Calcule en base le rang réel de chaque résultat trouvé par la recherche
+  /// (nombre de participants mieux classés + 1), selon le même ordre que le
+  /// classement affiché (score décroissant, puis id croissant).
+  Future<List<RoundResult>> _attachRealRanks(
+    List<RoundResult> results, {
+    required String roundId,
+    required String ageGroup,
+  }) async {
+    return Future.wait(
+      results.map((result) async {
+        try {
+          final betterCount = await _supabase
+              .from('round_results')
+              .count(CountOption.exact)
+              .eq('round_id', roundId)
+              .eq('age_group', ageGroup)
+              .or(
+                'score.gt.${result.score},'
+                'and(score.eq.${result.score},id.lt.${result.id})',
+              );
+          return result.copyWith(rank: betterCount + 1);
+        } catch (e) {
+          print('⚠️ Impossible de calculer le rang de ${result.id}: $e');
+          return result;
+        }
+      }),
+    );
   }
 
   /// Récupère les moyennes de succès d'une version de compétition

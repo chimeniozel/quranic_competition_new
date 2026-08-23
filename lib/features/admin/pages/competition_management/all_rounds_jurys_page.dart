@@ -291,11 +291,12 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
         try {
           // Vérifier que le jury a vraiment le rôle محكم avant d'envoyer la notification
           final supabase = Supabase.instance.client;
-          final juryProfile = await supabase
-              .from('profiles')
-              .select('role, is_validated')
-              .eq('id', jury.id)
-              .maybeSingle();
+          final juryProfile =
+              await supabase
+                  .from('profiles')
+                  .select('role, is_validated')
+                  .eq('id', jury.id)
+                  .maybeSingle();
 
           if (juryProfile == null) {
             print('⚠️ Le profil du jury ${jury.fullName} n\'existe pas');
@@ -306,7 +307,8 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
           final isVerified = juryProfile['is_validated'] as bool? ?? false;
 
           // Vérifier que le rôle est محكم (jury)
-          final isJuryRole = juryRole.trim().toLowerCase() == 'jury' ||
+          final isJuryRole =
+              juryRole.trim().toLowerCase() == 'jury' ||
               juryRole.trim().toLowerCase().contains('jury');
 
           if (!isJuryRole) {
@@ -683,13 +685,15 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
         participantsResponse = await supabase
             .from('participants')
             .select('id')
+            .eq('competition_id', widget.version.id)
             .eq('is_accepted', true);
-        print('🎯 Round 1: Tous les participants acceptés');
+        print('🎯 Round 1: Tous les participants acceptés de cette version');
       } else {
         // Round 2+: participants acceptés ET qui ont passé le round 1
         participantsResponse = await supabase
             .from('participants')
             .select('id')
+            .eq('competition_id', widget.version.id)
             .eq('is_accepted', true)
             .eq('passed_round1', true);
         print('🎯 Round 2+: Participants acceptés ET passed_round1 = true');

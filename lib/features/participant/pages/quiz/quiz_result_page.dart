@@ -1,15 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
+import 'package:quranic_competition/models/quiz_question.dart';
+import 'package:quranic_competition/models/quiz_option.dart';
+import 'package:quranic_competition/core/services/quiz_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 
-class QuizResultPage extends StatelessWidget {
+class QuizResultPage extends StatefulWidget {
   final QuizResult result;
 
   const QuizResultPage({super.key, required this.result});
+
+  @override
+  State<QuizResultPage> createState() => _QuizResultPageState();
+}
+
+class _QuizResultPageState extends State<QuizResultPage> {
+  final QuizService _quizService = QuizService();
+  bool _isLoadingQuestions = true;
+  List<QuizQuestion> _questions = [];
+  Map<String, List<QuizOption>> _optionsMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuestionsAndOptions();
+  }
+
+  Future<void> _loadQuestionsAndOptions() async {
+    try {
+      final questions = await _quizService.getQuestionsByLevel(widget.result.levelId);
+      final optionsMap = <String, List<QuizOption>>{};
+
+      for (final question in questions) {
+        final options = await _quizService.getOptionsByQuestion(question.id);
+        optionsMap[question.id] = options;
+      }
+
+      setState(() {
+        _questions = questions;
+        _optionsMap = optionsMap;
+        _isLoadingQuestions = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des questions: $e');
+      setState(() {
+        _isLoadingQuestions = false;
+      });
+    }
+  }
 
   Color _getGradeColor(String grade) {
     switch (grade) {
@@ -89,7 +132,7 @@ class QuizResultPage extends StatelessWidget {
                       Icon(Icons.quiz, size: 60, color: Colors.white),
                       const SizedBox(height: AppTheme.spacingS),
                       Text(
-                        result.levelName,
+                        widget.result.levelName,
                         style: AppTheme.labelLarge.copyWith(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -115,7 +158,7 @@ class QuizResultPage extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       'النقاط المكتسبة',
-                      '${result.earnedPoints}/${result.totalPoints}',
+                      '${widget.result.earnedPoints}/${widget.result.totalPoints}',
                       Icons.stars,
                       Colors.orange,
                     ),
@@ -124,7 +167,7 @@ class QuizResultPage extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       'الإجابات الصحيحة',
-                      '${result.correctAnswers}/${result.totalQuestions}',
+                      '${widget.result.correctAnswers}/${widget.result.totalQuestions}',
                       Icons.check_circle,
                       Colors.green,
                     ),
@@ -137,7 +180,7 @@ class QuizResultPage extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       'النسبة المئوية',
-                      '${result.percentage.toStringAsFixed(1)}%',
+                      '${widget.result.percentage.toStringAsFixed(1)}%',
                       Icons.percent,
                       Colors.blue,
                     ),
@@ -146,9 +189,9 @@ class QuizResultPage extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       'التقدير',
-                      result.grade,
-                      _getGradeIcon(result.grade),
-                      _getGradeColor(result.grade),
+                      widget.result.grade,
+                      _getGradeIcon(widget.result.grade),
+                      _getGradeColor(widget.result.grade),
                     ),
                   ),
                 ],
@@ -176,15 +219,15 @@ class QuizResultPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
-                      value: result.percentage / 100,
+                      value: widget.result.percentage / 100,
                       backgroundColor: Colors.grey[300],
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        _getGradeColor(result.grade),
+                        _getGradeColor(widget.result.grade),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${result.percentage.toStringAsFixed(1)}% مكتمل',
+                      '${widget.result.percentage.toStringAsFixed(1)}% مكتمل',
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
@@ -218,27 +261,27 @@ class QuizResultPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildDetailRow('المستوى', result.levelName),
+                    _buildDetailRow('المستوى', widget.result.levelName),
                     _buildDetailRow(
                       'إجمالي الأسئلة',
-                      '${result.totalQuestions}',
+                      '${widget.result.totalQuestions}',
                     ),
                     _buildDetailRow(
                       'الإجابات الصحيحة',
-                      '${result.correctAnswers}',
+                      '${widget.result.correctAnswers}',
                     ),
                     _buildDetailRow(
                       'الإجابات الخاطئة',
-                      '${result.totalQuestions - result.correctAnswers}',
+                      '${widget.result.totalQuestions - widget.result.correctAnswers}',
                     ),
-                    _buildDetailRow('إجمالي النقاط', '${result.totalPoints}'),
+                    _buildDetailRow('إجمالي النقاط', '${widget.result.totalPoints}'),
                     _buildDetailRow(
                       'النقاط المكتسبة',
-                      '${result.earnedPoints}',
+                      '${widget.result.earnedPoints}',
                     ),
                     _buildDetailRow(
                       'تاريخ الإكمال',
-                      _formatDate(result.completedAt),
+                      _formatDate(widget.result.completedAt),
                     ),
                   ],
                 ),
@@ -250,32 +293,32 @@ class QuizResultPage extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: _getGradeColor(result.grade).withOpacity(0.1),
+                  color: _getGradeColor(widget.result.grade).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _getGradeColor(result.grade).withOpacity(0.3),
+                    color: _getGradeColor(widget.result.grade).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
                   children: [
                     Icon(
-                      _getGradeIcon(result.grade),
+                      _getGradeIcon(widget.result.grade),
                       size: 50,
-                      color: _getGradeColor(result.grade),
+                      color: _getGradeColor(widget.result.grade),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _getCongratulationMessage(result.grade),
+                      _getCongratulationMessage(widget.result.grade),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: _getGradeColor(result.grade),
+                        color: _getGradeColor(widget.result.grade),
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _getEncouragementMessage(result.percentage),
+                      _getEncouragementMessage(widget.result.percentage),
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       textAlign: TextAlign.center,
                     ),
@@ -283,6 +326,47 @@ class QuizResultPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Section des questions avec réponses colorées
+              if (!_isLoadingQuestions && _questions.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.quiz, color: Colors.blue[600]),
+                          const SizedBox(width: 8),
+                          Text(
+                            'مراجعة الإجابات',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ..._questions.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final question = entry.value;
+                        return _buildQuestionReview(
+                          question: question,
+                          questionIndex: index,
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
 
               // Boutons d'action
               Row(
@@ -318,9 +402,9 @@ class QuizResultPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -337,7 +421,7 @@ class QuizResultPage extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(fontSize: 12, color: color.withOpacity(0.8)),
+            style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -388,5 +472,204 @@ class QuizResultPage extends StatelessWidget {
     } else {
       return 'لا تستسلم! المراجعة والممارسة ستساعدك على التحسن.';
     }
+  }
+
+  Widget _buildQuestionReview({
+    required QuizQuestion question,
+    required int questionIndex,
+  }) {
+    final options = _optionsMap[question.id] ?? [];
+    final selectedOptionId = widget.result.answers[question.id];
+    final selectedOption = options.firstWhere(
+      (opt) => opt.id == selectedOptionId,
+      orElse: () => QuizOption(
+        id: '',
+        questionId: question.id,
+        text: '',
+        isCorrect: false,
+        order: 0,
+        createdAt: DateTime.now(),
+      ),
+    );
+    final isCorrect = selectedOption.isCorrect;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCorrect ? Colors.green[300]! : Colors.red[300]!,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête de la question
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isCorrect ? Colors.green : Colors.red,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Icon(
+                    isCorrect ? Icons.check : Icons.close,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'سؤال ${questionIndex + 1}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isCorrect ? Colors.green[700] : Colors.red[700],
+                  ),
+                ),
+              ),
+              Text(
+                '${question.points} نقطة',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.orange[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Texte de la question
+          Text(
+            question.question,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Image si présente
+          if (question.imageUrl != null && question.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Builder(
+                builder: (context) {
+                  String imageUrl = question.imageUrl!;
+                  if (!imageUrl.startsWith('http://') &&
+                      !imageUrl.startsWith('https://')) {
+                    try {
+                      final supabase = Supabase.instance.client;
+                      imageUrl = supabase.storage
+                          .from('images')
+                          .getPublicUrl(imageUrl);
+                    } catch (e) {
+                      print('Erreur lors de la récupération de l\'URL: $e');
+                    }
+                  }
+
+                  return Image.network(
+                    imageUrl,
+                    width: double.infinity,
+                    height: 150,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: Icon(Icons.image_not_supported),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Options de réponses
+          ...options.map((option) {
+            final isSelected = option.id == selectedOptionId;
+            final isCorrectAnswer = option.isCorrect;
+
+            // Déterminer la couleur
+            Color? backgroundColor;
+            Color? borderColor;
+            Color? textColor;
+            IconData? icon;
+
+            if (isCorrectAnswer) {
+              // La bonne réponse est toujours en vert
+              backgroundColor = Colors.green[50];
+              borderColor = Colors.green[400]!;
+              textColor = Colors.green[800]!;
+              icon = Icons.check_circle;
+            } else if (isSelected && !isCorrect) {
+              // La réponse de l'utilisateur est incorrecte → rouge
+              backgroundColor = Colors.red[50];
+              borderColor = Colors.red[400]!;
+              textColor = Colors.red[800]!;
+              icon = Icons.cancel;
+            } else {
+              // Réponse non sélectionnée et incorrecte
+              backgroundColor = Colors.grey[50];
+              borderColor = Colors.grey[300]!;
+              textColor = Colors.grey[700]!;
+              icon = null;
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: borderColor,
+                    width: isSelected || isCorrectAnswer ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (icon != null)
+                      Icon(
+                        icon,
+                        color: textColor,
+                        size: 24,
+                      ),
+                    if (icon != null) const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        option.text,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: textColor,
+                          fontWeight: isSelected || isCorrectAnswer
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 }

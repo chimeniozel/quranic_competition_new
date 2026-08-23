@@ -9,61 +9,40 @@ class FilePermissionService {
   factory FilePermissionService() => _instance;
   FilePermissionService._internal();
 
-  /// Détermine quelle permission utiliser selon la plateforme
-  /// Sur Android 13+ (API 33+), Permission.photos
-  /// Sur Android < 13, Permission.storage
-  /// Sur iOS, Permission.photos
-  Permission _getPermission() {
-    if (Platform.isAndroid) {
-      // Sur Android, permission_handler devrait automatiquement
-      // utiliser la bonne permission selon la version Android
-      // mais on peut essayer photos d'abord
-      return Permission.photos;
-    } else if (Platform.isIOS) {
-      return Permission.photos;
-    }
-    return Permission.photos;
-  }
-
-  /// Méthode alternative pour essayer storage sur Android si photos ne fonctionne pas
-  Future<bool> _tryRequestPermission(
-    Permission permission,
-    BuildContext context,
-  ) async {
-    try {
-      var status = await permission.status;
-      print('📱 Tentative avec $permission - Statut: $status');
-
-      if (status.isGranted) {
-        return true;
-      }
-
-      if (status.isPermanentlyDenied) {
-        return false; // Ne pas ouvrir les paramètres ici
-      }
-
-      // Essayer de demander la permission
-      final result = await permission.request();
-      print('📱 Résultat de $permission: $result');
-
-      return result.isGranted;
-    } catch (e) {
-      print('❌ Erreur avec $permission: $e');
-      return false;
-    }
-  }
+  /// Permission utilisée pour accéder à la photothèque (iOS uniquement :
+  /// sur Android le sélecteur système ne demande aucune permission).
+  Permission _getPermission() => Permission.photos;
 
   /// Vérifie et demande les permissions nécessaires pour accéder aux fichiers/images
   /// Retourne true si la permission est accordée, false sinon
   /// Demande la permission directement dans l'app sans quitter l'application
   Future<bool> requestStoragePermission(BuildContext context) async {
+    // Android : AUCUNE permission n'est nécessaire pour choisir une image.
+    // image_picker et file_picker passent par le sélecteur système (Photo
+    // Picker / SAF) qui accorde un accès ponctuel au fichier choisi.
+    // Les permissions READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE ont été
+    // retirées du manifeste (politique Google Play sur les photos/vidéos) :
+    // les demander ici échouait donc toujours — le système refuse une
+    // permission non déclarée sans même afficher de dialogue — et bloquait
+    // complètement la sélection des images de l'archive sur Android.
+    if (Platform.isAndroid) {
+      print('📱 Android : sélecteur système, aucune permission requise');
+      return true;
+    }
+
     try {
       final permission = _getPermission();
 
       // Vérifier d'abord l'état actuel de la permission
       var status = await permission.status;
       print('📱 Statut initial de la permission ($permission): $status');
-      print('📱 Plateforme: ${Platform.isIOS ? "iOS" : Platform.isAndroid ? "Android" : "Autre"}');
+      print(
+        '📱 Plateforme: ${Platform.isIOS
+            ? "iOS"
+            : Platform.isAndroid
+            ? "Android"
+            : "Autre"}',
+      );
 
       // Si la permission est déjà accordée, retourner true
       if (status.isGranted) {
@@ -93,17 +72,17 @@ class FilePermissionService {
       // Essayer d'abord avec Permission.photos (ou storage selon la plateforme)
       var result = await permission.request();
       print('📱 Résultat de la demande ($permission): $result');
-      
+
       // Vérifier à nouveau le statut après la demande (parfois nécessaire sur iOS)
       var newStatus = await permission.status;
       print('📱 Statut après demande: $newStatus');
-      
+
       // Utiliser le nouveau statut si la demande a changé quelque chose
       if (newStatus.isGranted && !result.isGranted) {
         print('✅ Permission accordée après vérification du statut');
         return true;
       }
-      
+
       // Si sur iOS, vérifier à nouveau le statut car il peut changer après la demande
       if (Platform.isIOS && !result.isGranted) {
         // Sur iOS, le statut peut changer après la demande
@@ -113,24 +92,6 @@ class FilePermissionService {
         print('🍎 iOS - Statut après attente: $iosStatus');
         if (iosStatus.isGranted) {
           print('✅ Permission accordée sur iOS');
-          return true;
-        }
-      }
-
-      // Si sur Android et que photos ne fonctionne pas (denied mais pas de dialogue),
-      // essayer Permission.storage comme fallback
-      if (Platform.isAndroid &&
-          result.isDenied &&
-          !result.isPermanentlyDenied &&
-          newStatus.isDenied &&
-          status == PermissionStatus.denied) {
-        print('📱 Essai avec Permission.storage en fallback');
-        final storageResult = await _tryRequestPermission(
-          Permission.storage,
-          context,
-        );
-        if (storageResult) {
-          print('✅ Permission.storage accordée');
           return true;
         }
       }
@@ -293,6 +254,9 @@ class FilePermissionService {
 
   /// Vérifie si la permission est déjà accordée (sans demander)
   Future<bool> hasStoragePermission() async {
+    // Voir requestStoragePermission : rien à demander sur Android.
+    if (Platform.isAndroid) return true;
+
     try {
       final permission = _getPermission();
       final status = await permission.status;
