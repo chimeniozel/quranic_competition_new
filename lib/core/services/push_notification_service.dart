@@ -6,6 +6,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
+import 'notification_navigation.dart';
+import 'notification_read_store.dart';
 import 'notification_service.dart';
 
 /// Service pour envoyer et recevoir des notifications push via Supabase
@@ -17,6 +19,7 @@ class PushNotificationService {
 
   final SupabaseClient _supabase = Supabase.instance.client;
   final NotificationService _notificationService = NotificationService();
+  final NotificationReadStore _readStore = NotificationReadStore();
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
   RealtimeChannel? _notificationsChannel;
@@ -28,9 +31,40 @@ class PushNotificationService {
   String? _lastRegisteredToken; // Token FCM déjà enregistré
   String?
   _lastRegisteredUserId; // user_id utilisé lors du dernier enregistrement
-  final Set<String> _displayedNotificationIds =
-      <String>{}; // IDs des notifications déjà affichées
+  /// Clés des notifications déjà affichées (id de la ligne, ou signature du
+  /// contenu quand FCM n'envoie pas d'identifiant). Bornée pour ne pas
+  /// grossir indéfiniment pendant la session.
+  final List<String> _displayedKeys = <String>[];
+  static const int _maxDisplayedKeys = 200;
+
+  /// Délai maximal d'une requête liée aux notifications : au-delà, l'écran
+  /// affiche une erreur au lieu de tourner indéfiniment.
+  static const Duration _requestTimeout = Duration(seconds: 20);
   DateTime? _loginTimestamp; // Timestamp de la dernière connexion
+
+  /// Retourne true si la notification n'a pas encore été affichée, et la
+  /// marque comme affichée.
+  bool _markAsDisplayed(String key) {
+    if (_displayedKeys.contains(key)) return false;
+
+    _displayedKeys.add(key);
+    if (_displayedKeys.length > _maxDisplayedKeys) {
+      _displayedKeys.removeRange(0, _displayedKeys.length - _maxDisplayedKeys);
+    }
+    return true;
+  }
+
+  bool _alreadyDisplayed(String key) => _displayedKeys.contains(key);
+
+  /// Clé de déduplication : l'identifiant de la notification si disponible,
+  /// sinon une signature du contenu. Indispensable car la même notification
+  /// arrive à la fois par FCM et par Supabase Realtime.
+  String _dedupKey({String? notificationId, String? title, String? body}) {
+    if (notificationId != null && notificationId.isNotEmpty) {
+      return notificationId;
+    }
+    return 'content:${title ?? ''}|${body ?? ''}';
+  }
 
   /// Initialise le service et démarre l'écoute des notifications
   Future<void> initialize() async {
@@ -52,6 +86,12 @@ class PushNotificationService {
 
     // Écouter les changements d'authentification pour redémarrer l'écoute
     // Note: même pour les utilisateurs non connectés, on garde l'écoute active pour les notifications publiques
+    // Les notifications antérieures à l'ouverture de session ne doivent pas
+    // être ré-affichées : on pose le repère dès le démarrage, et non
+    // seulement lors d'une connexion explicite (une session restaurée
+    // n'émet pas signedIn).
+    _loginTimestamp ??= DateTime.now();
+
     _supabase.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.signedIn) {
@@ -96,17 +136,22 @@ class PushNotificationService {
       final firebaseApp = Firebase.app();
       print('✅ Firebase app trouvé: ${firebaseApp.name}');
 
-      // Demander la permission pour les notifications
-      NotificationSettings settings = await _firebaseMessaging
-          .requestPermission(
-            alert: true,
-            announcement: false,
-            badge: true,
-            carPlay: false,
-            criticalAlert: false,
-            provisional: false,
-            sound: true,
-          );
+      // Demander la permission pour les notifications.
+      // Sur Android, POST_NOTIFICATIONS a déjà été demandée par
+      // NotificationService : on se contente de lire l'état pour éviter une
+      // seconde boîte de dialogue.
+      final NotificationSettings settings =
+          Platform.isAndroid
+              ? await _firebaseMessaging.getNotificationSettings()
+              : await _firebaseMessaging.requestPermission(
+                alert: true,
+                announcement: false,
+                badge: true,
+                carPlay: false,
+                criticalAlert: false,
+                provisional: false,
+                sound: true,
+              );
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         print('✅ Permission de notifications accordée');
@@ -443,16 +488,22 @@ class PushNotificationService {
       final notificationId = data['notification_id'] as String?;
 
       // Marquer la notification comme affichée si elle ne l'est pas déjà
-      if (notificationId != null &&
-          !_displayedNotificationIds.contains(notificationId)) {
-        _displayedNotificationIds.add(notificationId);
-      }
-
-      // La navigation est gérée par le callback onNotificationTapped dans main.dart
-      // Pas besoin d'afficher une nouvelle notification ici
-      print(
-        '📬 Notification FCM ouverte, navigation gérée: ${message.notification?.title}',
+      _markAsDisplayed(
+        _dedupKey(
+          notificationId: notificationId,
+          title: message.notification?.title,
+          body: message.notification?.body,
+        ),
       );
+
+      // Le callback onNotificationTapped ne concerne que les notifications
+      // locales : pour une notification FCM affichée par le système, c'est
+      // ici qu'il faut ouvrir l'écran correspondant.
+      print('📬 Notification FCM ouverte: ${message.notification?.title}');
+
+      // Le type métier (results_published, benefit_created...) est dans le
+      // payload JSON ; data['type'] ne porte que la gravité (info/error...).
+      NotificationNavigation.openFromPayload(data['payload'] as String?);
     } catch (e) {
       print(
         '❌ Erreur lors du traitement de l\'ouverture de notification FCM: $e',
@@ -469,22 +520,22 @@ class PushNotificationService {
       if (notification != null) {
         // Extraire l'ID de la notification depuis les données
         final notificationId = data['notification_id'] as String?;
+        final key = _dedupKey(
+          notificationId: notificationId,
+          title: notification.title,
+          body: notification.body,
+        );
 
-        // Vérifier si cette notification a déjà été affichée (éviter les doublons avec Realtime)
-        if (notificationId != null &&
-            _displayedNotificationIds.contains(notificationId)) {
+        // Éviter les doublons avec Realtime. Quand FCM n'envoie pas
+        // notification_id, la clé de repli sur le contenu joue le même rôle.
+        if (!_markAsDisplayed(key)) {
           print(
             '⚠️ Notification FCM déjà affichée (via Realtime), ignorée: ${notification.title}',
           );
-          return; // Ignorer si déjà affichée
+          return;
         }
 
         final type = data['type'] as String? ?? 'info';
-
-        // Marquer comme déjà affichée AVANT de l'afficher pour éviter les doublons
-        if (notificationId != null) {
-          _displayedNotificationIds.add(notificationId);
-        }
 
         print('📬 Notification FCM affichée: ${notification.title}');
 
@@ -494,7 +545,9 @@ class PushNotificationService {
               0x7FFFFFFF,
           title: notification.title ?? 'إشعار جديد',
           body: notification.body ?? '',
-          payload: notificationId ?? jsonEncode(data),
+          // Payload métier pour la navigation au clic (et non l'identifiant,
+          // qui ne permettait de router vers rien).
+          payload: (data['payload'] as String?) ?? jsonEncode(data),
           channelName: 'إشعارات التطبيق',
           channelDescription: 'إشعارات من التطبيق',
           importance:
@@ -553,8 +606,13 @@ class PushNotificationService {
               print('📬 Notification Realtime reçue: ${notification['title']}');
 
               // Vérifier si cette notification a déjà été affichée (éviter les doublons)
-              if (notificationId != null &&
-                  _displayedNotificationIds.contains(notificationId)) {
+              if (_alreadyDisplayed(
+                _dedupKey(
+                  notificationId: notificationId,
+                  title: notification['title'] as String?,
+                  body: notification['body'] as String?,
+                ),
+              )) {
                 print(
                   '⚠️ Notification déjà affichée, ignorée: ${notification['title']}',
                 );
@@ -660,30 +718,31 @@ class PushNotificationService {
       final payload = notificationData['payload'] as String?;
       final notificationId = notificationData['id'] as String?;
 
+      final dedupKey = _dedupKey(
+        notificationId: notificationId,
+        title: title,
+        body: body,
+      );
+
       // Vérifier si cette notification a déjà été affichée (double vérification pour sécurité)
-      if (notificationId != null &&
-          _displayedNotificationIds.contains(notificationId)) {
+      if (_alreadyDisplayed(dedupKey)) {
         print('⚠️ Notification déjà affichée, ignorée: $title');
         return;
       }
 
-      // Ne pas afficher aux créateurs leurs propres notifications (filtrage côté client)
       final currentUserId = _supabase.auth.currentUser?.id;
 
       // Vérifier si la notification référence une version supprimée
       if (payload != null) {
         try {
           final payloadData = jsonDecode(payload) as Map<String, dynamic>?;
-          // TEMPORAIRE : Désactiver le filtrage pour permettre les tests
-          // Les notifications créées par l'utilisateur courant seront affichées
-          // TODO: Réactiver le filtrage après les tests si nécessaire
-          /*
-          // Filtrer les notifications créées par l'utilisateur courant
+
+          // Ne pas notifier l'auteur de sa propre publication
           if (currentUserId != null &&
               payloadData != null &&
               payloadData['created_by'] == currentUserId) {
             print(
-              'ℹ️ Notification ignorée (créée par l\'utilisateur courant): $title',
+              'ℹ️ Notification ignorée (créée par cet utilisateur): $title',
             );
             if (notificationId != null) {
               try {
@@ -692,7 +751,6 @@ class PushNotificationService {
             }
             return;
           }
-          */
 
           if (payloadData != null && payloadData['type'] == 'version_created') {
             final versionId = payloadData['version_id'] as String?;
@@ -720,10 +778,8 @@ class PushNotificationService {
       print('📬 Nouvelle notification reçue: $title');
 
       // Marquer comme déjà affichée AVANT de l'afficher pour éviter les doublons
-      // (par exemple, si Realtime et polling reçoivent la même notification en même temps)
-      if (notificationId != null) {
-        _displayedNotificationIds.add(notificationId);
-      }
+      // (par exemple, si Realtime et FCM reçoivent la même notification)
+      _markAsDisplayed(dedupKey);
 
       // Afficher la notification locale
       await _showLocalNotification(
@@ -737,11 +793,14 @@ class PushNotificationService {
       print('✅ Notification affichée avec succès: $title');
     } catch (e) {
       print('❌ Erreur lors du traitement de la notification: $e');
-      // En cas d'erreur, retirer l'ID de la liste pour permettre une nouvelle tentative
-      final notificationId = notificationData['id'] as String?;
-      if (notificationId != null) {
-        _displayedNotificationIds.remove(notificationId);
-      }
+      // En cas d'erreur, retirer la clé pour permettre une nouvelle tentative
+      _displayedKeys.remove(
+        _dedupKey(
+          notificationId: notificationData['id'] as String?,
+          title: notificationData['title'] as String?,
+          body: notificationData['body'] as String?,
+        ),
+      );
     }
   }
 
@@ -832,76 +891,38 @@ class PushNotificationService {
       }
 
       // Insérer la notification dans la base de données
-      final notificationResponse =
-          await _supabase
-              .from('notifications')
-              .insert({
-                'title': title,
-                'body': body,
-                'type': type,
-                'payload': payloadValue,
-                'user_id': userId,
-                'is_read': false,
-              })
-              .select()
-              .single();
+      await _supabase.from('notifications').insert({
+        'title': title,
+        'body': body,
+        'type': type,
+        'payload': payloadValue,
+        'user_id': userId,
+        'is_read': false,
+      });
 
       print('✅ Notification envoyée dans la base de données: $title');
 
-      // Envoyer les notifications FCM push via une Edge Function Supabase
-      // Cette fonction enverra les notifications FCM aux appareils enregistrés
-      try {
-        final notificationId = notificationResponse['id'] as String?;
-
-        if (notificationId == null) {
-          print(
-            '⚠️ notificationId est null, impossible d\'appeler l\'Edge Function',
-          );
-          return;
-        }
-
-        print(
-          '📞 Appel de l\'Edge Function send-fcm-notification avec notification_id: $notificationId',
-        );
-
-        // Appeler l'Edge Function Supabase pour envoyer les notifications FCM
-        // L'Edge Function utilise l'API FCM HTTP v1 et accepte notification_id ou notificationId
-        final response = await _supabase.functions.invoke(
-          'send-fcm-notification',
-          body: {
-            'notification_id': notificationId, // Format snake_case (préféré)
-            // Alternative: 'notificationId': notificationId, // Format camelCase aussi supporté
-          },
-        );
-
-        print('📥 Réponse Edge Function reçue - Status: ${response.status}');
-
-        if (response.data != null) {
-          print('✅ Notification FCM envoyée via Edge Function: $title');
-          print('📊 Résultat: ${response.data}');
-        } else {
-          print(
-            '⚠️ Edge Function répondue mais sans données (status: ${response.status})',
-          );
-        }
-      } catch (e, stackTrace) {
-        // Si l'Edge Function n'existe pas ou échoue, continuer quand même
-        // Les notifications Realtime fonctionneront toujours
-        print('❌ Erreur lors de l\'appel à l\'Edge Function FCM: $e');
-        print('📋 Stack trace: $stackTrace');
-        print('ℹ️ Les notifications Realtime fonctionneront toujours');
-        print(
-          '💡 Vérifie que l\'Edge Function est déployée dans Supabase Dashboard',
-        );
-      }
+      // L'envoi des push FCM est déclenché côté serveur : un Database
+      // Webhook Supabase appelle la fonction `send_fcm_notification` à chaque
+      // INSERT dans `notifications`. Inutile — et fragile — de l'appeler
+      // depuis l'appareil de l'expéditeur.
     } catch (e) {
       print('❌ Erreur lors de l\'envoi de la notification: $e');
       rethrow;
     }
   }
 
-  /// Marque une notification comme lue
-  Future<void> markAsRead(String notificationId) async {
+  /// Marque une notification comme lue.
+  ///
+  /// L'état est enregistré **sur l'appareil**. La base n'est mise à jour que
+  /// pour une notification personnelle ([ownerUserId] non nul) : une
+  /// notification publique est une ligne unique partagée, la marquer lue en
+  /// base l'effacerait pour tous les utilisateurs.
+  Future<void> markAsRead(String notificationId, {String? ownerUserId}) async {
+    await _readStore.markRead(notificationId);
+
+    if (ownerUserId == null || ownerUserId.isEmpty) return;
+
     try {
       await _supabase.rpc(
         'mark_notification_as_read',
@@ -924,107 +945,166 @@ class PushNotificationService {
     }
   }
 
-  /// Récupère les notifications non lues
-  /// Fonctionne même pour les utilisateurs non connectés (récupère les notifications publiques)
-  /// Filtre automatiquement les notifications dont les versions ont été supprimées
-  /// Limite à 100 notifications maximum et aux 30 derniers jours pour éviter de surcharger
+  /// Notifications non lues sur cet appareil.
   Future<List<Map<String, dynamic>>> getUnreadNotifications() async {
+    final notifications = await getRecentNotifications();
+    return notifications.where((n) => n['is_read'] != true).toList();
+  }
+
+  /// Récupère les notifications récentes (lues et non lues) pour l'écran
+  /// « الإشعارات ». Même périmètre que [getUnreadNotifications] : notifications
+  /// publiques + celles de l'utilisateur, sur 30 jours, 100 au maximum.
+  ///
+  /// Contrairement aux autres méthodes, les erreurs sont propagées : l'écran
+  /// doit pouvoir distinguer « aucune notification » d'un échec de chargement.
+  Future<List<Map<String, dynamic>>> getRecentNotifications() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
 
-      // Limiter aux 30 derniers jours pour éviter de charger toutes les notifications passées
-      final thirtyDaysAgo =
-          DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
+      // Borne basse : 30 jours, mais jamais avant la première ouverture de
+      // l'application sur cet appareil (réinstallation = liste vierge).
+      final thirtyDaysAgo = DateTime.now().toUtc().subtract(
+        const Duration(days: 30),
+      );
+      final installedAt = await _readStore.notificationsSince();
+      final since =
+          installedAt.isAfter(thirtyDaysAgo) ? installedAt : thirtyDaysAgo;
 
-      // Pour les utilisateurs non connectés, on récupère uniquement les notifications publiques
-      // Pour les utilisateurs connectés, on récupère les notifications publiques + leurs notifications spécifiques
-      // Limiter à 100 notifications maximum et aux 30 derniers jours
-      final response =
+      final query =
           userId != null
-              ? await _supabase
+              ? _supabase
                   .from('notifications')
                   .select()
                   .or('user_id.is.null,user_id.eq.$userId')
-                  .eq('is_read', false)
-                  .gte('created_at', thirtyDaysAgo)
-                  .order('created_at', ascending: false)
-                  .limit(100)
-              : await _supabase
+              : _supabase
                   .from('notifications')
                   .select()
-                  .isFilter('user_id', null)
-                  .eq('is_read', false)
-                  .gte('created_at', thirtyDaysAgo)
-                  .order('created_at', ascending: false)
-                  .limit(100);
+                  .isFilter('user_id', null);
+
+      // Un délai maximal évite que l'écran reste indéfiniment sur le
+      // chargement quand le réseau ne répond pas.
+      final response = await query
+          .gte('created_at', since.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(100)
+          .timeout(_requestTimeout);
 
       final notifications = List<Map<String, dynamic>>.from(response);
+      final readIds = await _readStore.readIds();
 
-      // Filtrer les notifications dont les versions ont été supprimées
-      final validNotifications = <Map<String, dynamic>>[];
+      // Décoder les payloads une seule fois
+      final payloads = <String, Map<String, dynamic>?>{};
+      final versionIds = <String>{};
       for (final notification in notifications) {
-        final payload = notification['payload'] as String?;
-        bool shouldInclude = true;
+        final id = notification['id'] as String?;
+        if (id == null) continue;
 
+        final payload = notification['payload'] as String?;
+        Map<String, dynamic>? data;
         if (payload != null) {
           try {
-            final payloadData = jsonDecode(payload) as Map<String, dynamic>?;
-            // TEMPORAIRE : Désactiver le filtrage pour permettre les tests
-            // Les notifications créées par l'utilisateur courant seront affichées
-            // TODO: Réactiver le filtrage après les tests si nécessaire
-            // Le code de filtrage est commenté ci-dessous pour permettre les tests
-            /*
-            // Exclure les notifications créées par l'utilisateur courant
-            if (userId != null &&
-                payloadData != null &&
-                payloadData['created_by'] == userId) {
-              final notificationId = notification['id'] as String?;
-              if (notificationId != null) {
-                try {
-                  await markAsRead(notificationId);
-                } catch (_) {}
-              }
-              shouldInclude = false;
-            }
-            */
-            if (payloadData != null &&
-                payloadData['type'] == 'version_created') {
-              final versionId = payloadData['version_id'] as String?;
-              if (versionId != null && await _isVersionDeleted(versionId)) {
-                // La version a été supprimée, ignorer cette notification
-                print(
-                  '⚠️ Notification filtrée (version supprimée): ${notification['title']}',
-                );
-                // Marquer la notification comme lue pour éviter de la réafficher
-                final notificationId = notification['id'] as String?;
-                if (notificationId != null) {
-                  try {
-                    await markAsRead(notificationId);
-                  } catch (e) {
-                    print(
-                      '⚠️ Erreur lors du marquage de la notification comme lue: $e',
-                    );
-                  }
-                }
-                shouldInclude = false;
-              }
-            }
-          } catch (e) {
-            // Si le payload n'est pas un JSON valide, inclure la notification
-            print('ℹ️ Payload non-JSON ou erreur de parsing: $e');
+            data = jsonDecode(payload) as Map<String, dynamic>?;
+          } catch (_) {
+            // Payload non-JSON : notification conservée telle quelle
           }
         }
+        payloads[id] = data;
 
-        if (shouldInclude) {
-          validNotifications.add(notification);
+        if (data?['type'] == 'version_created') {
+          final versionId = data?['version_id'] as String?;
+          if (versionId != null) versionIds.add(versionId);
         }
       }
 
-      return validNotifications;
+      // Versions encore existantes, en UNE requête (et non une par
+      // notification, ce qui rendait l'écran interminable).
+      final existingVersionIds = await _fetchExistingVersionIds(versionIds);
+
+      final result = <Map<String, dynamic>>[];
+      for (final notification in notifications) {
+        final id = notification['id'] as String?;
+        final data = id == null ? null : payloads[id];
+
+        // Ne pas montrer à l'auteur ses propres publications
+        if (userId != null && data?['created_by'] == userId) continue;
+
+        // Ni les notifications renvoyant vers une version supprimée
+        if (data?['type'] == 'version_created') {
+          final versionId = data?['version_id'] as String?;
+          if (versionId != null && !existingVersionIds.contains(versionId)) {
+            continue;
+          }
+        }
+
+        // L'état « lu » vient de l'appareil. Pour une notification
+        // personnelle, la valeur enregistrée en base fait aussi foi (elle
+        // n'appartient qu'à cet utilisateur).
+        final isPersonal = notification['user_id'] != null;
+        final isRead =
+            (id != null && readIds.contains(id)) ||
+            (isPersonal && notification['is_read'] == true);
+
+        result.add({...notification, 'is_read': isRead});
+      }
+
+      return result;
     } catch (e) {
-      print('❌ Erreur lors de la récupération des notifications: $e');
-      return [];
+      print('❌ Erreur lors de la récupération des notifications récentes: $e');
+      rethrow;
     }
+  }
+
+  /// Parmi [versionIds], celles qui existent encore en base.
+  Future<Set<String>> _fetchExistingVersionIds(Set<String> versionIds) async {
+    if (versionIds.isEmpty) return <String>{};
+
+    try {
+      final response = await _supabase
+          .from('competition_versions')
+          .select('id')
+          .inFilter('id', versionIds.toList())
+          .timeout(_requestTimeout);
+
+      return List<Map<String, dynamic>>.from(
+        response,
+      ).map((row) => row['id'] as String).toSet();
+    } catch (e) {
+      print('⚠️ Vérification des versions impossible: $e');
+      // En cas d'échec, ne rien masquer plutôt que de vider la liste.
+      return versionIds;
+    }
+  }
+
+  /// Nombre de notifications non lues (pour la pastille de la cloche).
+  /// Un échec réseau ne doit pas casser la barre d'application : on renvoie 0.
+  Future<int> getUnreadCount() async {
+    try {
+      final notifications = await getUnreadNotifications();
+      return notifications.length;
+    } catch (e) {
+      print('⚠️ Impossible de compter les notifications non lues: $e');
+      return 0;
+    }
+  }
+
+  /// Marque toutes les notifications visibles comme lues (sur cet appareil).
+  Future<void> markAllAsRead() async {
+    final notifications = await getUnreadNotifications();
+
+    final ids = <String>[];
+    for (final notification in notifications) {
+      final id = notification['id'] as String?;
+      if (id == null) continue;
+      ids.add(id);
+
+      // Les notifications personnelles sont aussi marquées en base
+      final ownerUserId = notification['user_id'] as String?;
+      if (ownerUserId != null) {
+        await markAsRead(id, ownerUserId: ownerUserId);
+      }
+    }
+
+    await _readStore.markAllRead(ids);
   }
 
   /// Démarre un timer pour réessayer périodiquement d'obtenir le token APNS sur iOS

@@ -23,6 +23,7 @@ import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
 import 'package:quranic_competition/features/participant/pages/about/about_us_page.dart';
 import 'package:quranic_competition/features/shared/pages/access_denied_page.dart';
+import 'package:quranic_competition/features/shared/pages/notifications_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
 import 'package:quranic_competition/models/quiz_result.dart';
@@ -166,6 +167,10 @@ final GoRouter appRouter = GoRouter(
           '/participant/archives',
           '/participant/eid-session',
           '/participant/about-us',
+          // Les notifications publiques sont destinées à tous, y compris aux
+          // visiteurs non connectés : sans cette entrée, la cloche renvoyait
+          // simplement vers l'accueil.
+          '/notifications',
           '/access-denied',
           '/ui-showcase',
         ].contains(path) ||
@@ -275,6 +280,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => ChangePasswordPage(),
     ),
     GoRoute(path: '/profile', builder: (context, state) => UserProfilePage()),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationsPage(),
+    ),
     GoRoute(
       path: '/security-settings',
       builder: (context, state) => SecuritySettingsPage(),

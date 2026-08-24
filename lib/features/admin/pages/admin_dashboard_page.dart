@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/notification_bell.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/auth_service.dart';
 import 'package:quranic_competition/core/widgets/role_info_widget.dart';
@@ -292,6 +293,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       appBar: ModernAppBar(
         title: 'لوحة التحكم',
         actions: [
+          const NotificationBell(),
           ProfileMenuButton(
             userName: 'مدير النظام',
             userRole: 'admin',

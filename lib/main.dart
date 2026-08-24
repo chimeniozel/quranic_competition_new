@@ -6,6 +6,7 @@ import 'package:image_picker_platform_interface/image_picker_platform_interface.
 import 'package:quranic_competition/core/widgets/auth_initializer.dart';
 import 'package:quranic_competition/core/services/file_permission_service.dart';
 import 'package:quranic_competition/core/services/notification_service.dart';
+import 'package:quranic_competition/core/services/notification_navigation.dart';
 import 'package:quranic_competition/core/services/push_notification_service.dart';
 import 'package:quranic_competition/core/services/app_version_service.dart';
 import 'package:quranic_competition/core/widgets/force_update_dialog.dart';
@@ -61,12 +62,14 @@ void main() async {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     print('✅ Handler background pour notifications FCM enregistré');
 
-    // iOS : s'assurer que les notifications s'affichent aussi quand l'app est au premier plan
+    // iOS : ne PAS laisser le système afficher la notification au premier
+    // plan. L'application affiche déjà une notification locale
+    // (_handleFCMessage) : les deux ensemble produisaient un doublon.
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
-          alert: true,
+          alert: false,
           badge: true,
-          sound: true,
+          sound: false,
         );
   } catch (e) {
     print('⚠️ Firebase non initialisé (pas de fichier de configuration) : $e');
@@ -146,15 +149,12 @@ class _MyAppState extends State<MyApp> {
       await pushNotificationService.initialize();
       print('✅ Service de notifications push initialisé');
 
-      // Définir le callback pour gérer les clics sur les notifications locales
+      // Ouvrir l'écran correspondant au type de la notification tapée
+      // (résultats, archive, fوائد, تجويد, فسحة العيد...)
       final notificationService = NotificationService();
       notificationService.onNotificationTapped = (String? payload) {
-        if (payload != null && payload.contains('version_created')) {
-          // Naviguer vers la page d'accueil du participant
-          if (mounted) {
-            router.appRouter.go('/participant_home_page');
-          }
-        }
+        if (!mounted) return;
+        NotificationNavigation.openFromPayload(payload);
       };
     } catch (e) {
       print('❌ Erreur lors de l\'initialisation des notifications push: $e');

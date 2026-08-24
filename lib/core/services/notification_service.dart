@@ -1,5 +1,4 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'dart:io' show Platform;
@@ -16,6 +15,20 @@ class NotificationService {
 
   bool _isInitialized = false;
 
+  /// Icône monochrome de la barre d'état (une icône colorée apparaîtrait
+  /// comme un carré blanc sur Android 5+).
+  static const String _androidIcon = '@drawable/ic_notification';
+
+  /// Canal des notifications ordinaires.
+  static const String defaultChannelId = 'default_channel';
+
+  /// Canal des notifications importantes (erreurs/avertissements).
+  ///
+  /// Android fige l'importance d'un canal à sa création : sans un second
+  /// canal, demander `Importance.high` sur le canal par défaut n'a aucun
+  /// effet et l'alerte reste silencieuse.
+  static const String importantChannelId = 'important_channel';
+
   /// Initialise le service de notifications
   Future<bool> initialize() async {
     if (_isInitialized) {
@@ -27,7 +40,7 @@ class NotificationService {
 
     // Configuration Android
     const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings(_androidIcon);
 
     // Configuration iOS
     const DarwinInitializationSettings iosSettings =
@@ -52,8 +65,9 @@ class NotificationService {
     if (initialized == true) {
       _isInitialized = true;
 
-      // Demander les permissions sur Android 13+
+      // Créer les canaux et demander les permissions sur Android 13+
       if (Platform.isAndroid) {
+        await _createAndroidChannels();
         await _requestAndroidPermissions();
       }
 
@@ -61,7 +75,9 @@ class NotificationService {
       // avec requestAlertPermission, requestBadgePermission, requestSoundPermission
       // Pas besoin de demander explicitement ici
       if (Platform.isIOS) {
-        print('📱 Permissions iOS notifications locales demandées via DarwinInitializationSettings');
+        print(
+          '📱 Permissions iOS notifications locales demandées via DarwinInitializationSettings',
+        );
       }
 
       return true;
@@ -71,19 +87,49 @@ class NotificationService {
   }
 
   /// Demande les permissions Android pour les notifications
+  ///
+  /// Aucune demande d'alarmes exactes : l'application ne programme rien à une
+  /// heure précise, et SCHEDULE_EXACT_ALARM est une permission restreinte par
+  /// Google Play.
   Future<void> _requestAndroidPermissions() async {
-    if (Platform.isAndroid) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _flutterLocalNotificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
+    final androidImplementation =
+        _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
-      if (androidImplementation != null) {
-        await androidImplementation.requestNotificationsPermission();
-        await androidImplementation.requestExactAlarmsPermission();
-      }
-    }
+    await androidImplementation?.requestNotificationsPermission();
+  }
+
+  /// Crée les canaux de notification en amont, afin que leur importance soit
+  /// correcte dès la première notification (y compris celles envoyées par FCM
+  /// quand l'application est fermée).
+  Future<void> _createAndroidChannels() async {
+    final androidImplementation =
+        _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+
+    if (androidImplementation == null) return;
+
+    await androidImplementation.createNotificationChannel(
+      const AndroidNotificationChannel(
+        defaultChannelId,
+        'إشعارات التطبيق',
+        description: 'إشعارات عامة من التطبيق',
+        importance: Importance.defaultImportance,
+      ),
+    );
+
+    await androidImplementation.createNotificationChannel(
+      const AndroidNotificationChannel(
+        importantChannelId,
+        'إشعارات مهمة',
+        description: 'تنبيهات مهمة تتطلب انتباهك',
+        importance: Importance.high,
+      ),
+    );
   }
 
   /// Callback optionnel pour gérer la navigation depuis les notifications
@@ -138,17 +184,27 @@ class NotificationService {
       await initialize();
     }
 
+    // Le canal détermine réellement le comportement (son, bannière) : on
+    // choisit celui qui correspond à l'importance demandée.
+    final bool isImportant = importance.value >= Importance.high.value;
+    final String resolvedChannelId =
+        channelId ?? (isImportant ? importantChannelId : defaultChannelId);
+
     final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          channelId ?? 'default_channel',
-          channelName ?? 'الإشعارات',
-          channelDescription: channelDescription ?? 'إشعارات التطبيق',
+          resolvedChannelId,
+          channelName ?? (isImportant ? 'إشعارات مهمة' : 'إشعارات التطبيق'),
+          channelDescription:
+              channelDescription ??
+              (isImportant
+                  ? 'تنبيهات مهمة تتطلب انتباهك'
+                  : 'إشعارات عامة من التطبيق'),
           importance: importance,
           priority: priority,
           showWhen: true,
-          icon: '@mipmap/ic_launcher',
+          icon: _androidIcon,
           color: AppTheme.primaryColor,
-          styleInformation: const BigTextStyleInformation(''),
+          styleInformation: BigTextStyleInformation(body),
         );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -191,10 +247,13 @@ class NotificationService {
       _convertToTZDateTime(scheduledDate),
       notificationDetails ?? _getDefaultNotificationDetails(),
       payload: payload,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      // Mode inexact : évite la permission restreinte SCHEDULE_EXACT_ALARM,
+      // au prix de quelques minutes d'imprécision.
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      // Pas de matchDateTimeComponents : la notification est ponctuelle.
+      // (avec dateAndTime, elle se répétait chaque semaine)
     );
   }
 
@@ -212,14 +271,14 @@ class NotificationService {
   NotificationDetails _getDefaultNotificationDetails() {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'default_channel',
-          'الإشعارات',
-          channelDescription: 'إشعارات التطبيق الافتراضية',
+          defaultChannelId,
+          'إشعارات التطبيق',
+          channelDescription: 'إشعارات عامة من التطبيق',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
           showWhen: true,
-          icon: '@mipmap/ic_launcher',
-          color: Colors.blue,
+          icon: _androidIcon,
+          color: AppTheme.primaryColor,
         );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(

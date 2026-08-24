@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../../core/widgets/notification_bell.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -172,6 +173,7 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
         title: 'مسابقة أهل القرآن الواتسابية',
         centerTitle: true,
         actions: [
+          const NotificationBell(),
           IconButton(
             icon: const Icon(Icons.login),
             tooltip: 'تسجيل الدخول',
