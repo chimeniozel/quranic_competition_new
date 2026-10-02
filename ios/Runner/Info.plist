@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول إلى الكاميرا لالتقاط الصور وإضافتها إلى محتوى المسابقات والوسائط.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>لا يستخدم التطبيق موقعك. قد تطلب بعض المكتبات المدمجة هذا الإذن، ولن يتم جمع أي بيانات عن الموقع.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>يحتاج التطبيق إلى الوصول إلى الصور لحفظ الصور في المعرض.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
