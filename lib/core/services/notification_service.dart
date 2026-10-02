@@ -2,7 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'dart:io' show Platform;
-import '../../core/theme/app_theme.dart';
+import 'package:flutter/painting.dart' show Color;
 
 /// Service pour gérer les notifications locales dans l'application
 class NotificationService {
@@ -15,9 +15,18 @@ class NotificationService {
 
   bool _isInitialized = false;
 
-  /// Icône monochrome de la barre d'état (une icône colorée apparaîtrait
-  /// comme un carré blanc sur Android 5+).
+  /// Icône monochrome de la barre d'état : silhouette blanche du porte-Coran
+  /// du logo (une icône colorée apparaîtrait comme un carré blanc sur
+  /// Android 5+).
   static const String _androidIcon = '@drawable/ic_notification';
+
+  /// Logo complet en couleur, affiché à droite du contenu de la notification.
+  static const AndroidBitmap<Object> _androidLargeIcon =
+      DrawableResourceAndroidBitmap('ic_notification_large');
+
+  /// Vert du logo, identique à `notification_color` (android/.../colors.xml)
+  /// utilisé par les notifications FCM affichées par le système.
+  static const Color _accentColor = Color(0xFF1F7C4B);
 
   /// Canal des notifications ordinaires.
   static const String defaultChannelId = 'default_channel';
@@ -203,7 +212,8 @@ class NotificationService {
           priority: priority,
           showWhen: true,
           icon: _androidIcon,
-          color: AppTheme.primaryColor,
+          largeIcon: _androidLargeIcon,
+          color: _accentColor,
           styleInformation: BigTextStyleInformation(body),
         );
 
@@ -278,7 +288,8 @@ class NotificationService {
           priority: Priority.defaultPriority,
           showWhen: true,
           icon: _androidIcon,
-          color: AppTheme.primaryColor,
+          largeIcon: _androidLargeIcon,
+          color: _accentColor,
         );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(

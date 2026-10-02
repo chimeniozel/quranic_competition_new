@@ -590,11 +590,13 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
           );
         }
 
-        // 1. Supprimer toutes les évaluations du jury pour ce round (si elles existent)
+        // 1. Supprimer les évaluations du jury POUR CE ROUND uniquement.
+        // (l'appel précédent portait sur toute la version : retirer un jury
+        // d'un round effaçait aussi ses évaluations des rounds déjà calculés)
         if (hasEvaluationsForDeletion) {
-          await _evaluationService.deleteEvaluationsByJuryInVersion(
+          await _evaluationService.deleteEvaluationsByJuryInRound(
             juryId: jury.id,
-            versionId: widget.version.id,
+            roundId: round.id,
           );
         }
 

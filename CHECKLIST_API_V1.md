@@ -17,7 +17,7 @@ Dans **Supabase Dashboard > Settings > Edge Functions > Secrets**, tu dois avoir
 
 ### 2. Vérifier le code déployé
 
-Dans **Supabase Dashboard > Edge Functions > send-fcm-notification**, vérifie que le code contient :
+Dans **Supabase Dashboard > Edge Functions > send_fcm_notification**, vérifie que le code contient :
 
 ✅ `FCM_CLIENT_EMAIL` et `FCM_PRIVATE_KEY` (lignes 14-15)
 ✅ `getAccessToken()` function (ligne 13)
@@ -29,9 +29,9 @@ Dans **Supabase Dashboard > Edge Functions > send-fcm-notification**, vérifie q
 ### 3. Redéployer le code correct
 
 1. Va dans **Supabase Dashboard > Edge Functions**
-2. Clique sur `send-fcm-notification`
+2. Clique sur `send_fcm_notification`
 3. **Supprime tout le code actuel**
-4. **Copie-colle le code complet** de `supabase/functions/send-fcm-notification/index.ts`
+4. **Copie-colle le code complet** de `supabase/functions/send_fcm_notification/index.ts`
 5. Clique sur **Deploy** ou **Save**
 
 ### 4. Vérifier après déploiement

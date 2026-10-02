@@ -76,7 +76,7 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
             decoration: InputDecoration(
               labelText: widget.labelText,
               hintText: 'أدخل ${widget.labelText.toLowerCase()}',
-              prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
+              prefixIcon: const FaIcon(FontAwesomeIcons.lock, size: 20),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -97,8 +97,8 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                   IconButton(
                     icon: Icon(
                       _obscurePassword
-                          ? FontAwesomeIcons.eyeSlash
-                          : FontAwesomeIcons.eye,
+                          ? FontAwesomeIcons.eyeSlash.data
+                          : FontAwesomeIcons.eye.data,
                       size: 20,
                     ),
                     onPressed: () {
@@ -359,12 +359,12 @@ class _ConfirmPasswordFieldWidgetState
         decoration: InputDecoration(
           labelText: widget.labelText,
           hintText: 'أدخل ${widget.labelText.toLowerCase()}',
-          prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
+          prefixIcon: const FaIcon(FontAwesomeIcons.lock, size: 20),
           suffixIcon: IconButton(
             icon: Icon(
               _obscurePassword
-                  ? FontAwesomeIcons.eyeSlash
-                  : FontAwesomeIcons.eye,
+                  ? FontAwesomeIcons.eyeSlash.data
+                  : FontAwesomeIcons.eye.data,
               size: 20,
             ),
             onPressed: () {

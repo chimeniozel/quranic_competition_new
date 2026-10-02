@@ -3,6 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
@@ -199,21 +201,48 @@ class PushNotificationService {
   }
 
   /// Obtient un identifiant unique pour l'appareil
+  /// Identifiant stable et réellement unique de l'installation.
+  ///
+  /// Auparavant on utilisait `androidInfo.id`, qui est `Build.ID` : le label
+  /// de la version d'Android (« TQ3A.230805.001 »), identique sur TOUS les
+  /// téléphones partageant le même firmware. Deux appareils différents
+  /// portaient donc le même `device_id`, et l'émulateur — dont le firmware
+  /// diffère — était le seul à obtenir une ligne bien à lui.
+  ///
+  /// On génère désormais un UUID une seule fois, conservé sur l'appareil.
   Future<void> _getDeviceId() async {
+    const storageKey = 'fcm_device_id';
+
     try {
-      if (Platform.isAndroid) {
-        final androidInfo = await _deviceInfo.androidInfo;
-        _deviceId = androidInfo.id; // Android ID
-      } else if (Platform.isIOS) {
-        final iosInfo = await _deviceInfo.iosInfo;
-        _deviceId = iosInfo.identifierForVendor ?? 'unknown';
-      } else {
-        _deviceId = 'unknown';
+      final prefs = await SharedPreferences.getInstance();
+
+      final stored = prefs.getString(storageKey);
+      if (stored != null && stored.isNotEmpty) {
+        _deviceId = stored;
+        print('📱 Device ID (existant): $_deviceId');
+        return;
       }
-      print('📱 Device ID: $_deviceId');
+
+      final generated = const Uuid().v4();
+      await prefs.setString(storageKey, generated);
+      _deviceId = generated;
+      print('📱 Device ID (nouveau): $_deviceId');
     } catch (e) {
       print('❌ Erreur lors de la récupération de l\'ID de l\'appareil: $e');
-      _deviceId = 'unknown';
+
+      // Repli : identifiant fourni par la plateforme, imparfait mais
+      // préférable à une valeur constante partagée par tout le monde.
+      try {
+        if (Platform.isIOS) {
+          final iosInfo = await _deviceInfo.iosInfo;
+          _deviceId = iosInfo.identifierForVendor;
+        } else if (Platform.isAndroid) {
+          final androidInfo = await _deviceInfo.androidInfo;
+          _deviceId = '${androidInfo.fingerprint}-${androidInfo.device}';
+        }
+      } catch (_) {
+        _deviceId = null;
+      }
     }
   }
 
@@ -440,6 +469,14 @@ class PushNotificationService {
       print('✅ Résultat de l\'upsert: $result');
       print('✅ Token FCM enregistré dans Supabase avec succès');
 
+      // Désactiver les anciens jetons de CE même appareil : après une
+      // réinstallation ou un changement de compte, l'ancienne ligne restait
+      // active et l'Edge Function continuait d'y envoyer dans le vide.
+      await _deactivateOtherTokensForDevice(
+        deviceId: deviceId,
+        currentToken: token,
+      );
+
       // Sauvegarder le token et le user_id pour éviter les mises à jour inutiles
       _lastRegisteredToken = token;
       _lastRegisteredUserId = userId;
@@ -478,6 +515,32 @@ class PushNotificationService {
     } catch (e, stackTrace) {
       print('❌ Erreur lors de l\'enregistrement du token FCM: $e');
       print('❌ Stack trace: $stackTrace');
+    }
+  }
+
+  /// Désactive les autres jetons enregistrés pour le même appareil.
+  ///
+  /// Un appareil ne doit avoir qu'un seul jeton actif : sinon les envois
+  /// partent vers des jetons morts, et l'appareil peut recevoir la même
+  /// notification plusieurs fois.
+  Future<void> _deactivateOtherTokensForDevice({
+    required String deviceId,
+    required String currentToken,
+  }) async {
+    if (deviceId.isEmpty || deviceId == 'unknown') return;
+
+    try {
+      await _supabase
+          .from('fcm_tokens')
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('device_id', deviceId)
+          .neq('fcm_token', currentToken)
+          .eq('is_active', true);
+    } catch (e) {
+      print('⚠️ Nettoyage des anciens jetons impossible: $e');
     }
   }
 
@@ -619,22 +682,18 @@ class PushNotificationService {
                 return; // Ignorer si déjà affichée
               }
 
-              // Vérifier si la notification est pour tous (user_id = NULL) ou pour cet utilisateur spécifique
-              // Pour les utilisateurs non connectés, on ne reçoit que les notifications générales (user_id = NULL)
-              bool shouldDisplay = false;
+              // Deuxième barrière. La première est côté serveur : les
+              // politiques RLS empêchent Realtime de transmettre à cet
+              // appareil la notification personnelle d'un autre utilisateur.
+              // Ce test reste utile si les politiques ne sont pas encore en
+              // place sur l'instance.
               final isPublicNotification = notificationUserId == null;
+              final isForCurrentUser =
+                  userId != null && notificationUserId == userId;
+              var shouldDisplay = isPublicNotification || isForCurrentUser;
 
-              if (isPublicNotification) {
-                // Notification générale (user_id = NULL) - للجميع
-                shouldDisplay = true;
-              } else if (userId != null && notificationUserId == userId) {
-                // Notification spécifique pour cet utilisateur connecté
-                shouldDisplay = true;
-              }
-
-              // Vérifier si la notification a été créée après la dernière connexion
-              // هذا التحقق يطبق على جميع الإشعارات (العامة والمخصصة)
-              // لا تصل الإشعارات القديمة (تم إنشاؤها قبل تسجيل الدخول)
+              // Ne pas ressortir les notifications antérieures à l'ouverture
+              // de la session en cours
               if (shouldDisplay && _loginTimestamp != null) {
                 final notificationCreatedAt =
                     notification['created_at'] as String?;

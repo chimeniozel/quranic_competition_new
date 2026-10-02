@@ -20,22 +20,78 @@ class ParticipantHomePage extends StatefulWidget {
   State<ParticipantHomePage> createState() => _ParticipantHomePageState();
 }
 
-class _ParticipantHomePageState extends State<ParticipantHomePage> {
+class _ParticipantHomePageState extends State<ParticipantHomePage>
+    with WidgetsBindingObserver {
   bool _isLoading = false;
   bool _hasActiveCompetition = false;
   CompetitionVersion? _activeVersion;
   bool _adultsRegistrationOpen = true;
   bool _childrenRegistrationOpen = true;
+  bool _isCheckingPlaces = false;
   final _competitionService = CompetitionVersionService();
   final _eidService = EidSessionService();
   StreamSubscription<List<CompetitionVersion>>? _competitionSubscription;
+  RealtimeChannel? _registrationChannel;
+  RealtimeChannel? _eidSessionChannel;
   EidSession? _activeEidSession;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startListeningToCompetitionChanges();
+    _subscribeToRegistrationChanges();
     _loadEidSession();
+  }
+
+  /// Le serveur prévient dès qu'une inscription est enregistrée ou qu'une
+  /// version change : l'écran se met à jour en moins d'une seconde, sans
+  /// attendre la vérification périodique.
+  void _subscribeToRegistrationChanges() {
+    _unsubscribeFromRegistrationChanges();
+    _registrationChannel = _competitionService.subscribeToRegistrationChanges(
+      // Rafraîchissement silencieux : pas d'indicateur de chargement, la
+      // mise à jour doit passer inaperçue tant qu'elle ne change rien.
+      onChange: () => _checkActiveCompetition(showLoader: false),
+    );
+
+    // Sans cet abonnement, une فسحة désactivée ou supprimée restait affichée
+    // tant que l'application n'était pas relancée ou mise en arrière-plan.
+    _eidSessionChannel = _eidService.subscribeToSessionChanges(
+      onChange: _loadEidSession,
+    );
+  }
+
+  void _unsubscribeFromRegistrationChanges() {
+    final channel = _registrationChannel;
+    if (channel != null) {
+      _registrationChannel = null;
+      _competitionService.unsubscribe(channel);
+    }
+
+    final eidChannel = _eidSessionChannel;
+    if (eidChannel != null) {
+      _eidSessionChannel = null;
+      _eidService.unsubscribe(eidChannel);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Inutile d'interroger la base pendant que l'application est en
+    // arrière-plan ; au retour, le flux réémet immédiatement une valeur
+    // à jour.
+    if (state == AppLifecycleState.resumed) {
+      if (_competitionSubscription == null) {
+        _startListeningToCompetitionChanges();
+        _subscribeToRegistrationChanges();
+        _loadEidSession();
+      }
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _stopListeningToCompetitionChanges();
+      _unsubscribeFromRegistrationChanges();
+    }
   }
 
   Future<void> _loadEidSession() async {
@@ -51,13 +107,24 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _competitionSubscription?.cancel();
+    _unsubscribeFromRegistrationChanges();
     super.dispose();
+  }
+
+  void _stopListeningToCompetitionChanges() {
+    _competitionSubscription?.cancel();
+    _competitionSubscription = null;
   }
 
   void _startListeningToCompetitionChanges() {
     print('🏠 Début de l\'écoute des changements de compétitions');
-    setState(() => _isLoading = true);
+    _competitionSubscription?.cancel();
+
+    // Le flux émet sa première valeur tout de suite : l'indicateur de
+    // chargement ne dure plus que le temps de la requête.
+    if (mounted) setState(() => _isLoading = true);
 
     _competitionSubscription = _competitionService
         .listenToActiveVersionsWithOpenRegistration()
@@ -144,10 +211,9 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
     }
   }
 
-  Future<void> _checkActiveCompetition() async {
-    // Cette méthode est maintenant remplacée par le stream en temps réel
-    // mais on la garde pour le pull-to-refresh
-    setState(() => _isLoading = true);
+  Future<void> _checkActiveCompetition({bool showLoader = true}) async {
+    // Utilisée par le tirer-pour-rafraîchir et par les événements temps réel
+    if (showLoader && mounted) setState(() => _isLoading = true);
     try {
       final activeVersions =
           await _competitionService.fetchActiveVersionsWithOpenRegistration();
@@ -163,7 +229,47 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
   }
 
   Future<void> _loadVersions() async {
-    await _checkActiveCompetition();
+    await Future.wait([_checkActiveCompetition(), _loadEidSession()]);
+  }
+
+  /// Ouvre le formulaire d'inscription après une vérification fraîche des
+  /// places disponibles.
+  ///
+  /// Garantit qu'on n'envoie jamais quelqu'un remplir un formulaire pour un
+  /// groupe déjà complet, même si l'écran affichait une information périmée
+  /// (temps réel indisponible, appareil hors ligne un instant...).
+  Future<void> _openRegistration(String ageGroup) async {
+    final version = _activeVersion;
+    if (version == null) return;
+
+    setState(() => _isCheckingPlaces = true);
+    try {
+      await _checkParticipantLimits(version);
+    } finally {
+      if (mounted) setState(() => _isCheckingPlaces = false);
+    }
+
+    if (!mounted) return;
+
+    final isOpen =
+        ageGroup == 'صغار'
+            ? _childrenRegistrationOpen
+            : _adultsRegistrationOpen;
+
+    if (!isOpen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('اكتمل العدد في فرع $ageGroup'),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
+    context.push(
+      '/participant/register',
+      extra: {'versionId': version.id, 'ageGroup': ageGroup},
+    );
   }
 
   @override
@@ -378,17 +484,10 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                     Expanded(
                                       child: PrimaryButton(
                                         onPressed:
-                                            _childrenRegistrationOpen
-                                                ? () {
-                                                  context.push(
-                                                    '/participant/register',
-                                                    extra: {
-                                                      'versionId':
-                                                          _activeVersion!.id,
-                                                      'ageGroup': 'صغار',
-                                                    },
-                                                  );
-                                                }
+                                            _childrenRegistrationOpen &&
+                                                    !_isCheckingPlaces
+                                                ? () =>
+                                                    _openRegistration('صغار')
                                                 : null,
                                         text: 'فرع الصغار',
                                       ),
@@ -397,17 +496,10 @@ class _ParticipantHomePageState extends State<ParticipantHomePage> {
                                     Expanded(
                                       child: PrimaryButton(
                                         onPressed:
-                                            _adultsRegistrationOpen
-                                                ? () {
-                                                  context.push(
-                                                    '/participant/register',
-                                                    extra: {
-                                                      'versionId':
-                                                          _activeVersion!.id,
-                                                      'ageGroup': 'كبار',
-                                                    },
-                                                  );
-                                                }
+                                            _adultsRegistrationOpen &&
+                                                    !_isCheckingPlaces
+                                                ? () =>
+                                                    _openRegistration('كبار')
                                                 : null,
                                         text: 'فرع الكبار',
                                       ),

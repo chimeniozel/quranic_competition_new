@@ -50,7 +50,8 @@ class RoundResultsService {
         round.versionId,
       );
       print(
-        '📈 Moyennes de succès récupérées: Adultes=${versionSuccessAverages['adults']}%, Enfants=${versionSuccessAverages['children']}%',
+        '📈 Seuils de réussite: Adultes=${versionSuccessAverages['adults']}/100, '
+        'Enfants=${versionSuccessAverages['children']}/20',
       );
 
       // 6. Calculer les résultats pour chaque participant
@@ -196,6 +197,9 @@ class RoundResultsService {
 
       print('📋 ${existingEvaluations.length} évaluations trouvées');
 
+      // Noms des jurys, pour un message d'erreur exploitable
+      final juryNames = await _getJuryNames(jurys);
+
       // Vérifier que chaque participant a été évalué par chaque jury
       final missingEvaluations = <String>[];
 
@@ -209,16 +213,24 @@ class RoundResultsService {
 
           if (!hasEvaluation) {
             missingEvaluations.add(
-              'Participant ${participant.fullName} non évalué par le jury $jury',
+              'المتسابق ${participant.registrationNumber ?? ''} '
+              '${participant.fullName} — لم يقيّمه ${juryNames[jury] ?? jury}',
             );
           }
         }
       }
 
       if (missingEvaluations.isNotEmpty) {
-        final errorMessage =
-            'Toutes les évaluations ne sont pas encore terminées.';
-        throw Exception(errorMessage);
+        // Le détail était calculé puis jeté : l'administrateur ne savait pas
+        // quelles évaluations manquaient.
+        final preview = missingEvaluations.take(5).join('\n• ');
+        final remaining = missingEvaluations.length - 5;
+
+        throw Exception(
+          'لم تكتمل جميع التقييمات بعد '
+          '(${missingEvaluations.length} تقييمًا ناقصًا):\n• $preview'
+          '${remaining > 0 ? '\n• ... و$remaining أخرى' : ''}',
+        );
       }
 
       print('✅ Toutes les évaluations sont complètes');
@@ -226,6 +238,57 @@ class RoundResultsService {
       print('❌ Erreur lors de la vérification des évaluations: $e');
       rethrow;
     }
+  }
+
+  /// Noms des jurys (pour les messages destinés à l'administrateur)
+  Future<Map<String, String>> _getJuryNames(List<String> juryIds) async {
+    if (juryIds.isEmpty) return {};
+
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('id, full_name')
+          .inFilter('id', juryIds);
+
+      return {
+        for (final row in response)
+          row['id'] as String: (row['full_name'] as String?) ?? '',
+      };
+    } catch (e) {
+      print('⚠️ Impossible de récupérer les noms des jurys: $e');
+      return {};
+    }
+  }
+
+  /// Moyenne d'un critère précis dans `notes_json`
+  static double? _criterionValue(dynamic notesJson, String key) {
+    if (notesJson is! Map) return null;
+    final value = notesJson[key];
+    return value is num ? value.toDouble() : null;
+  }
+
+  /// Arrondi à deux décimales : la valeur enregistrée est exactement celle
+  /// qui est affichée, donc deux participants « à égalité » à l'écran le sont
+  /// réellement dans le classement.
+  static double _round2(double value) => (value * 100).round() / 100;
+
+  /// Correcteurs ayant évalué l'intégralité des participants du round.
+  ///
+  /// Seuls ceux-là entrent dans la moyenne, qu'ils soient encore assignés au
+  /// round ou non : c'est ce qui garantit un diviseur identique pour tous.
+  Set<String> _findCompleteJurys(
+    Map<String, Map<String, Map<String, dynamic>>> latestByParticipant,
+    List<Participant> participants,
+  ) {
+    final allJurys =
+        latestByParticipant.values.expand((byJury) => byJury.keys).toSet();
+
+    return allJurys.where((juryId) {
+      return participants.every(
+        (participant) =>
+            latestByParticipant[participant.id]?.containsKey(juryId) ?? false,
+      );
+    }).toSet();
   }
 
   /// Calcule les résultats pour tous les participants
@@ -237,34 +300,113 @@ class RoundResultsService {
     Map<String, double> successAverages,
   ) async {
     try {
+      // Une seule requête pour tout le round (au lieu d'une par participant)
+      final evaluations = await _supabase
+          .from('evaluations')
+          .select(
+            'participant_id, jury_id, total_score, notes_json, submitted_at',
+          )
+          .eq('round_id', roundId)
+          .order('submitted_at', ascending: true);
+
+      // Une seule évaluation par (participant, jury) : la plus récente.
+      // Protège des doublons créés par un double envoi.
+      final latestByParticipant = <String, Map<String, Map<String, dynamic>>>{};
+
+      for (final row in evaluations) {
+        final participantId = row['participant_id'] as String?;
+        final juryId = row['jury_id'] as String?;
+        if (participantId == null || juryId == null) continue;
+
+        // Les lignes arrivent triées par date : la dernière écrase la précédente
+        latestByParticipant.putIfAbsent(participantId, () => {})[juryId] = row;
+      }
+
+      // Ne retenir que les correcteurs ayant évalué TOUS les participants.
+      //
+      // Se fier à la seule liste des correcteurs assignés serait faux : quand
+      // un correcteur est retiré d'une جولة après avoir tout évalué,
+      // l'application supprime son assignation mais conserve volontairement
+      // ses notes (« سيتم الاحتفاظ بتقييماته لأنها مكتملة ») — elles doivent
+      // donc continuer à compter.
+      //
+      // Le critère retenu est l'exhaustivité : la moyenne de chaque
+      // participant porte ainsi sur exactement le même ensemble de
+      // correcteurs. Un ensemble partiel resté en base (suppression
+      // interrompue) avantagerait ou pénaliserait certains participants selon
+      // qui les a notés.
+      final completeJurys = _findCompleteJurys(
+        latestByParticipant,
+        participants,
+      );
+
+      if (completeJurys.isEmpty) {
+        throw Exception('لا يوجد أي مصحّح أكمل تقييم جميع المتسابقين');
+      }
+
+      final ignoredJurys = latestByParticipant.values
+          .expand((byJury) => byJury.keys)
+          .toSet()
+          .difference(completeJurys);
+
+      if (ignoredJurys.isNotEmpty) {
+        print(
+          '⚠️ ${ignoredJurys.length} مصحّحًا لم يكمل التقييم — لن تُحتسب تقييماته',
+        );
+      }
+
+      print('🧮 المعدّل يُحتسب على ${completeJurys.length} مصحّحًا');
+
       final results = <Map<String, dynamic>>[];
 
       for (final participant in participants) {
-        // Récupérer toutes les évaluations pour ce participant dans ce round
-        final evaluations = await _supabase
-            .from('evaluations')
-            .select('total_score')
-            .eq('round_id', roundId)
-            .eq('participant_id', participant.id);
+        final byJury = latestByParticipant[participant.id] ?? {};
+        final juryEvaluations = [
+          for (final juryId in completeJurys)
+            if (byJury[juryId] != null) byJury[juryId]!,
+        ];
 
-        if (evaluations.isEmpty) {
-          throw Exception(
-            'Aucune évaluation trouvée pour le participant ${participant.fullName}',
-          );
+        if (juryEvaluations.isEmpty) {
+          throw Exception('لا يوجد أي تقييم للمتسابق ${participant.fullName}');
         }
 
-        // Calculer la moyenne des scores
-        final totalScore = evaluations.fold<double>(
-          0.0,
-          (sum, eval) => sum + (eval['total_score'] as num).toDouble(),
-        );
-        final averageScore = totalScore / evaluations.length;
+        final isAdult = participant.ageGroup == 'كبار';
 
-        // Déterminer si le participant a passé selon la moyenne de succès de son groupe d'âge
+        double sumScore = 0;
+        double sumTajwid = 0;
+        double sumVoice = 0;
+        var tajwidCount = 0;
+        var voiceCount = 0;
+
+        for (final evaluation in juryEvaluations) {
+          sumScore += (evaluation['total_score'] as num).toDouble();
+
+          final notes = evaluation['notes_json'];
+          final tajwid = _criterionValue(notes, 'التجويد');
+          if (tajwid != null) {
+            sumTajwid += tajwid;
+            tajwidCount++;
+          }
+          final voice = _criterionValue(notes, 'حسن الصوت');
+          if (voice != null) {
+            sumVoice += voice;
+            voiceCount++;
+          }
+        }
+
+        final count = juryEvaluations.length;
+        final averageScore = _round2(sumScore / count);
+
+        // Critères de départage, moyennés sur les mêmes jurys
+        final averageTajwid =
+            tajwidCount > 0 ? _round2(sumTajwid / tajwidCount) : 0.0;
+        final averageVoice =
+            voiceCount > 0 ? _round2(sumVoice / voiceCount) : 0.0;
+
+        // Le seuil est comparé à la note arrondie : ce que voit le
+        // participant correspond exactement à sa réussite ou à son échec.
         final successThreshold =
-            participant.ageGroup == 'كبار'
-                ? successAverages['adults']!
-                : successAverages['children']!;
+            isAdult ? successAverages['adults']! : successAverages['children']!;
         final passed = averageScore >= successThreshold;
 
         results.add({
@@ -274,70 +416,174 @@ class RoundResultsService {
           'score': averageScore,
           'passed': passed,
           'age_group': participant.ageGroup,
+          'tiebreak_tajwid': averageTajwid,
+          'tiebreak_voice': averageVoice,
+          'registration_number': participant.registrationNumber ?? 0,
+          'jury_count': count,
         });
 
         print(
-          '📊 ${participant.fullName} (${participant.ageGroup}): Score ${averageScore.toStringAsFixed(2)}/${successThreshold.toStringAsFixed(1)} (${passed ? 'Réussi' : 'Échoué'})',
+          '📊 ${participant.fullName} (${participant.ageGroup}): '
+          '${averageScore.toStringAsFixed(2)}/${successThreshold.toStringAsFixed(1)} '
+          'على $count مصحّحًا (${passed ? 'ناجح' : 'راسب'})',
         );
       }
 
-      return results;
+      return _assignRanks(results);
     } catch (e) {
       print('❌ Erreur lors du calcul des résultats: $e');
       rethrow;
     }
   }
 
+  /// Attribue le rang de chaque participant, séparément par groupe d'âge.
+  ///
+  /// Deux valeurs sont enregistrées, pour deux besoins différents :
+  ///
+  /// • `rank` — le classement affiché. **À moyenne égale, même rang**, et les
+  ///   rangs se suivent sans trou : deux participants à 92.50 sont tous deux
+  ///   « المركز 2 », et le suivant est 3e (1, 2, 2, 3). C'est le rang réel,
+  ///   valable aussi pour un résultat isolé trouvé par la recherche.
+  ///
+  /// • `display_order` — l'ordre d'affichage dans la liste, toujours unique :
+  ///   1. moyenne décroissante
+  ///   2. note de التجويد décroissante (critère le plus lourd)
+  ///   3. note de حسن الصوت décroissante
+  ///   4. numéro d'inscription croissant
+  ///   Il ne départage pas les ex aequo au classement, il fixe seulement un
+  ///   ordre stable — sans lui, la pagination pourrait sauter ou répéter des
+  ///   lignes entre deux requêtes.
+  List<Map<String, dynamic>> _assignRanks(List<Map<String, dynamic>> results) {
+    final byAgeGroup = <String, List<Map<String, dynamic>>>{};
+    for (final result in results) {
+      byAgeGroup
+          .putIfAbsent(result['age_group'] as String, () => [])
+          .add(result);
+    }
+
+    for (final group in byAgeGroup.values) {
+      group.sort((a, b) {
+        final byScore = (b['score'] as double).compareTo(a['score'] as double);
+        if (byScore != 0) return byScore;
+
+        final byTajwid = (b['tiebreak_tajwid'] as double).compareTo(
+          a['tiebreak_tajwid'] as double,
+        );
+        if (byTajwid != 0) return byTajwid;
+
+        final byVoice = (b['tiebreak_voice'] as double).compareTo(
+          a['tiebreak_voice'] as double,
+        );
+        if (byVoice != 0) return byVoice;
+
+        return (a['registration_number'] as int).compareTo(
+          b['registration_number'] as int,
+        );
+      });
+
+      // Le rang n'avance qu'au changement de moyenne : les rangs se
+      // suivent sans trou (1, 2, 2, 3) même en cas d'ex aequo.
+      var currentRank = 0;
+      double? previousScore;
+
+      for (var i = 0; i < group.length; i++) {
+        group[i]['display_order'] = i + 1;
+
+        final score = group[i]['score'] as double;
+        if (previousScore == null || score != previousScore) {
+          currentRank++;
+          previousScore = score;
+        }
+
+        group[i]['rank'] = currentRank;
+      }
+    }
+
+    return results;
+  }
+
   /// Sauvegarde les résultats dans la base de données
+  ///
+  /// Un seul `upsert` pour tout le round : l'ancienne version faisait deux
+  /// requêtes par participant (recherche puis insertion/mise à jour), soit un
+  /// millier d'allers-retours pour 500 participants — long, et surtout non
+  /// atomique : une coupure en plein calcul laissait un classement à moitié
+  /// écrit.
   Future<void> _saveResultsToDatabase(
     List<Map<String, dynamic>> results,
   ) async {
+    if (results.isEmpty) return;
+
     try {
-      for (final result in results) {
-        // Vérifier si le résultat existe déjà
-        final existingResult =
-            await _supabase
-                .from('round_results')
-                .select('id')
-                .eq('participant_id', result['participant_id'])
-                .eq('round_id', result['round_id'])
-                .maybeSingle();
+      final now = DateTime.now().toIso8601String();
 
-        if (existingResult != null) {
-          // Mettre à jour le résultat existant
-          await _supabase
-              .from('round_results')
-              .update({
-                'score': result['score'],
-                'passed': result['passed'],
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', existingResult['id']);
+      final rows =
+          results.map((result) {
+            return {
+              'participant_id': result['participant_id'],
+              'round_id': result['round_id'],
+              'version_id': result['version_id'],
+              'score': result['score'],
+              'passed': result['passed'],
+              'age_group': result['age_group'],
+              'rank': result['rank'],
+              'display_order': result['display_order'],
+              'tiebreak_tajwid': result['tiebreak_tajwid'],
+              'tiebreak_voice': result['tiebreak_voice'],
+              'jury_count': result['jury_count'],
+              'updated_at': now,
+            };
+          }).toList();
 
-          print(
-            '🔄 Résultat mis à jour pour le participant ${result['participant_id']}',
-          );
-        } else {
-          // Insérer un nouveau résultat
-          await _supabase.from('round_results').insert({
-            'participant_id': result['participant_id'],
-            'round_id': result['round_id'],
-            'version_id': result['version_id'],
-            'score': result['score'],
-            'passed': result['passed'],
-            'age_group': result['age_group'],
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          });
+      await _supabase
+          .from('round_results')
+          .upsert(rows, onConflict: 'participant_id,round_id');
 
-          print(
-            '➕ Nouveau résultat créé pour le participant ${result['participant_id']}',
-          );
-        }
-      }
+      print('💾 ${rows.length} résultats enregistrés');
+
+      await _removeObsoleteResults(
+        roundId: results.first['round_id'] as String,
+        keptParticipantIds:
+            results.map((r) => r['participant_id'] as String).toSet(),
+      );
     } catch (e) {
       print('❌ Erreur lors de la sauvegarde des résultats: $e');
       rethrow;
+    }
+  }
+
+  /// Supprime les résultats d'un round qui ne correspondent plus à aucun
+  /// participant éligible.
+  ///
+  /// Sans cela, un participant rejeté ou retiré après un premier calcul
+  /// restait dans le classement à chaque recalcul, et décalait les rangs.
+  Future<void> _removeObsoleteResults({
+    required String roundId,
+    required Set<String> keptParticipantIds,
+  }) async {
+    try {
+      final existing = await _supabase
+          .from('round_results')
+          .select('participant_id')
+          .eq('round_id', roundId);
+
+      final obsolete =
+          existing
+              .map((row) => row['participant_id'] as String)
+              .where((id) => !keptParticipantIds.contains(id))
+              .toList();
+
+      if (obsolete.isEmpty) return;
+
+      await _supabase
+          .from('round_results')
+          .delete()
+          .eq('round_id', roundId)
+          .inFilter('participant_id', obsolete);
+
+      print('🧹 ${obsolete.length} résultats obsolètes supprimés');
+    } catch (e) {
+      print('⚠️ Nettoyage des résultats obsolètes impossible: $e');
     }
   }
 
@@ -372,6 +618,8 @@ class RoundResultsService {
             rounds(*)
           ''')
           .eq('round_id', roundId)
+          .order('display_order', ascending: true)
+          // Repli pour d'anciens résultats calculés avant l'ajout de l'ordre
           .order('score', ascending: false);
 
       return response.map((record) => RoundResult.fromMap(record)).toList();
@@ -443,10 +691,16 @@ class RoundResultsService {
         query = query.or(searchFilter, referencedTable: 'participants');
       }
 
+      // Le rang est calculé une fois pour toutes au moment du calcul des
+      // résultats, selon les critères retenus (moyenne, puis التجويد, puis
+      // حسن الصوت, puis numéro d'inscription). Trier dessus rend la
+      // pagination parfaitement stable et donne le vrai classement, même
+      // pour un résultat isolé trouvé par la recherche.
       final response = await query
+          // Ordre d'affichage unique : pagination stable
+          .order('display_order', ascending: true)
+          // Repli pour d'anciens résultats calculés avant son ajout
           .order('score', ascending: false)
-          // Départage stable des ex-aequo : indispensable pour que la
-          // pagination ne saute ni ne duplique de lignes.
           .order('id', ascending: true)
           .range(from, to)
           .count(CountOption.exact);
@@ -457,15 +711,12 @@ class RoundResultsService {
               .map<RoundResult>((row) => RoundResult.fromMap(row))
               .toList();
 
-      if (searchFilter.isEmpty) {
-        // Liste complète : le rang correspond à la position dans la page.
-        results = [
-          for (var i = 0; i < results.length; i++)
-            results[i].copyWith(rank: from + i + 1),
-        ];
-      } else {
-        // Résultats de recherche : le rang réel doit être calculé en base.
-        results = await _attachRealRanks(
+      // Résultats calculés avant l'enregistrement du rang : il faut le
+      // reconstituer. La position dans la liste ne convient pas — en
+      // recherche elle vaudrait 1 pour le premier résultat trouvé, quel que
+      // soit son vrai classement.
+      if (results.any((result) => result.rank == null)) {
+        results = await _fillMissingRanks(
           results,
           roundId: roundId,
           ageGroup: ageGroup,
@@ -481,6 +732,43 @@ class RoundResultsService {
     } catch (e) {
       print('Erreur lors de la récupération des résultats avec pagination: $e');
       throw Exception('Impossible de récupérer les résultats avec pagination');
+    }
+  }
+
+  /// Reconstitue le rang des résultats qui n'en ont pas encore d'enregistré.
+  ///
+  /// Une seule requête ramène les notes du round (une colonne numérique,
+  /// quelques centaines de valeurs au plus), et le rang se déduit de la
+  /// position de la note parmi les notes distinctes triées — exactement la
+  /// même règle qu'au calcul : note égale ⇒ rang égal, sans saut.
+  Future<List<RoundResult>> _fillMissingRanks(
+    List<RoundResult> results, {
+    required String roundId,
+    required String ageGroup,
+  }) async {
+    try {
+      final rows = await _supabase
+          .from('round_results')
+          .select('score')
+          .eq('round_id', roundId)
+          .eq('age_group', ageGroup);
+
+      final distinctScores =
+          rows
+              .map<double>((row) => (row['score'] as num).toDouble())
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
+
+      return results.map((result) {
+        if (result.rank != null) return result;
+
+        final position = distinctScores.indexOf(result.score);
+        return position < 0 ? result : result.copyWith(rank: position + 1);
+      }).toList();
+    } catch (e) {
+      print('⚠️ Impossible de reconstituer les rangs: $e');
+      return results;
     }
   }
 
@@ -515,35 +803,6 @@ class RoundResultsService {
     }
 
     return filters.join(',');
-  }
-
-  /// Calcule en base le rang réel de chaque résultat trouvé par la recherche
-  /// (nombre de participants mieux classés + 1), selon le même ordre que le
-  /// classement affiché (score décroissant, puis id croissant).
-  Future<List<RoundResult>> _attachRealRanks(
-    List<RoundResult> results, {
-    required String roundId,
-    required String ageGroup,
-  }) async {
-    return Future.wait(
-      results.map((result) async {
-        try {
-          final betterCount = await _supabase
-              .from('round_results')
-              .count(CountOption.exact)
-              .eq('round_id', roundId)
-              .eq('age_group', ageGroup)
-              .or(
-                'score.gt.${result.score},'
-                'and(score.eq.${result.score},id.lt.${result.id})',
-              );
-          return result.copyWith(rank: betterCount + 1);
-        } catch (e) {
-          print('⚠️ Impossible de calculer le rang de ${result.id}: $e');
-          return result;
-        }
-      }),
-    );
   }
 
   /// Récupère les moyennes de succès d'une version de compétition

@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'push_notification_service.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
 
@@ -173,6 +177,10 @@ class QuranicBenefitService {
   }
 
   /// Active/Désactive un bénéfice coranique
+  ///
+  /// L'annonce aux participants part d'ici, et non à la création : une
+  /// fائدة est créée inactive, donc invisible. Prévenir avant l'activation
+  /// envoyait les participants vers une page où ils ne trouvaient rien.
   Future<bool> toggleBenefitStatus(String id, bool isActive) async {
     try {
       await _supabase
@@ -183,10 +191,59 @@ class QuranicBenefitService {
           })
           .eq('id', id);
 
+      if (isActive) {
+        await _announceIfNeeded(id);
+      }
+
       return true;
     } catch (e) {
       print('Erreur lors du changement de statut du bénéfice coranique: $e');
       return false;
+    }
+  }
+
+  /// Envoie l'annonce publique, une seule fois par fائدة.
+  ///
+  /// La colonne `notified_at` empêche de re-notifier tout le monde lorsqu'un
+  /// administrateur désactive puis réactive une fائدة (correction d'une
+  /// faute de frappe, par exemple).
+  Future<void> _announceIfNeeded(String id) async {
+    try {
+      final benefit =
+          await _supabase
+              .from('quranic_benefits')
+              .select('title, notified_at, author_id')
+              .eq('id', id)
+              .maybeSingle();
+
+      if (benefit == null) return;
+      if (benefit['notified_at'] != null) {
+        print('ℹ️ Fائدة déjà annoncée, pas de nouvelle notification');
+        return;
+      }
+
+      final title = (benefit['title'] as String?)?.trim() ?? '';
+
+      await PushNotificationService().sendNotification(
+        title: '📖 فائدة قرآنية جديدة',
+        body: title,
+        type: 'info',
+        payload: jsonEncode({
+          'type': 'benefit_created',
+          'title': title,
+          'created_by': benefit['author_id'],
+        }),
+        userId: null,
+      );
+
+      await _supabase
+          .from('quranic_benefits')
+          .update({'notified_at': DateTime.now().toIso8601String()})
+          .eq('id', id);
+    } catch (e) {
+      // L'activation a réussi : une annonce ratée ne doit pas la faire
+      // échouer.
+      print('⚠️ Annonce de la fائدة impossible: $e');
     }
   }
 

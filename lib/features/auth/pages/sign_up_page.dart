@@ -149,7 +149,7 @@ class _SignUpPageState extends State<SignUpPage> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(FontAwesomeIcons.chevronRight, size: 20),
+          icon: const FaIcon(FontAwesomeIcons.chevronRight, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -210,7 +210,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   textDirection: TextDirection.rtl,
                   decoration: InputDecoration(
                     labelText: 'الاسم الكامل',
-                    prefixIcon: const Icon(FontAwesomeIcons.user, size: 20),
+                    prefixIcon: const FaIcon(FontAwesomeIcons.user, size: 20),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusM),
                       borderSide: const BorderSide(
@@ -262,7 +262,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   textDirection: TextDirection.ltr,
                   decoration: InputDecoration(
                     labelText: 'البريد الإلكتروني',
-                    prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 20),
+                    prefixIcon: const FaIcon(FontAwesomeIcons.envelope, size: 20),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusM),
                       borderSide: const BorderSide(
@@ -322,7 +322,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
                           labelText: 'رقم الهاتف',
-                          prefixIcon: const Icon(
+                          prefixIcon: const FaIcon(
                             FontAwesomeIcons.phone,
                             size: 20,
                           ),

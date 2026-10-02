@@ -407,6 +407,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       color: Colors.teal,
                       onTap: () => context.push('/admin/about-us'),
                     ),
+                    QuickAction(
+                      title: 'التحديث الإجباري',
+                      icon: Icons.system_update,
+                      color: AppTheme.warningColor,
+                      onTap: () => context.push('/admin/force-update'),
+                    ),
                   ],
                   crossAxisCount: 2,
                 ),

@@ -319,8 +319,10 @@ serve(async (req) => {
     const isImportant =
       notification.type === 'error' || notification.type === 'warning'
 
-    // Construire les messages pour tous les tokens en parallèle
-    const sendPromises = tokens.map(async (tokenData: any) => {
+    // Envoi vers un appareil. Volontairement déclaré comme fonction et non
+    // comme promesse déjà démarrée : c'est ce qui permet de contrôler la
+    // concurrence plus bas.
+    const sendToToken = async (tokenData: any) => {
       const fcmToken = tokenData.fcm_token || tokenData.token
       const platform = tokenData.platform || 'android'
 
@@ -403,21 +405,34 @@ serve(async (req) => {
         console.error(`Error sending FCM to token ${fcmToken}:`, e)
         return { token: fcmToken, success: false, error: e.message }
       }
-    })
+    }
 
     // Envoyer par lots : un Promise.all de ~2000 requêtes épuiserait les
     // ressources de la fonction et se ferait limiter par FCM.
+    //
+    // Important : les lots sont découpés sur le TABLEAU DE TOKENS, pas sur
+    // des promesses déjà créées. `tokens.map(async ...)` démarre en effet
+    // toutes les requêtes immédiatement — découper le tableau de promesses
+    // qui en résulte ne fait qu'attendre par paquets, sans jamais limiter la
+    // concurrence réelle.
     const results: any[] = []
     const batchSize = 100
-    for (let i = 0; i < sendPromises.length; i += batchSize) {
-      const batch = sendPromises.slice(i, i + batchSize)
-      results.push(...(await Promise.all(batch)))
+    for (let i = 0; i < tokens.length; i += batchSize) {
+      const batch = tokens.slice(i, i + batchSize)
+      results.push(...(await Promise.all(batch.map(sendToToken))))
+
+      console.log(
+        `Lot ${Math.floor(i / batchSize) + 1} envoyé (${Math.min(i + batchSize, tokens.length)}/${tokens.length})`
+      )
     }
 
     const successCount = results.filter(r => r.success).length
     const failureCount = results.filter(r => !r.success).length
 
-    console.log(`FCM notifications sent: ${successCount} success, ${failureCount} failures (sent in parallel)`)
+    console.log(
+      `FCM notifications sent: ${successCount} success, ${failureCount} failures ` +
+      `(${tokens.length} tokens, lots de ${batchSize})`
+    )
 
     return new Response(
       JSON.stringify({

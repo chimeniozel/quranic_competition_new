@@ -37,6 +37,33 @@ class EidSessionService {
     }
   }
 
+  /// Prévient dès qu'une session est créée, modifiée (activée, désactivée,
+  /// inscriptions ouvertes/fermées) ou supprimée.
+  ///
+  /// Le callback ne reçoit pas la ligne : l'appelant relit la session active,
+  /// ce qui reste correct quel que soit l'événement (une suppression ne
+  /// transmet que la clé primaire).
+  RealtimeChannel subscribeToSessionChanges({required void Function() onChange}) {
+    final channel = _supabase.channel('eid_sessions_changes');
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'eid_sessions',
+      callback: (_) {
+        print('📡 Changement détecté sur eid_sessions');
+        onChange();
+      },
+    );
+
+    channel.subscribe();
+    return channel;
+  }
+
+  Future<void> unsubscribe(RealtimeChannel channel) async {
+    await _supabase.removeChannel(channel);
+  }
+
   /// Récupère toutes les sessions (pour admin)
   Future<List<EidSession>> getAllSessions() async {
     try {

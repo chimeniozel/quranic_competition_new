@@ -188,7 +188,7 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
                 decoration: InputDecoration(
                   labelText: 'رمز التحقق',
                   hintText: '000000',
-                  prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
+                  prefixIcon: const FaIcon(FontAwesomeIcons.lock, size: 20),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(

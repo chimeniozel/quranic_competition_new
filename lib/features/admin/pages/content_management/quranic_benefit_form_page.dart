@@ -4,8 +4,6 @@ import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:quranic_competition/core/services/push_notification_service.dart';
-import 'dart:convert';
 
 class QuranicBenefitFormPage extends StatefulWidget {
   final String? benefitId; // null pour création, non-null pour édition
@@ -141,21 +139,9 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
           authorName: currentUser.userMetadata?['full_name'] ?? 'مدير',
         );
 
-        // Notification publique à la création
-        try {
-          final push = PushNotificationService();
-          await push.sendNotification(
-            title: '📖 فائدة قرآنية جديدة',
-            body: _titleController.text.trim(),
-            type: 'info',
-            payload: jsonEncode({
-              'type': 'benefit_created',
-              'title': _titleController.text.trim(),
-              'created_by': currentUser.id,
-            }),
-            userId: null,
-          );
-        } catch (_) {}
+        // Aucune notification ici : une fائدة est créée INACTIVE, donc
+        // invisible pour les participants. L'annonce part au moment de
+        // l'activation (voir QuranicBenefitService.toggleBenefitStatus).
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

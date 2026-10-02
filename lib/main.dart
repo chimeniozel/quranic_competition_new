@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:quranic_competition/core/widgets/auth_initializer.dart';
-import 'package:quranic_competition/core/services/file_permission_service.dart';
+import 'package:quranic_competition/core/config/supabase_config.dart';
 import 'package:quranic_competition/core/services/notification_service.dart';
 import 'package:quranic_competition/core/services/notification_navigation.dart';
 import 'package:quranic_competition/core/services/push_notification_service.dart';
@@ -79,10 +79,11 @@ void main() async {
   }
 
   await Supabase.initialize(
-    url: 'https://slwgmpqpevsodtctpmwz.supabase.co',
+    url: SupabaseConfig.url,
     authOptions: FlutterAuthClientOptions(authFlowType: AuthFlowType.pkce),
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsd2dtcHFwZXZzb2R0Y3RwbXd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NTYzMjIsImV4cCI6MjA2NjAzMjMyMn0.UpWBLYVgu2-e5I25UTSUewrZiunMTo2xX3Ggb_y4TpI',
+    // `anonKey` accepte aussi bien l'ancienne clé JWT que la nouvelle clé
+    // publiable : c'est la même valeur transmise dans l'en-tête `apikey`.
+    anonKey: SupabaseConfig.apiKey,
   );
   runApp(const MyApp());
 }
@@ -160,27 +161,13 @@ class _MyAppState extends State<MyApp> {
       print('❌ Erreur lors de l\'initialisation des notifications push: $e');
     }
 
-    // Demander la permission de stockage (seulement si le contexte est monté et MaterialApp est prêt)
-    // Attendre un délai إضافي pour s'assurer que MaterialApp est complètement initialisé
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (mounted && context.mounted) {
-      try {
-        // Vérifier que MaterialApp est prêt en vérifiant le contexte
-        final scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
-        if (scaffoldMessenger != null) {
-          final filePermissionService = FilePermissionService();
-          await filePermissionService.requestStoragePermission(context);
-        } else {
-          print(
-            '⚠️ MaterialApp pas encore prêt, permission ignorée pour cette fois',
-          );
-        }
-      } catch (e) {
-        print('⚠️ Erreur lors de la demande de permission (ignorée): $e');
-        // Ignorer l'erreur pour ne pas bloquer l'application
-      }
-    }
+    // Aucune demande d'accès aux photos au démarrage.
+    //
+    // Sur iOS, cet appel affichait la boîte « accès à vos photos » dès la
+    // première ouverture, à tous les utilisateurs — y compris aux
+    // participants qui ne choisiront jamais d'image. L'autorisation est
+    // demandée au moment où elle sert réellement, dans les écrans qui
+    // ouvrent le sélecteur (archive, fوائد, règles de tajwid...).
   }
 
   @override

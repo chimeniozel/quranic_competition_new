@@ -47,8 +47,8 @@
 ### Étape 3 : Déployer l'Edge Function Legacy
 
 1. Dans Supabase Dashboard > **Edge Functions**
-2. Crée une nouvelle fonction `send-fcm-notification`
-3. Copie le code de `supabase/functions/send-fcm-notification/index-legacy.ts`
+2. Crée une nouvelle fonction `send_fcm_notification`
+3. Copie le code de `supabase/functions/send_fcm_notification/index-legacy.ts`
 4. Déploie
 
 ---
@@ -124,8 +124,8 @@ Ouvre le fichier JSON téléchargé et note :
 
 1. Dans Supabase Dashboard, va dans **Edge Functions**
 2. Clique sur **Create a new function**
-3. Nomme-la : `send-fcm-notification`
-4. Copie-colle le code du fichier `supabase/functions/send-fcm-notification/index.ts`
+3. Nomme-la : `send_fcm_notification`
+4. Copie-colle le code du fichier `supabase/functions/send_fcm_notification/index.ts`
 5. Clique sur **Deploy**
 
 #### Option B : Via Supabase CLI
@@ -141,7 +141,7 @@ supabase login
 supabase link --project-ref <ton-project-ref>
 
 # Déployer la fonction
-supabase functions deploy send-fcm-notification
+supabase functions deploy send_fcm_notification
 ```
 
 ### Étape 5 : Vérifier la configuration APNs dans Firebase

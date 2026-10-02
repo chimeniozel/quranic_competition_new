@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		Environnement APNs des builds distribués (TestFlight et App Store).
+
+		Runner.entitlements reste sur « development » pour les builds lancés
+		depuis Xcode. Utiliser « development » en distribution fait émettre
+		des jetons APNs de bac à sable, alors que Firebase envoie vers le
+		serveur de production : les notifications ne sont alors jamais
+		remises, sans aucune erreur visible.
+	-->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>

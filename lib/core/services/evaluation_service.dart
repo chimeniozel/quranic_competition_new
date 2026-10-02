@@ -21,7 +21,9 @@ class EvaluationService {
               : evaluation.noteModel.toMapChild();
 
       if (notesJson == null) {
-        throw Exception('خطأ: لا يمكن إنشاء notes_json - تأكد من ملء جميع الحقول');
+        throw Exception(
+          'خطأ: لا يمكن إنشاء notes_json - تأكد من ملء جميع الحقول',
+        );
       }
 
       print('📝 Données à insérer:');
@@ -33,17 +35,20 @@ class EvaluationService {
       print('  - notes_json: $notesJson');
 
       // Vérifier que le jury existe dans profiles avant d'insérer
-      final juryExists = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', evaluation.juryId)
-          .maybeSingle();
-      
+      final juryExists =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', evaluation.juryId)
+              .maybeSingle();
+
       if (juryExists == null) {
-        print('❌ Le jury avec l\'ID ${evaluation.juryId} n\'existe pas dans profiles');
+        print(
+          '❌ Le jury avec l\'ID ${evaluation.juryId} n\'existe pas dans profiles',
+        );
         throw Exception(
           'المحكم غير موجود في قاعدة البيانات. '
-          'قد يكون المستخدم قد تم حذفه. يرجى تسجيل الخروج وإعادة تسجيل الدخول.'
+          'قد يكون المستخدم قد تم حذفه. يرجى تسجيل الخروج وإعادة تسجيل الدخول.',
         );
       }
 
@@ -63,16 +68,16 @@ class EvaluationService {
     } catch (e) {
       print('❌ Erreur lors de l\'enregistrement de l\'évaluation : $e');
       print('❌ Stack trace: ${StackTrace.current}');
-      
+
       // Vérifier si c'est une erreur de foreign key constraint
-      if (e.toString().contains('foreign key constraint') || 
+      if (e.toString().contains('foreign key constraint') ||
           e.toString().contains('evaluations_jury_id_fkey')) {
         throw Exception(
           'خطأ في قاعدة البيانات: foreign key constraint غير صحيح.\n'
-          'يرجى تشغيل ملف fix_evaluations_jury_id_foreign_key.sql في Supabase SQL Editor.'
+          'يرجى تشغيل ملف fix_evaluations_jury_id_foreign_key.sql في Supabase SQL Editor.',
         );
       }
-      
+
       throw Exception('فشل في إرسال التقييم: $e');
     }
   }
@@ -170,6 +175,29 @@ class EvaluationService {
   }
 
   /// Supprime toutes les évaluations d'un jury pour une version donnée
+  /// Supprime les évaluations d'un jury pour UN round précis.
+  ///
+  /// Retirer un jury d'un round ne doit pas toucher à ce qu'il a évalué dans
+  /// les autres rounds de la même version — leurs résultats sont peut-être
+  /// déjà calculés, voire publiés.
+  Future<void> deleteEvaluationsByJuryInRound({
+    required String juryId,
+    required String roundId,
+  }) async {
+    try {
+      await _supabase
+          .from('evaluations')
+          .delete()
+          .eq('jury_id', juryId)
+          .eq('round_id', roundId);
+
+      print('✅ Évaluations du jury supprimées pour ce round');
+    } catch (e) {
+      print('❌ Erreur lors de la suppression des évaluations: $e');
+      throw Exception('Erreur lors de la suppression des évaluations: $e');
+    }
+  }
+
   Future<void> deleteEvaluationsByJuryInVersion({
     required String juryId,
     required String versionId,

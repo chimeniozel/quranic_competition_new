@@ -23,6 +23,7 @@ import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
 import 'package:quranic_competition/features/participant/pages/about/about_us_page.dart';
 import 'package:quranic_competition/features/shared/pages/access_denied_page.dart';
+import 'package:quranic_competition/features/admin/pages/settings/force_update_page.dart';
 import 'package:quranic_competition/features/shared/pages/notifications_page.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/jury_evaluation_args.dart';
@@ -280,6 +281,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => ChangePasswordPage(),
     ),
     GoRoute(path: '/profile', builder: (context, state) => UserProfilePage()),
+    GoRoute(
+      path: '/admin/force-update',
+      builder: (context, state) => const ForceUpdatePage(),
+    ),
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsPage(),

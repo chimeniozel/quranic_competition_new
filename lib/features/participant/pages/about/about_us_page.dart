@@ -459,7 +459,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
   }
 
   Widget _buildSocialMediaButton({
-    required IconData iconData,
+    required FaIconData iconData,
     required String label,
     required String url,
     Color? backgroundColor,

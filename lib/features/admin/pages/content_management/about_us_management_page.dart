@@ -347,7 +347,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.heading,
                                   ),
                                 ),
@@ -398,7 +398,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                         AppTheme.radiusS,
                                       ),
                                     ),
-                                    child: Icon(
+                                    child: FaIcon(
                                       FontAwesomeIcons.image,
                                       color: AppTheme.primaryColor,
                                       size: 20,
@@ -469,7 +469,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                                         ),
                                                       ),
                                                       child: const Center(
-                                                        child: Icon(
+                                                        child: FaIcon(
                                                           FontAwesomeIcons
                                                               .image,
                                                           size: 48,
@@ -505,7 +505,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                               .withOpacity(0.9),
                                           radius: 18,
                                           child: IconButton(
-                                            icon: const Icon(
+                                            icon: const FaIcon(
                                               FontAwesomeIcons.xmark,
                                               size: 18,
                                               color: Colors.white,
@@ -552,7 +552,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                                 .withOpacity(0.1),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: Icon(
+                                          child: FaIcon(
                                             FontAwesomeIcons.circlePlus,
                                             size: 48,
                                             color: AppTheme.primaryColor,
@@ -595,7 +595,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                               // Coordonnées - Section
                               Row(
                                 children: [
-                                  Icon(
+                                  FaIcon(
                                     FontAwesomeIcons.addressCard,
                                     color: AppTheme.primaryColor,
                                   ),
@@ -620,7 +620,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.envelope,
                                   ),
                                 ),
@@ -639,7 +639,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.locationDot,
                                   ),
                                   alignLabelWithHint: true,
@@ -659,7 +659,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.globe,
                                   ),
                                 ),
@@ -681,7 +681,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                         AppTheme.radiusS,
                                       ),
                                     ),
-                                    child: Icon(
+                                    child: FaIcon(
                                       FontAwesomeIcons.shareNodes,
                                       color: AppTheme.primaryColor,
                                       size: 20,
@@ -711,7 +711,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.whatsapp,
                                     color: Color(0xFF25D366), // WhatsApp green
                                   ),
@@ -731,7 +731,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.facebook,
                                     color: Color(0xFF1877F2), // Facebook blue
                                   ),
@@ -751,7 +751,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.instagram,
                                     color: Color(0xFFE4405F), // Instagram pink
                                   ),
@@ -772,7 +772,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.youtube,
                                     color: Color(0xFFFF0000), // YouTube red
                                   ),
@@ -793,7 +793,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon: const FaIcon(
                                     FontAwesomeIcons.tiktok,
                                     color: Color(0xFF000000), // TikTok black
                                   ),
@@ -812,7 +812,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       icon:
                                           _isSaving
                                               ? null
-                                              : FontAwesomeIcons.floppyDisk,
+                                              : FontAwesomeIcons.floppyDisk.data,
                                     ),
                                   ),
                                   if (_aboutUs != null) ...[
@@ -822,7 +822,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                         onPressed:
                                             _isSaving ? null : _deleteAboutUs,
                                         text: 'حذف',
-                                        icon: FontAwesomeIcons.trash,
+                                        icon: FontAwesomeIcons.trash.data,
                                         textColor: AppTheme.errorColor,
                                       ),
                                     ),

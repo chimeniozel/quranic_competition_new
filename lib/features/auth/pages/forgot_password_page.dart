@@ -164,7 +164,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 decoration: InputDecoration(
                   labelText: 'البريد الإلكتروني',
                   hintText: 'أدخل بريدك الإلكتروني',
-                  prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 20),
+                  prefixIcon: const FaIcon(FontAwesomeIcons.envelope, size: 20),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(

@@ -21,7 +21,7 @@
 3. **Cliquez sur l'onglet "Signing & Capabilities"** :
    - Vous verrez alors les options de signature automatique
    - Cochez "Automatically manage signing"
-   - Sélectionnez votre Team : **Q323GMD657**
+   - Sélectionnez votre Team : **J9P5HCMXJW**
 
 ## Si vous ne voyez toujours pas "Signing & Capabilities" :
 

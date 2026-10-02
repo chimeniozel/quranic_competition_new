@@ -145,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
         leading:
             Navigator.of(context).canPop()
                 ? IconButton(
-                  icon: const Icon(FontAwesomeIcons.chevronRight, size: 20),
+                  icon: const FaIcon(FontAwesomeIcons.chevronRight, size: 20),
                   onPressed: () => Navigator.of(context).pop(),
                 )
                 : null,
@@ -213,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     labelText: 'البريد الإلكتروني',
                     hintText: 'أدخل بريدك الإلكتروني',
-                    prefixIcon: const Icon(FontAwesomeIcons.envelope, size: 20),
+                    prefixIcon: const FaIcon(FontAwesomeIcons.envelope, size: 20),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -261,12 +261,12 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور',
                     hintText: 'أدخل كلمة المرور',
-                    prefixIcon: const Icon(FontAwesomeIcons.lock, size: 20),
+                    prefixIcon: const FaIcon(FontAwesomeIcons.lock, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? FontAwesomeIcons.eyeSlash
-                            : FontAwesomeIcons.eye,
+                            ? FontAwesomeIcons.eyeSlash.data
+                            : FontAwesomeIcons.eye.data,
                         size: 20,
                       ),
                       onPressed: () {
@@ -318,7 +318,7 @@ class _LoginPageState extends State<LoginPage> {
                 // Bouton de connexion
                 PrimaryButton(
                   text: 'تسجيل الدخول',
-                  icon: FontAwesomeIcons.rightToBracket,
+                  icon: FontAwesomeIcons.rightToBracket.data,
                   onPressed: _submit,
                   isLoading: _isLoading,
                   fullWidth: true,

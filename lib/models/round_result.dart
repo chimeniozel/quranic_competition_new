@@ -58,6 +58,7 @@ class RoundResult {
       passed: map['passed'] as bool,
       ageGroup: map['age_group'],
       createdAt: DateTime.parse(map['created_at']),
+      rank: (map['rank'] as num?)?.toInt(),
       participant: Participant.fromMap(map['participants']),
       round: Round.fromMap(map['rounds']),
     );

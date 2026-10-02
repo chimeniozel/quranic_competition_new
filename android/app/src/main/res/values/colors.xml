@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
-    <!-- Couleur d'accent appliquée aux notifications (AppTheme.primaryColor) -->
-    <color name="notification_color">#4E5AE8</color>
+    <!-- Couleur d'accent des notifications : vert du logo (NotificationService._accentColor) -->
+    <color name="notification_color">#1F7C4B</color>
 </resources>

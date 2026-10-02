@@ -177,48 +177,111 @@ class CompetitionVersionService {
 
   /// Écoute les changements en temps réel pour une version spécifique
   /// Utilise un Timer périodique car les streams Supabase peuvent ne pas fonctionner correctement
-  Stream<Map<String, dynamic>> listenToVersionChanges(String versionId) {
-    return Stream.periodic(
-      const Duration(seconds: 5),
-    ) // Intervalle plus court pour les tests
-    .asyncMap((_) async {
-      try {
-        final response =
-            await _supabase
-                .from('competition_versions')
-                .select()
-                .eq('id', versionId)
-                .single();
-        print(
-          '🔄 Vérification périodique - Version: $versionId, Registration Open: ${response['is_registration_open']}',
-        );
-        return response;
-      } catch (e) {
-        print('Erreur lors de la récupération de la version: $e');
-        return <String, dynamic>{};
-      }
-    });
+  /// Suit l'état d'une version (page d'inscription).
+  ///
+  /// Première valeur immédiate, puis vérification régulière : l'écran doit
+  /// réagir si un administrateur ferme les inscriptions pendant que le
+  /// formulaire est rempli. L'envoi reste de toute façon revérifié côté
+  /// serveur par `registerParticipant`.
+  Stream<Map<String, dynamic>> listenToVersionChanges(
+    String versionId, {
+    Duration interval = const Duration(seconds: 15),
+  }) async* {
+    yield await _fetchVersionOrEmpty(versionId);
+
+    yield* Stream.periodic(
+      interval,
+    ).asyncMap((_) => _fetchVersionOrEmpty(versionId));
   }
 
-  /// Écoute les changements en temps réel pour toutes les versions actives avec inscription ouverte
-  /// Utilise un Timer périodique pour une vérification régulière
-  Stream<List<CompetitionVersion>>
-  listenToActiveVersionsWithOpenRegistration() {
-    return Stream.periodic(
-      const Duration(seconds: 5),
-    ) // Intervalle plus court pour les tests
-    .asyncMap((_) async {
-      try {
-        final versions = await fetchActiveVersionsWithOpenRegistration();
-        print(
-          '🏠 Vérification périodique - Versions actives: ${versions.length}',
-        );
-        return versions;
-      } catch (e) {
-        print('Erreur lors de la récupération des versions actives: $e');
-        return <CompetitionVersion>[];
-      }
-    });
+  Future<Map<String, dynamic>> _fetchVersionOrEmpty(String versionId) async {
+    try {
+      final response =
+          await _supabase
+              .from('competition_versions')
+              .select()
+              .eq('id', versionId)
+              .single();
+      return response;
+    } catch (e) {
+      print('Erreur lors de la récupération de la version: $e');
+      return <String, dynamic>{};
+    }
+  }
+
+  /// Suit les versions actives dont l'inscription est ouverte.
+  ///
+  /// La première valeur est émise **immédiatement** : auparavant le flux
+  /// commençait par attendre la période complète, et la page d'accueil
+  /// restait sur son indicateur de chargement pendant tout ce temps.
+  ///
+  /// Ensuite seulement, une vérification périodique prend le relais. Ces
+  /// versions changent rarement (un administrateur ouvre ou ferme les
+  /// inscriptions), d'où un intervalle large : l'ancienne valeur de 5
+  /// secondes interrogeait la base ~12 fois par minute et par utilisateur.
+  Stream<List<CompetitionVersion>> listenToActiveVersionsWithOpenRegistration({
+    Duration interval = const Duration(seconds: 60),
+  }) async* {
+    yield await _fetchActiveVersionsOrEmpty();
+
+    yield* Stream.periodic(
+      interval,
+    ).asyncMap((_) => _fetchActiveVersionsOrEmpty());
+  }
+
+  /// Pousse un événement dès qu'une version ou une inscription change.
+  ///
+  /// Contrairement au flux périodique, rien n'est interrogé tant que rien ne
+  /// bouge : c'est le serveur qui prévient (Supabase Realtime), en moins
+  /// d'une seconde.
+  ///
+  /// Prérequis côté base : les tables `competition_versions` et
+  /// `participants` doivent être ajoutées à la publication
+  /// `supabase_realtime`. Si ce n'est pas le cas, rien ne casse — la
+  /// vérification périodique reste le filet de sécurité.
+  RealtimeChannel subscribeToRegistrationChanges({
+    required void Function() onChange,
+  }) {
+    final channel = _supabase.channel('registration_state');
+
+    // Ouverture/fermeture des inscriptions, activation d'une version
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'competition_versions',
+      callback: (_) {
+        print('📡 Changement détecté sur competition_versions');
+        onChange();
+      },
+    );
+
+    // Nouvelle inscription : c'est ce qui fait atteindre la limite d'un
+    // groupe d'âge, et donc disparaître le bouton correspondant.
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'participants',
+      callback: (_) {
+        print('📡 Nouvelle inscription détectée');
+        onChange();
+      },
+    );
+
+    channel.subscribe();
+    return channel;
+  }
+
+  Future<void> unsubscribe(RealtimeChannel channel) async {
+    await _supabase.removeChannel(channel);
+  }
+
+  Future<List<CompetitionVersion>> _fetchActiveVersionsOrEmpty() async {
+    try {
+      return await fetchActiveVersionsWithOpenRegistration();
+    } catch (e) {
+      print('Erreur lors de la récupération des versions actives: $e');
+      return <CompetitionVersion>[];
+    }
   }
 
   Future<List<CompetitionVersion>> fetchMyVersions() async {
@@ -609,22 +672,19 @@ class CompetitionVersionService {
     String versionId,
   ) async {
     try {
-      // Récupérer le nombre de participants adultes pour cette version
-      final adultsResponse = await _supabase
+      // Comptage côté serveur : on ne rapatrie plus la liste complète des
+      // identifiants juste pour en mesurer la longueur.
+      final adultsCount = await _supabase
           .from('participants')
-          .select('id')
+          .count(CountOption.exact)
           .eq('competition_id', versionId)
           .eq('age_group', 'كبار');
 
-      // Récupérer le nombre de participants enfants pour cette version
-      final childrenResponse = await _supabase
+      final childrenCount = await _supabase
           .from('participants')
-          .select('id')
+          .count(CountOption.exact)
           .eq('competition_id', versionId)
           .eq('age_group', 'صغار');
-
-      final adultsCount = adultsResponse.length;
-      final childrenCount = childrenResponse.length;
 
       print(
         '📊 Nombre de participants récupéré pour version $versionId: Adultes=$adultsCount, Enfants=$childrenCount',
