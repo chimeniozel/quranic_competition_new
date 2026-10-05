@@ -500,13 +500,22 @@ class _VersionDetailPageState extends State<VersionDetailPage> {
       shape: AppHeaderShape.card,
       title: version.name,
       badges: [
-        AppHeaderBadge(icon: Icons.calendar_today_rounded, text: 'سنة ${version.year}'),
         AppHeaderBadge(
-          icon: version.isActive ? Icons.check_circle_rounded : Icons.history_rounded,
+          icon: Icons.calendar_today_rounded,
+          text: 'سنة ${version.year}',
+        ),
+        AppHeaderBadge(
+          icon:
+              version.isActive
+                  ? Icons.check_circle_rounded
+                  : Icons.history_rounded,
           text: version.isActive ? 'نشطة' : 'منتهية',
         ),
         AppHeaderBadge(
-          icon: version.isRegistrationOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
+          icon:
+              version.isRegistrationOpen
+                  ? Icons.lock_open_rounded
+                  : Icons.lock_rounded,
           text: version.isRegistrationOpen ? 'التسجيل مفتوح' : 'التسجيل مغلق',
         ),
       ],

@@ -568,7 +568,11 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.calculate_rounded, size: 16, color: AppTheme.errorColor),
+                Icon(
+                  Icons.calculate_rounded,
+                  size: 16,
+                  color: AppTheme.errorColor,
+                ),
                 const SizedBox(width: AppTheme.spacingS),
                 Text('إجمالي العناصر: ', style: AppTheme.bodyMedium),
                 Text(
@@ -661,7 +665,11 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
             (context) => AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.warning_rounded, color: AppTheme.errorColor, size: 28),
+                  Icon(
+                    Icons.warning_rounded,
+                    color: AppTheme.errorColor,
+                    size: 28,
+                  ),
                   const SizedBox(width: AppTheme.spacingS),
                   Text(
                     'تأكيد الحذف',
@@ -946,7 +954,10 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                       title: version.name,
                       subtitle: 'سنة ${version.year}',
                       trailing: AppHeaderBadge(
-                        icon: _isActive ? Icons.check_circle_rounded : Icons.history_rounded,
+                        icon:
+                            _isActive
+                                ? Icons.check_circle_rounded
+                                : Icons.history_rounded,
                         text: _isActive ? 'نشطة' : 'غير نشطة',
                         highlightColor:
                             _isActive ? AppTheme.secondaryColor : null,

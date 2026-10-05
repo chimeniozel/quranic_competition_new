@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -383,27 +384,11 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                                     width: double.infinity,
                                                     height: double.infinity,
                                                   )
-                                                  : Image.network(
-                                                    widget.media.url,
+                                                  : AppNetworkImage(
+                                                    url: widget.media.url,
                                                     fit: BoxFit.cover,
                                                     width: double.infinity,
                                                     height: double.infinity,
-                                                    errorBuilder: (
-                                                      context,
-                                                      error,
-                                                      stackTrace,
-                                                    ) {
-                                                      return Center(
-                                                        child: Icon(
-                                                          Icons
-                                                              .image_not_supported,
-                                                          size: 64,
-                                                          color:
-                                                              AppTheme
-                                                                  .textSecondaryColor,
-                                                        ),
-                                                      );
-                                                    },
                                                   ),
                                         ),
                                         // Boutons d'action pour les images
@@ -599,7 +584,9 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                           AppTheme.radiusM,
                                         ),
                                       ),
-                                      prefixIcon: const Icon(Icons.category_rounded),
+                                      prefixIcon: const Icon(
+                                        Icons.category_rounded,
+                                      ),
                                     ),
                                     items: [
                                       DropdownMenuItem<MediaType>(
@@ -665,7 +652,9 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                           AppTheme.radiusM,
                                         ),
                                       ),
-                                      prefixIcon: const Icon(Icons.title_rounded),
+                                      prefixIcon: const Icon(
+                                        Icons.title_rounded,
+                                      ),
                                     ),
                                     validator: (value) {
                                       if (value == null ||

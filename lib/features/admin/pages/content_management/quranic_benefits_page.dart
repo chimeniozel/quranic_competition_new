@@ -300,6 +300,7 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                 ),
               ),
               PopupMenuButton<String>(
+                icon: appMenuIcon,
                 onSelected: (value) {
                   switch (value) {
                     case 'edit':
@@ -320,15 +321,10 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                   // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
                   if (permissionService.canModifySync()) {
                     items.add(
-                      PopupMenuItem(
+                      appMenuItem(
                         value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_rounded),
-                            SizedBox(width: 8),
-                            Text('تعديل'),
-                          ],
-                        ),
+                        icon: Icons.edit_rounded,
+                        label: 'تعديل',
                       ),
                     );
                   }
@@ -336,19 +332,13 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                   // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
                   if (permissionService.canModifySync()) {
                     items.add(
-                      PopupMenuItem(
+                      appMenuItem(
                         value: 'toggle_status',
-                        child: Row(
-                          children: [
-                            Icon(
-                              benefit.isActive
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(benefit.isActive ? 'إلغاء التفعيل' : 'تفعيل'),
-                          ],
-                        ),
+                        icon:
+                            benefit.isActive
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                        label: benefit.isActive ? 'إلغاء التفعيل' : 'تفعيل',
                       ),
                     );
                   }
@@ -356,18 +346,11 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                   // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
                   if (permissionService.canDeleteSync()) {
                     items.add(
-                      PopupMenuItem(
+                      appMenuItem(
                         value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_rounded, color: AppTheme.errorColor),
-                            SizedBox(width: 8),
-                            Text(
-                              'حذف',
-                              style: TextStyle(color: AppTheme.errorColor),
-                            ),
-                          ],
-                        ),
+                        icon: Icons.delete_rounded,
+                        label: 'حذف',
+                        color: AppTheme.errorColor,
                       ),
                     );
                   }

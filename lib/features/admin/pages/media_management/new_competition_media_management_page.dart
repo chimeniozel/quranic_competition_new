@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_network_image.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/core/services/archive_media_service.dart';
@@ -292,7 +294,10 @@ class _NewCompetitionMediaManagementPageState
                         ),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded, color: Colors.white),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -309,33 +314,10 @@ class _NewCompetitionMediaManagementPageState
                           clipBehavior: Clip.none,
                           minScale: 0.8,
                           maxScale: 4.0,
-                          child: Image.network(
-                            imageUrl,
+                          child: AppNetworkImage(
+                            url: imageUrl,
                             fit: BoxFit.contain,
                             width: double.infinity,
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value:
-                                      progress.expectedTotalBytes != null
-                                          ? progress.cumulativeBytesLoaded /
-                                              progress.expectedTotalBytes!
-                                          : null,
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: AppTheme.dividerColor,
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.image_not_supported_rounded,
-                                    size: 64,
-                                  ),
-                                ),
-                              );
-                            },
                           ),
                         ),
                       ),
@@ -466,81 +448,62 @@ class _NewCompetitionMediaManagementPageState
           children: [
             // Contenu principal
             media.type.toString().contains('video')
-                ? // Vidéo : fond avec icône de lecture
-                Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.infoColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.play_circle_filled_rounded,
-                        size: 48,
-                        color: AppTheme.infoColor,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'فيديو',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.infoColor,
-                          fontWeight: FontWeight.bold,
+                ? // Vidéo : miniature YouTube + bouton lecture + titre
+                Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      child: YoutubeThumbnail.fromUrl(media.url),
+                    ),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        decoration: const BoxDecoration(
+                          color: Colors.black45,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 30,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        media.title != null && media.title!.isNotEmpty
-                            ? media.title!
-                            : 'فيديو ${media.order}',
-                        style: AppTheme.bodySmall.copyWith(
-                          color: AppTheme.textSecondaryColor,
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingXS),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(AppTheme.radiusM),
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                        child: Text(
+                          media.title != null && media.title!.isNotEmpty
+                              ? media.title!
+                              : 'فيديو ${media.order}',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 )
                 : // Image
-                Image.network(
-                  media.url,
+                AppNetworkImage(
+                  url: media.url,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: double.infinity,
-                      height: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.image_not_supported_rounded,
-                            size: 32,
-                            color: AppTheme.textSecondaryColor,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            media.title ?? 'صورة',
-                            style: AppTheme.bodySmall.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
                 ),
 
             // Badge de statut
@@ -610,61 +573,33 @@ class _NewCompetitionMediaManagementPageState
 
                   // Option d'édition
                   items.add(
-                    const PopupMenuItem<String>(
+                    appMenuItem(
                       value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.edit_rounded,
-                            color: AppTheme.primaryColor,
-                            size: 16,
-                          ),
-                          SizedBox(width: 8),
-                          Text('تعديل'),
-                        ],
-                      ),
+                      icon: Icons.edit_rounded,
+                      label: 'تعديل',
                     ),
                   );
 
                   // Option de changement de statut
                   items.add(
-                    PopupMenuItem<String>(
+                    appMenuItem(
                       value: 'toggle_status',
-                      child: Row(
-                        children: [
-                          Icon(
-                            media.isActive
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color:
-                                media.isActive
-                                    ? AppTheme.warningColor
-                                    : AppTheme.successColor,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(media.isActive ? 'إلغاء التفعيل' : 'تفعيل'),
-                        ],
-                      ),
+                      icon:
+                          media.isActive
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                      label: media.isActive ? 'إلغاء التفعيل' : 'تفعيل',
                     ),
                   );
 
                   // Option de suppression (utiliser la version synchrone)
                   if (permissionService.canDeleteSync()) {
                     items.add(
-                      const PopupMenuItem<String>(
+                      appMenuItem(
                         value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_rounded,
-                              color: AppTheme.errorColor,
-                              size: 16,
-                            ),
-                            SizedBox(width: 8),
-                            Text('حذف'),
-                          ],
-                        ),
+                        icon: Icons.delete_rounded,
+                        label: 'حذف',
+                        color: AppTheme.errorColor,
                       ),
                     );
                   }

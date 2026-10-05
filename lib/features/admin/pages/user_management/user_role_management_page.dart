@@ -803,7 +803,10 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
     final color = isValidated ? AppTheme.successColor : AppTheme.warningColor;
 
     return AppSection(
-      icon: isValidated ? Icons.verified_user_rounded : Icons.pending_actions_rounded,
+      icon:
+          isValidated
+              ? Icons.verified_user_rounded
+              : Icons.pending_actions_rounded,
       color: color,
       title: 'توثيق الحساب',
       subtitle: isValidated ? 'الحساب موثق' : 'الحساب بانتظار التوثيق',
@@ -954,7 +957,9 @@ class _UserRoleManagementPageState extends State<UserRoleManagementPage> {
                 ),
               ),
               Icon(
-                selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
                 color: selected ? color : AppTheme.dividerColor,
               ),
             ],

@@ -253,7 +253,10 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
     return AppListCard(
       onTap: () => context.push('/admin/tajweed-rules/edit/${rule.id}'),
       leading: AppIconBadge(
-        icon: isVideo ? Icons.play_circle_outline_rounded : Icons.auto_stories_rounded,
+        icon:
+            isVideo
+                ? Icons.play_circle_outline_rounded
+                : Icons.auto_stories_rounded,
         color: typeColor,
         size: 24,
       ),
@@ -271,7 +274,10 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
               rule.isActive
                   ? AppTheme.successColor
                   : AppTheme.textSecondaryColor,
-          icon: rule.isActive ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+          icon:
+              rule.isActive
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_off_rounded,
         ),
         AppTag(
           text: _formatDate(rule.createdAt),
@@ -280,6 +286,7 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         ),
       ],
       trailing: PopupMenuButton<String>(
+        icon: appMenuIcon,
         onSelected: (value) {
           switch (value) {
             case 'edit':
@@ -300,15 +307,10 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
           // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
           if (permissionService.canModifySync()) {
             items.add(
-              PopupMenuItem(
+              appMenuItem(
                 value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_rounded, size: 16, color: AppTheme.primaryColor),
-                    SizedBox(width: 8),
-                    Text('تعديل'),
-                  ],
-                ),
+                icon: Icons.edit_rounded,
+                label: 'تعديل',
               ),
             );
           }
@@ -316,30 +318,13 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
           // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
           if (permissionService.canModifySync()) {
             items.add(
-              PopupMenuItem(
+              appMenuItem(
                 value: 'toggle',
-                child: Row(
-                  children: [
-                    Icon(
-                      rule.isActive ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                      size: 16,
-                      color:
-                          rule.isActive
-                              ? AppTheme.warningColor
-                              : AppTheme.successColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      rule.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                      style: TextStyle(
-                        color:
-                            rule.isActive
-                                ? AppTheme.warningColor
-                                : AppTheme.successColor,
-                      ),
-                    ),
-                  ],
-                ),
+                icon:
+                    rule.isActive
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                label: rule.isActive ? 'إلغاء التفعيل' : 'تفعيل',
               ),
             );
           }
@@ -347,15 +332,11 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
           // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
           if (permissionService.canDeleteSync()) {
             items.add(
-              PopupMenuItem(
+              appMenuItem(
                 value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_rounded, size: 16, color: AppTheme.errorColor),
-                    SizedBox(width: 8),
-                    Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
-                  ],
-                ),
+                icon: Icons.delete_rounded,
+                label: 'حذف',
+                color: AppTheme.errorColor,
               ),
             );
           }
@@ -372,7 +353,10 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
 
   Widget _buildEmptyState() {
     return EmptyState(
-      icon: _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.auto_stories_rounded,
+      icon:
+          _searchQuery.isNotEmpty
+              ? Icons.search_off_rounded
+              : Icons.auto_stories_rounded,
       title:
           _searchQuery.isNotEmpty
               ? 'لا توجد أحكام تجويد تطابق البحث'

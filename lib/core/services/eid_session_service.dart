@@ -43,7 +43,9 @@ class EidSessionService {
   /// Le callback ne reçoit pas la ligne : l'appelant relit la session active,
   /// ce qui reste correct quel que soit l'événement (une suppression ne
   /// transmet que la clé primaire).
-  RealtimeChannel subscribeToSessionChanges({required void Function() onChange}) {
+  RealtimeChannel subscribeToSessionChanges({
+    required void Function() onChange,
+  }) {
     final channel = _supabase.channel('eid_sessions_changes');
 
     channel.onPostgresChanges(
@@ -132,6 +134,9 @@ class EidSessionService {
     DateTime? endDate,
     bool? isActive,
     bool? isOpen,
+    // Formulaire de modification : description et dates sont écrites même
+    // vides, pour pouvoir les effacer.
+    bool replaceOptionalFields = false,
   }) async {
     try {
       // Si on essaie d'activer cette session, désactiver les autres d'abord
@@ -148,10 +153,15 @@ class EidSessionService {
       };
 
       if (name != null) updateData['name'] = name;
-      if (description != null) updateData['description'] = description;
-      if (startDate != null)
-        updateData['start_date'] = startDate.toIso8601String();
-      if (endDate != null) updateData['end_date'] = endDate.toIso8601String();
+      if (description != null || replaceOptionalFields) {
+        updateData['description'] = description;
+      }
+      if (startDate != null || replaceOptionalFields) {
+        updateData['start_date'] = startDate?.toIso8601String();
+      }
+      if (endDate != null || replaceOptionalFields) {
+        updateData['end_date'] = endDate?.toIso8601String();
+      }
       if (isActive != null) updateData['is_active'] = isActive;
       if (isOpen != null) updateData['is_open'] = isOpen;
 

@@ -377,7 +377,9 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                 decoration: InputDecoration(
                                   labelText: 'متوسط النجاح للكبار (%)',
                                   hintText: '85.0',
-                                  prefixIcon: const Icon(Icons.trending_up_rounded),
+                                  prefixIcon: const Icon(
+                                    Icons.trending_up_rounded,
+                                  ),
                                   suffixText: '%',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(
@@ -395,7 +397,9 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                 decoration: InputDecoration(
                                   labelText: 'متوسط النجاح للصغار (%)',
                                   hintText: '14.0',
-                                  prefixIcon: const Icon(Icons.trending_up_rounded),
+                                  prefixIcon: const Icon(
+                                    Icons.trending_up_rounded,
+                                  ),
                                   suffixText: '%',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(
@@ -514,7 +518,10 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
               version.isRegistrationOpen
                   ? AppTheme.infoColor
                   : AppTheme.errorColor,
-          icon: version.isRegistrationOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
+          icon:
+              version.isRegistrationOpen
+                  ? Icons.lock_open_rounded
+                  : Icons.lock_rounded,
         ),
         AppTag(
           text: 'كبار ${version.maxAdults} · صغار ${version.maxChildren}',
@@ -579,7 +586,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                     'لا يمكن إضافة نسخة جديدة بينما توجد نسخة نشطة. يجب إلغاء تفعيل النسخة النشطة أولاً.',
                 child: Opacity(
                   opacity: 0.5,
-                  child: ModernFAB(
+                  child: FloatingActionButton.extended(
                     onPressed: () async {
                       final activeVersion = _getActiveVersion();
                       if (mounted && activeVersion != null) {
@@ -601,17 +608,19 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                         );
                       }
                     },
-                    icon: Icons.add_rounded,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('نسخة جديدة'),
                   ),
                 ),
               )
               : (_permissionsLoaded && _canCreateVersions)
-              ? ModernFAB(
+              ? FloatingActionButton.extended(
                 onPressed: () async {
                   await showAddDialog();
                   setState(() {});
                 },
-                icon: Icons.add_rounded,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('نسخة جديدة'),
               )
               : null,
       body:

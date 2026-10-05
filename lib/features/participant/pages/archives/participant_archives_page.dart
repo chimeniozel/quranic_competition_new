@@ -106,7 +106,6 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
     }).toList();
   }
 
-
   Widget _buildCompetitionCard(CompetitionVersion version) {
     final mediaForVersion = _getMediaForVersion(version.id);
     final videoCount =

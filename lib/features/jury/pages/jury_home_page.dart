@@ -111,7 +111,10 @@ class _JuryHomePageState extends State<JuryHomePage> {
                   PopupMenuItem(
                     value: 'logout',
                     child: ListTile(
-                      leading: Icon(Icons.logout_rounded, color: AppTheme.errorColor),
+                      leading: Icon(
+                        Icons.logout_rounded,
+                        color: AppTheme.errorColor,
+                      ),
                       title: Text('تسجيل الخروج'),
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -248,7 +251,10 @@ class _JuryHomePageState extends State<JuryHomePage> {
         AppTag(
           text: version.isActive ? 'نشطة' : 'منتهية',
           color: color,
-          icon: version.isActive ? Icons.check_circle_rounded : Icons.history_rounded,
+          icon:
+              version.isActive
+                  ? Icons.check_circle_rounded
+                  : Icons.history_rounded,
         ),
         if (version.isActive)
           AppTag(

@@ -5,6 +5,7 @@ import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/services/participant_service.dart';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../models/participant.dart';
@@ -201,125 +202,57 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     final stats = _ageGroupParticipants;
     final accepted = stats.where((p) => p.isAccepted).length;
     final rejected = stats.length - accepted;
-    final versionColor = _isActiveVersion ? AppTheme.successColor : AppTheme.warningColor;
 
-    return Container(
-      margin: const EdgeInsets.all(AppTheme.spacingS),
-      child: ModernCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_displayedVersion != null) ...[
-                Row(
-                  children: [
-                    Icon(
-                      _isActiveVersion ? Icons.emoji_events_rounded : Icons.history_rounded,
-                      color: versionColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Expanded(
-                      child: Text(
-                        _displayedVersion!.name,
-                        style: AppTheme.labelLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingS,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: versionColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                      ),
-                      child: Text(
-                        _isActiveVersion ? 'نسخة نشطة' : 'آخر نسخة',
-                        style: AppTheme.bodySmall.copyWith(
-                          color: versionColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-              ],
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      'إجمالي المشاركين',
-                      stats.length,
-                      Icons.people_rounded,
-                      AppTheme.infoColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: _buildStatItem(
-                      'المقبولون',
-                      accepted,
-                      Icons.check_circle_rounded,
-                      AppTheme.successColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: _buildStatItem(
-                      'المرفوضون',
-                      rejected,
-                      Icons.cancel_rounded,
-                      AppTheme.errorColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+    return AppGradientHeader(
+      icon: Icons.groups_rounded,
+      title: _displayedVersion?.name ?? 'قائمة المشاركين',
+      badges: [
+        if (_displayedVersion != null)
+          AppHeaderBadge(
+            icon:
+                _isActiveVersion
+                    ? Icons.emoji_events_rounded
+                    : Icons.history_rounded,
+            text: _isActiveVersion ? 'نسخة نشطة' : 'آخر نسخة',
+            highlightColor: _isActiveVersion ? AppTheme.secondaryColor : null,
           ),
-        ),
+      ],
+      bottom: Row(
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              'الإجمالي',
+              stats.length,
+              Icons.people_rounded,
+              AppTheme.infoColor,
+            ),
+          ),
+          const SizedBox(width: AppTheme.spacingS),
+          Expanded(
+            child: _buildStatItem(
+              'المقبولون',
+              accepted,
+              Icons.check_circle_rounded,
+              AppTheme.successColor,
+            ),
+          ),
+          const SizedBox(width: AppTheme.spacingS),
+          Expanded(
+            child: _buildStatItem(
+              'المرفوضون',
+              rejected,
+              Icons.cancel_rounded,
+              AppTheme.errorColor,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatItem(String label, int value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppTheme.spacingS,
-        horizontal: AppTheme.spacingXS,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: AppTheme.spacingXS),
-          Text(
-            '$value',
-            style: AppTheme.labelLarge.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          Text(
-            label,
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondaryColor),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
+    // Tuile blanche sur l'en-tête dégradé
+    return AppStatTile(label: label, value: '$value', icon: icon, color: color);
   }
 
   // ---------------------------------------------------------------------------
@@ -334,11 +267,21 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
       child: Row(
         children: [
-          Expanded(child: _buildAgeGroupChip(null, 'الكل', AppTheme.textSecondaryColor)),
+          Expanded(
+            child: _buildAgeGroupChip(
+              null,
+              'الكل',
+              AppTheme.textSecondaryColor,
+            ),
+          ),
           const SizedBox(width: AppTheme.spacingS),
-          Expanded(child: _buildAgeGroupChip('كبار', 'الكبار', AppTheme.infoColor)),
+          Expanded(
+            child: _buildAgeGroupChip('كبار', 'الكبار', AppTheme.infoColor),
+          ),
           const SizedBox(width: AppTheme.spacingS),
-          Expanded(child: _buildAgeGroupChip('صغار', 'الصغار', AppTheme.primaryColor)),
+          Expanded(
+            child: _buildAgeGroupChip('صغار', 'الصغار', AppTheme.primaryColor),
+          ),
         ],
       ),
     );
@@ -397,7 +340,8 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
 
   Widget _buildParticipantCard(Participant participant) {
     final isAccepted = participant.isAccepted;
-    final statusColor = isAccepted ? AppTheme.successColor : AppTheme.errorColor;
+    final statusColor =
+        isAccepted ? AppTheme.successColor : AppTheme.errorColor;
     final isAdult = participant.ageGroup == 'كبار';
     final groupColor = isAdult ? AppTheme.infoColor : AppTheme.primaryColor;
 
@@ -477,7 +421,9 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                         ),
                         _buildTag(
                           isAccepted ? 'مقبول' : 'مرفوض',
-                          isAccepted ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                          isAccepted
+                              ? Icons.check_circle_rounded
+                              : Icons.cancel_rounded,
                           statusColor,
                         ),
                       ],
@@ -485,7 +431,10 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_left_rounded, color: AppTheme.textDisabledColor),
+              Icon(
+                Icons.chevron_left_rounded,
+                color: AppTheme.textDisabledColor,
+              ),
             ],
           ),
         ),
@@ -597,6 +546,7 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
         ),
         slivers: [
           SliverToBoxAdapter(child: _buildHeader()),
+          const SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingM)),
           SliverToBoxAdapter(child: _buildAgeGroupSelector()),
           SliverToBoxAdapter(child: _buildSearchBar()),
           SliverToBoxAdapter(child: _buildResultsCount()),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/services/benefit_read_store.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
@@ -32,6 +33,8 @@ class _BenefitDetailPageState extends State<BenefitDetailPage> {
   @override
   void initState() {
     super.initState();
+    // Ouverte (depuis la liste ou une notification) : plus « جديد »
+    BenefitReadStore().markRead(widget.benefitId);
     _benefit = widget.benefit;
     if (_benefit == null) _load();
   }
@@ -169,7 +172,11 @@ class _BenefitDetailPageState extends State<BenefitDetailPage> {
         line(),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
-          child: Icon(Icons.auto_awesome_rounded, size: 18, color: AppTheme.goldColor),
+          child: Icon(
+            Icons.auto_awesome_rounded,
+            size: 18,
+            color: AppTheme.goldColor,
+          ),
         ),
         line(),
       ],
@@ -190,7 +197,10 @@ class _BenefitDetailPageState extends State<BenefitDetailPage> {
               icon: Icons.calendar_today_rounded,
               text: _formatDate(benefit.createdAt),
             ),
-            const AppHeaderBadge(icon: Icons.verified_rounded, text: 'فائدة قرآنية'),
+            const AppHeaderBadge(
+              icon: Icons.verified_rounded,
+              text: 'فائدة قرآنية',
+            ),
           ],
         ),
         Padding(
@@ -213,7 +223,10 @@ class _BenefitDetailPageState extends State<BenefitDetailPage> {
                           height: 180,
                           color: AppTheme.dividerColor,
                           child: const Center(
-                            child: Icon(Icons.image_not_supported_rounded, size: 48),
+                            child: Icon(
+                              Icons.image_not_supported_rounded,
+                              size: 48,
+                            ),
                           ),
                         ),
                   ),

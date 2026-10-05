@@ -208,7 +208,10 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                     value: 'reject',
                     child: Row(
                       children: [
-                        Icon(Icons.cancel_rounded, color: AppTheme.warningColor),
+                        Icon(
+                          Icons.cancel_rounded,
+                          color: AppTheme.warningColor,
+                        ),
                         const SizedBox(width: AppTheme.spacingS),
                         const Text('إلغاء المشاركة'),
                       ],
@@ -657,7 +660,8 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
           text: isAdult ? 'فئة الكبار' : 'فئة الصغار',
         ),
         AppHeaderBadge(
-          icon: p.isAccepted ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          icon:
+              p.isAccepted ? Icons.check_circle_rounded : Icons.cancel_rounded,
           text: p.isAccepted ? 'مقبول' : 'مرفوض',
         ),
       ],

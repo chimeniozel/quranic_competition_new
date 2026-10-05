@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
-import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 
@@ -166,147 +166,130 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
     return Scaffold(
       appBar: ModernAppBar(
         title: _isEditing ? 'تعديل المستوى' : 'إضافة مستوى جديد',
-        actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-            ),
-        ],
       ),
       body:
           _isLoading && _isEditing
-              ? const LoadingOverlay(child: SizedBox())
+              ? const ModernLoadingIndicator()
               : Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Nom du niveau
-                      ModernCard(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        child: TextFormField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم المستوى',
-                            hintText: 'مثال: مبتدئ، متوسط، متقدم',
-                            prefixIcon: Icon(Icons.quiz_rounded),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'يرجى إدخال اسم المستوى';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Description
-                      ModernCard(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        child: TextFormField(
-                          controller: _descriptionController,
-                          decoration: const InputDecoration(
-                            labelText: 'وصف المستوى',
-                            hintText: 'اشرح محتوى هذا المستوى...',
-                            alignLabelWithHint: true,
-                          ),
-                          maxLines: 3,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'يرجى إدخال وصف المستوى';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Ordre
-                      ModernCard(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        child: TextFormField(
-                          controller: _orderController,
-                          decoration: const InputDecoration(
-                            labelText: 'ترتيب المستوى',
-                            hintText: '1، 2، 3...',
-                            prefixIcon: Icon(Icons.sort_rounded),
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'يرجى إدخال ترتيب المستوى';
-                            }
-                            final order = int.tryParse(value.trim());
-                            if (order == null || order < 1) {
-                              return 'يرجى إدخال رقم صحيح أكبر من 0';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingL),
-
-                      // Informations
-                      ModernCard(
-                        backgroundColor: AppTheme.infoColor.withOpacity(0.1),
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_rounded,
-                              color: AppTheme.infoColor,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppTheme.spacingXS),
-                            Expanded(
-                              child: Text(
-                                'سيتم ترتيب المستويات حسب الرقم المدخل. المستوى رقم 1 سيظهر أولاً.',
-                                style: AppTheme.bodySmall.copyWith(
-                                  color: AppTheme.infoColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingL),
-
-                      // Boutons
-                      Row(
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  children: [
+                    AppSection(
+                      icon: Icons.layers_rounded,
+                      title: 'معلومات المستوى',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: SecondaryButton(
-                              text: 'إلغاء',
-                              onPressed:
-                                  _isLoading ? null : () => context.pop(),
-                              fullWidth: true,
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'اسم المستوى',
+                              hintText: 'مثال: مبتدئ، متوسط، متقدم',
+                              prefixIcon: Icon(Icons.label_rounded),
                             ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'يرجى إدخال اسم المستوى';
+                              }
+                              return null;
+                            },
                           ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: PrimaryButton(
-                              text: _isEditing ? 'تحديث' : 'إنشاء',
-                              onPressed: _isLoading ? null : _saveLevel,
-                              isLoading: _isLoading,
-                              fullWidth: true,
+                          const SizedBox(height: AppTheme.spacingS),
+                          TextFormField(
+                            controller: _descriptionController,
+                            decoration: const InputDecoration(
+                              labelText: 'وصف المستوى',
+                              hintText: 'اشرح محتوى هذا المستوى...',
+                              alignLabelWithHint: true,
                             ),
+                            maxLines: 3,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'يرجى إدخال وصف المستوى';
+                              }
+                              return null;
+                            },
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+                    AppSection(
+                      icon: Icons.format_list_numbered_rounded,
+                      color: AppTheme.secondaryColor,
+                      title: 'الترتيب',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _orderController,
+                            decoration: const InputDecoration(
+                              labelText: 'ترتيب المستوى',
+                              hintText: '1، 2، 3...',
+                              prefixIcon: Icon(Icons.sort_rounded),
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'يرجى إدخال ترتيب المستوى';
+                              }
+                              final order = int.tryParse(value.trim());
+                              if (order == null || order < 1) {
+                                return 'يرجى إدخال رقم صحيح أكبر من 0';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          const AppNotice(
+                            text:
+                                'تُرتَّب المستويات حسب هذا الرقم: المستوى رقم 1 يظهر أولاً.',
+                            icon: Icons.info_rounded,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingL),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : () => context.pop(),
+                            style: AppButtonStyles.outlined(
+                              AppTheme.textSecondaryColor,
+                            ),
+                            icon: const Icon(Icons.close_rounded),
+                            label: const Text('إلغاء'),
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : _saveLevel,
+                            style: AppButtonStyles.filled(
+                              AppTheme.primaryColor,
+                            ),
+                            icon:
+                                _isLoading
+                                    ? const AppButtonLoader()
+                                    : Icon(
+                                      _isEditing
+                                          ? Icons.save_rounded
+                                          : Icons.add_circle_rounded,
+                                    ),
+                            label: Text(
+                              _isEditing ? 'حفظ التعديلات' : 'إضافة المستوى',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.spacingL),
+                  ],
                 ),
               ),
     );

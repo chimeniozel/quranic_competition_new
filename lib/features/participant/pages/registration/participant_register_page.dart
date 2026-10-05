@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:quranic_competition/core/services/participant_service.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
@@ -509,11 +510,13 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
         'type \'Null\' is not a subtype of type \'int\'',
       )) {
         errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في معالجة البيانات';
-        backgroundColor = AppTheme.warningColor; // Orange car l'inscription a réussi
+        backgroundColor =
+            AppTheme.warningColor; // Orange car l'inscription a réussi
       } else if (e.toString().contains('is_accepted') &&
           e.toString().contains('null')) {
         errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في تحديد حالة القبول';
-        backgroundColor = AppTheme.warningColor; // Orange car l'inscription a réussi
+        backgroundColor =
+            AppTheme.warningColor; // Orange car l'inscription a réussi
       } else if (e.toString().contains('التسجيل غير متاح لهذه المسابقة')) {
         errorMessage = 'التسجيل غير متاح لهذه النسخة';
       } else if (e.toString().contains('رقم الهاتف')) {
@@ -595,7 +598,9 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                 AppTheme.radiusM,
                               ),
                               border: Border.all(
-                                color: AppTheme.errorColor.withValues(alpha: 0.3),
+                                color: AppTheme.errorColor.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                             ),
                             child: Column(
@@ -628,437 +633,347 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                         ],
 
                         // Section des informations personnelles
-                        ModernCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
+                        AppSection(
+                          margin: const EdgeInsets.only(
+                            bottom: AppTheme.spacingM,
+                          ),
+                          icon: Icons.person_rounded,
+                          title: 'المعلومات الشخصية',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextFormField(
+                                controller: _fullNameController,
+                                decoration: InputDecoration(
+                                  labelText: 'الاسم الثلاثي',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                  ),
+                                ),
+                                validator:
+                                    (v) =>
+                                        v == null || v.isEmpty
+                                            ? 'هذا الحقل مطلوب'
+                                            : null,
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+
+                              DropdownButtonFormField<String>(
+                                value: _gender,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'ذكر',
+                                    child: Text('ذكر'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'أنثى',
+                                    child: Text('أنثى'),
+                                  ),
+                                ],
+                                onChanged:
+                                    (value) => setState(() => _gender = value),
+                                decoration: InputDecoration(
+                                  labelText: 'الجنس',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                  ),
+                                ),
+                                validator:
+                                    (v) => v == null ? 'اختر الجنس' : null,
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+
+                              TextFormField(
+                                controller: _birthDateController,
+                                readOnly: true,
+                                onTap: _pickBirthDate,
+                                decoration: InputDecoration(
+                                  labelText: 'تاريخ الميلاد',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                  ),
+                                ),
+                                validator:
+                                    (v) =>
+                                        v == null || v.isEmpty
+                                            ? 'هذا الحقل مطلوب'
+                                            : null,
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: Container(
+                                      height: 58,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppTheme.spacingS,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.primaryColor.withValues(
-                                          alpha: 0.1,
-                                        ),
+                                        color: AppTheme.surfaceColor,
                                         borderRadius: BorderRadius.circular(
                                           AppTheme.radiusM,
                                         ),
-                                      ),
-                                      child: Icon(
-                                        Icons.person_rounded,
-                                        color: AppTheme.primaryColor,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Text(
-                                      'المعلومات الشخصية',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                TextFormField(
-                                  controller: _fullNameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'الاسم الثلاثي',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                    ),
-                                  ),
-                                  validator:
-                                      (v) =>
-                                          v == null || v.isEmpty
-                                              ? 'هذا الحقل مطلوب'
-                                              : null,
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                DropdownButtonFormField<String>(
-                                  value: _gender,
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'ذكر',
-                                      child: Text('ذكر'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'أنثى',
-                                      child: Text('أنثى'),
-                                    ),
-                                  ],
-                                  onChanged:
-                                      (value) =>
-                                          setState(() => _gender = value),
-                                  decoration: InputDecoration(
-                                    labelText: 'الجنس',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                    ),
-                                  ),
-                                  validator:
-                                      (v) => v == null ? 'اختر الجنس' : null,
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                TextFormField(
-                                  controller: _birthDateController,
-                                  readOnly: true,
-                                  onTap: _pickBirthDate,
-                                  decoration: InputDecoration(
-                                    labelText: 'تاريخ الميلاد',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                    ),
-                                  ),
-                                  validator:
-                                      (v) =>
-                                          v == null || v.isEmpty
-                                              ? 'هذا الحقل مطلوب'
-                                              : null,
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: Container(
-                                        height: 58,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: AppTheme.spacingS,
+                                        border: Border.all(
+                                          color: AppTheme.dividerColor,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.surfaceColor,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.public_rounded,
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                          const SizedBox(
+                                            width: AppTheme.spacingXS,
+                                          ),
+                                          const Text(
+                                            '+',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: AppTheme.spacingXS,
+                                          ),
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller:
+                                                  _countryCodeController,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              inputFormatters: [
+                                                LengthLimitingTextInputFormatter(
+                                                  4,
+                                                ),
+                                                FilteringTextInputFormatter
+                                                    .digitsOnly,
+                                              ],
+                                              decoration: const InputDecoration(
+                                                border: InputBorder.none,
+                                                isDense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                                hintText: '222',
+                                              ),
+                                              validator: _validateCountryCode,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Expanded(
+                                    flex: 5,
+                                    child: TextFormField(
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      inputFormatters: [
+                                        LengthLimitingTextInputFormatter(12),
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      decoration: InputDecoration(
+                                        labelText: 'رقم الهاتف',
+                                        border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
                                             AppTheme.radiusM,
                                           ),
-                                          border: Border.all(
-                                            color: AppTheme.dividerColor,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.public_rounded,
-                                              color: AppTheme.textSecondaryColor,
-                                            ),
-                                            const SizedBox(
-                                              width: AppTheme.spacingXS,
-                                            ),
-                                            const Text(
-                                              '+',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            const SizedBox(
-                                              width: AppTheme.spacingXS,
-                                            ),
-                                            Expanded(
-                                              child: TextFormField(
-                                                controller:
-                                                    _countryCodeController,
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                inputFormatters: [
-                                                  LengthLimitingTextInputFormatter(
-                                                    4,
-                                                  ),
-                                                  FilteringTextInputFormatter
-                                                      .digitsOnly,
-                                                ],
-                                                decoration:
-                                                    const InputDecoration(
-                                                      border: InputBorder.none,
-                                                      isDense: true,
-                                                      contentPadding:
-                                                          EdgeInsets.zero,
-                                                      hintText: '222',
-                                                    ),
-                                                validator: _validateCountryCode,
-                                              ),
-                                            ),
-                                          ],
                                         ),
                                       ),
+                                      validator: _validatePhone,
                                     ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      flex: 5,
-                                      child: TextFormField(
-                                        controller: _phoneController,
-                                        keyboardType: TextInputType.phone,
-                                        inputFormatters: [
-                                          LengthLimitingTextInputFormatter(12),
-                                          FilteringTextInputFormatter
-                                              .digitsOnly,
-                                        ],
-                                        decoration: InputDecoration(
-                                          labelText: 'رقم الهاتف',
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              AppTheme.radiusM,
-                                            ),
-                                          ),
-                                        ),
-                                        validator: _validatePhone,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: AppTheme.spacingS),
                         // Section des المعلومات القرآنية
-                        ModernCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.successColor.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.menu_book_rounded,
-                                        color: AppTheme.successColor,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Text(
-                                      'المعلومات القرآنية',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                DropdownButtonFormField<String>(
-                                  value: _quranMemorized,
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'القرآن كاملاً',
-                                      child: Text('القرآن كاملاً'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'نصف القرآن',
-                                      child: Text('نصف القرآن'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'أقل من نصف',
-                                      child: Text('أقل من نصف'),
-                                    ),
-                                  ],
-                                  onChanged:
-                                      (value) => setState(
-                                        () => _quranMemorized = value,
-                                      ),
-                                  decoration: InputDecoration(
-                                    labelText: 'كم تحفظ من القرآن',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
+                        AppSection(
+                          margin: const EdgeInsets.only(
+                            bottom: AppTheme.spacingM,
+                          ),
+                          icon: Icons.menu_book_rounded,
+                          color: AppTheme.successColor,
+                          title: 'المعلومات القرآنية',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              DropdownButtonFormField<String>(
+                                value: _quranMemorized,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'القرآن كاملاً',
+                                    child: Text('القرآن كاملاً'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'نصف القرآن',
+                                    child: Text('نصف القرآن'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'أقل من نصف',
+                                    child: Text('أقل من نصف'),
+                                  ),
+                                ],
+                                onChanged:
+                                    (value) =>
+                                        setState(() => _quranMemorized = value),
+                                decoration: InputDecoration(
+                                  labelText: 'كم تحفظ من القرآن',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
                                     ),
                                   ),
-                                  validator:
-                                      (v) =>
-                                          v == null || v.isEmpty
-                                              ? 'اختر مستوى الحفظ'
-                                              : null,
                                 ),
-                                const SizedBox(height: AppTheme.spacingS),
+                                validator:
+                                    (v) =>
+                                        v == null || v.isEmpty
+                                            ? 'اختر مستوى الحفظ'
+                                            : null,
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
 
-                                DropdownButtonFormField<String>(
-                                  value: _readingMethods,
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'رواية واحدة',
-                                      child: Text('رواية واحدة'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'أكثر من رواية',
-                                      child: Text('أكثر من رواية'),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _readingMethods = value;
-                                      // Règle métier 1 : Si plus d'une rواية, alors القرآن كاملاً automatiquement
-                                      if (value == 'أكثر من رواية') {
-                                        _quranMemorized = 'القرآن كاملاً';
-                                      }
-                                      // Si رواية واحدة, alors pas d'إجازة
-                                      else if (value == 'رواية واحدة') {
-                                        _hasIjaza = false;
-                                      }
-                                    });
-                                  },
-                                  decoration: InputDecoration(
-                                    labelText: 'كم رواية تقرأ بها',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
+                              DropdownButtonFormField<String>(
+                                value: _readingMethods,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'رواية واحدة',
+                                    child: Text('رواية واحدة'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'أكثر من رواية',
+                                    child: Text('أكثر من رواية'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _readingMethods = value;
+                                    // Règle métier 1 : Si plus d'une rواية, alors القرآن كاملاً automatiquement
+                                    if (value == 'أكثر من رواية') {
+                                      _quranMemorized = 'القرآن كاملاً';
+                                    }
+                                    // Si رواية واحدة, alors pas d'إجازة
+                                    else if (value == 'رواية واحدة') {
+                                      _hasIjaza = false;
+                                    }
+                                  });
+                                },
+                                decoration: InputDecoration(
+                                  labelText: 'كم رواية تقرأ بها',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
                                     ),
                                   ),
-                                  validator:
-                                      (v) =>
-                                          v == null || v.isEmpty
-                                              ? 'اختر عدد الروايات'
-                                              : null,
                                 ),
-                                const SizedBox(height: AppTheme.spacingS),
+                                validator:
+                                    (v) =>
+                                        v == null || v.isEmpty
+                                            ? 'اختر عدد الروايات'
+                                            : null,
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
 
-                                DropdownButtonFormField<String>(
-                                  value: _residence,
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'داخل موريتانيا',
-                                      child: Text('داخل موريتانيا'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'خارج موريتانيا',
-                                      child: Text('خارج موريتانيا'),
-                                    ),
-                                  ],
-                                  onChanged:
-                                      (value) =>
-                                          setState(() => _residence = value),
-                                  decoration: InputDecoration(
-                                    labelText: 'مكان الإقامة الحالية',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
+                              DropdownButtonFormField<String>(
+                                value: _residence,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'داخل موريتانيا',
+                                    child: Text('داخل موريتانيا'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'خارج موريتانيا',
+                                    child: Text('خارج موريتانيا'),
+                                  ),
+                                ],
+                                onChanged:
+                                    (value) =>
+                                        setState(() => _residence = value),
+                                decoration: InputDecoration(
+                                  labelText: 'مكان الإقامة الحالية',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
                                     ),
                                   ),
-                                  validator:
-                                      (v) =>
-                                          v == null || v.isEmpty
-                                              ? 'اختر مكان الإقامة'
-                                              : null,
                                 ),
-                              ],
-                            ),
+                                validator:
+                                    (v) =>
+                                        v == null || v.isEmpty
+                                            ? 'اختر مكان الإقامة'
+                                            : null,
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: AppTheme.spacingS),
 
                         // Section des questions supplémentaires
-                        ModernCard(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.warningColor.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.help_outline_rounded,
-                                        color: AppTheme.warningColor,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Text(
-                                      'أسئلة إضافية',
-                                      style: AppTheme.labelLarge.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
+                        AppSection(
+                          margin: const EdgeInsets.only(
+                            bottom: AppTheme.spacingM,
+                          ),
+                          icon: Icons.help_outline_rounded,
+                          color: AppTheme.warningColor,
+                          title: 'أسئلة إضافية',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildSwitchTile(
+                                title: 'هل حصلت على إجازة؟',
+                                value: _hasIjaza,
+                                onChanged: (v) {
+                                  setState(() {
+                                    _hasIjaza = v;
+                                    // Règle métier 1 : Si إجازة, alors القرآن كاملاً automatiquement
+                                    if (v) {
+                                      _quranMemorized = 'القرآن كاملاً';
+                                    }
+                                    // Si pas d'إجازة, alors forcément رواية واحدة
+                                    else if (!v) {
+                                      _readingMethods = 'رواية واحدة';
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
 
-                                _buildSwitchTile(
-                                  title: 'هل حصلت على إجازة؟',
-                                  value: _hasIjaza,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _hasIjaza = v;
-                                      // Règle métier 1 : Si إجازة, alors القرآن كاملاً automatiquement
-                                      if (v) {
-                                        _quranMemorized = 'القرآن كاملاً';
-                                      }
-                                      // Si pas d'إجازة, alors forcément رواية واحدة
-                                      else if (!v) {
-                                        _readingMethods = 'رواية واحدة';
-                                      }
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
+                              _buildSwitchTile(
+                                title: 'هل شاركت في نسخة ماضية؟',
+                                value: _participatedBefore,
+                                onChanged: (v) {
+                                  setState(() {
+                                    _participatedBefore = v;
+                                    // Si on décoche "شاركت في نسخة ماضية", alors décocher automatiquement "حصلت على المراتب"
+                                    if (!v) {
+                                      _wonPreviousRanks = false;
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: AppTheme.spacingS),
 
-                                _buildSwitchTile(
-                                  title: 'هل شاركت في نسخة ماضية؟',
-                                  value: _participatedBefore,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _participatedBefore = v;
-                                      // Si on décoche "شاركت في نسخة ماضية", alors décocher automatiquement "حصلت على المراتب"
-                                      if (!v) {
-                                        _wonPreviousRanks = false;
-                                      }
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                _buildSwitchTile(
-                                  title:
-                                      'هل حصلت على المراتب 1 إلى 2 في مسابقة أهل القرآن الواتسابية أو غيرها؟',
-                                  value: _wonPreviousRanks,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _wonPreviousRanks = v;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
+                              _buildSwitchTile(
+                                title:
+                                    'هل حصلت على المراتب 1 إلى 2 في مسابقة أهل القرآن الواتسابية أو غيرها؟',
+                                value: _wonPreviousRanks,
+                                onChanged: (v) {
+                                  setState(() {
+                                    _wonPreviousRanks = v;
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: AppTheme.spacingS),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_network_image.dart';
+import 'package:quranic_competition/core/utils/youtube_utils.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
@@ -61,126 +63,11 @@ class TajweedRuleDetailPage extends StatelessWidget {
     return url;
   }
 
-  String _extractVideoId(String url) {
-    if (url.isEmpty) return '';
-
-    try {
-      // Handle youtu.be short URLs
-      if (url.contains('youtu.be/')) {
-        final parts = url.split('youtu.be/');
-        if (parts.length > 1) {
-          final videoId = parts[1].split('?')[0].split('&')[0];
-          return videoId;
-        }
-      }
-
-      // Handle youtube.com URLs
-      if (url.contains('youtube.com')) {
-        final uri = Uri.tryParse(url);
-        if (uri != null) {
-          // Try query parameter first
-          final videoId = uri.queryParameters['v'];
-          if (videoId != null && videoId.isNotEmpty) {
-            return videoId;
-          }
-
-          // Try path segments for embed URLs
-          if (uri.pathSegments.contains('embed')) {
-            final embedIndex = uri.pathSegments.indexOf('embed');
-            if (embedIndex + 1 < uri.pathSegments.length) {
-              return uri.pathSegments[embedIndex + 1].split('?')[0];
-            }
-          }
-
-          // Try watch path
-          if (uri.pathSegments.contains('watch') &&
-              uri.queryParameters.containsKey('v')) {
-            return uri.queryParameters['v']!;
-          }
-        }
-      }
-
-      // Try to extract from any YouTube URL pattern
-      final regex = RegExp(
-        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
-      );
-      final match = regex.firstMatch(url);
-      if (match != null && match.groupCount >= 1) {
-        return match.group(1) ?? '';
-      }
-    } catch (e) {
-      print('Error extracting video ID: $e');
-    }
-
-    return '';
-  }
+  String _extractVideoId(String url) => YoutubeUtils.videoId(url);
 
   Widget _buildVideoThumbnail(String videoUrl) {
-    final videoId = _extractVideoId(videoUrl);
-
-    if (videoId.isEmpty) {
-      return Container(
-        height: 250,
-        width: double.infinity,
-        color: AppTheme.backgroundColor,
-        child: const Center(
-          child: Icon(
-            Icons.video_library_rounded,
-            size: 50,
-            color: AppTheme.textSecondaryColor,
-          ),
-        ),
-      );
-    }
-
-    // Try maxresdefault first, then hqdefault as fallback
-    return Image.network(
-      'https://img.youtube.com/vi/$videoId/maxresdefault.jpg',
-      width: double.infinity,
-      height: 250,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          height: 250,
-          width: double.infinity,
-          color: AppTheme.backgroundColor,
-          child: Center(
-            child: CircularProgressIndicator(
-              value:
-                  loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        // Fallback to hqdefault if maxresdefault fails
-        return Image.network(
-          'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
-          width: double.infinity,
-          height: 250,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            // Final fallback
-            return Container(
-              height: 250,
-              width: double.infinity,
-              color: AppTheme.backgroundColor,
-              child: const Center(
-                child: Icon(
-                  Icons.video_library_rounded,
-                  size: 50,
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+    // Miniature standard (toujours disponible) + indicateur de chargement
+    return YoutubeThumbnail.fromUrl(videoUrl);
   }
 
   void _share() {

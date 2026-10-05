@@ -482,4 +482,95 @@ class UserManagementService {
       throw Exception('خطأ أثناء حذف المستخدم: ${e.toString()}');
     }
   }
+
+  /// Supprime un lot de comptes non confirmés.
+  ///
+  /// Un seul appel à la fonction SQL `delete_unvalidated_users` quand elle
+  /// est installée ; sinon, repli : une requête pour repérer les محكمين
+  /// affectés, puis les suppressions individuelles en parallèle (par paquets
+  /// de [_bulkConcurrency]). [onProgress] reçoit (traités, total).
+  Future<BulkDeleteResult> deleteUnvalidatedUsers(
+    List<String> userIds, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    if (userIds.isEmpty) return const BulkDeleteResult();
+
+    try {
+      final response = await _supabase.rpc(
+        'delete_unvalidated_users',
+        params: {'user_ids': userIds},
+      );
+      final data = Map<String, dynamic>.from(response as Map);
+      final deleted = List<String>.from(data['deleted'] ?? const []);
+      final skipped = List<String>.from(data['skipped'] ?? const []);
+      onProgress?.call(userIds.length, userIds.length);
+      return BulkDeleteResult(
+        deletedIds: deleted,
+        skippedIds: skipped,
+        failedIds:
+            userIds
+                .where((id) => !deleted.contains(id) && !skipped.contains(id))
+                .toList(),
+      );
+    } on PostgrestException catch (e) {
+      // PGRST202 : fonction absente (migration non appliquée) → repli
+      if (e.code != 'PGRST202') rethrow;
+    }
+
+    return _deleteUnvalidatedUsersOneByOne(userIds, onProgress: onProgress);
+  }
+
+  static const int _bulkConcurrency = 5;
+
+  Future<BulkDeleteResult> _deleteUnvalidatedUsersOneByOne(
+    List<String> userIds, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    // Une seule requête pour tous les محكمين affectés à une جولة
+    final assigned = await _supabase
+        .from('round_jury_assignments')
+        .select('user_id')
+        .inFilter('user_id', userIds);
+    final skipped = {for (final row in assigned) row['user_id'] as String};
+
+    final deleted = <String>[];
+    final failed = <String>[];
+    final toDelete = userIds.where((id) => !skipped.contains(id)).toList();
+    var done = skipped.length;
+    onProgress?.call(done, userIds.length);
+
+    for (var i = 0; i < toDelete.length; i += _bulkConcurrency) {
+      final chunk = toDelete.skip(i).take(_bulkConcurrency);
+      await Future.wait(
+        chunk.map((id) async {
+          try {
+            await deleteUser(id);
+            deleted.add(id);
+          } catch (e) {
+            failed.add(id);
+          }
+          onProgress?.call(++done, userIds.length);
+        }),
+      );
+    }
+
+    return BulkDeleteResult(
+      deletedIds: deleted,
+      skippedIds: skipped.toList(),
+      failedIds: failed,
+    );
+  }
+}
+
+/// Bilan d'une suppression groupée
+class BulkDeleteResult {
+  final List<String> deletedIds;
+  final List<String> skippedIds;
+  final List<String> failedIds;
+
+  const BulkDeleteResult({
+    this.deletedIds = const [],
+    this.skippedIds = const [],
+    this.failedIds = const [],
+  });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -364,7 +365,9 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                         AppTheme.radiusM,
                                       ),
                                     ),
-                                    prefixIcon: const Icon(Icons.emoji_events_rounded),
+                                    prefixIcon: const Icon(
+                                      Icons.emoji_events_rounded,
+                                    ),
                                   ),
                                   items:
                                       _versions.map((version) {
@@ -395,145 +398,126 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
 
                         // Aperçu global des images sélectionnées
                         if (_getAllSelectedImages().isNotEmpty) ...[
-                          ModernCard(
-                            child: Padding(
-                              padding: const EdgeInsets.all(AppTheme.spacingS),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.photo_library_rounded,
-                                        color: AppTheme.primaryColor,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Text(
-                                        'ألبوم الصور المحددة (${_getAllSelectedImages().length})',
-                                        style: AppTheme.bodyLarge.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppTheme.primaryColor,
+                          AppSection(
+                            margin: const EdgeInsets.only(
+                              bottom: AppTheme.spacingM,
+                            ),
+                            icon: Icons.photo_library_rounded,
+                            title:
+                                'ألبوم الصور المحددة (${_getAllSelectedImages().length})',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Container(
+                                  height: 120,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _getAllSelectedImages().length,
+                                    itemBuilder: (context, index) {
+                                      final imageFile =
+                                          _getAllSelectedImages()[index];
+                                      return Container(
+                                        margin: const EdgeInsets.only(
+                                          right: AppTheme.spacingS,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppTheme.spacingS),
-                                  Container(
-                                    height: 120,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: _getAllSelectedImages().length,
-                                      itemBuilder: (context, index) {
-                                        final imageFile =
-                                            _getAllSelectedImages()[index];
-                                        return Container(
-                                          margin: const EdgeInsets.only(
-                                            right: AppTheme.spacingS,
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            AppTheme.radiusM,
                                           ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              AppTheme.radiusM,
-                                            ),
-                                            child: Stack(
-                                              children: [
-                                                Image.file(
-                                                  imageFile,
-                                                  width: 120,
-                                                  height: 120,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) {
-                                                    return Container(
-                                                      width: 120,
-                                                      height: 120,
+                                          child: Stack(
+                                            children: [
+                                              Image.file(
+                                                imageFile,
+                                                width: 120,
+                                                height: 120,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) {
+                                                  return Container(
+                                                    width: 120,
+                                                    height: 120,
+                                                    color:
+                                                        AppTheme
+                                                            .backgroundColor,
+                                                    child: Icon(
+                                                      Icons.error_rounded,
                                                       color:
-                                                          AppTheme
-                                                              .backgroundColor,
-                                                      child: Icon(
-                                                        Icons.error_rounded,
-                                                        color:
-                                                            AppTheme.errorColor,
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                                // Bouton de suppression
-                                                Positioned(
-                                                  top: AppTheme.spacingS,
-                                                  right: AppTheme.spacingS,
-                                                  child: GestureDetector(
-                                                    onTap:
-                                                        () =>
-                                                            _removeImageFromGlobalGallery(
-                                                              index,
-                                                            ),
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            4,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            AppTheme.errorColor,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              AppTheme.radiusS,
-                                                            ),
-                                                      ),
-                                                      child: Icon(
-                                                        Icons.close_rounded,
-                                                        color:
-                                                            AppTheme
-                                                                .surfaceColor,
-                                                        size: 16,
-                                                      ),
+                                                          AppTheme.errorColor,
                                                     ),
-                                                  ),
-                                                ),
-                                                // Numéro de l'image
-                                                Positioned(
-                                                  bottom: AppTheme.spacingS,
-                                                  left: AppTheme.spacingS,
+                                                  );
+                                                },
+                                              ),
+                                              // Bouton de suppression
+                                              Positioned(
+                                                top: AppTheme.spacingS,
+                                                right: AppTheme.spacingS,
+                                                child: GestureDetector(
+                                                  onTap:
+                                                      () =>
+                                                          _removeImageFromGlobalGallery(
+                                                            index,
+                                                          ),
                                                   child: Container(
                                                     padding:
                                                         const EdgeInsets.all(4),
                                                     decoration: BoxDecoration(
-                                                      color: AppTheme
-                                                          .textPrimaryColor
-                                                          .withValues(
-                                                            alpha: 0.8,
-                                                          ),
+                                                      color:
+                                                          AppTheme.errorColor,
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             AppTheme.radiusS,
                                                           ),
                                                     ),
-                                                    child: Text(
-                                                      '${index + 1}',
-                                                      style: AppTheme.bodySmall
-                                                          .copyWith(
-                                                            color:
-                                                                AppTheme
-                                                                    .surfaceColor,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
+                                                    child: Icon(
+                                                      Icons.close_rounded,
+                                                      color:
+                                                          AppTheme.surfaceColor,
+                                                      size: 16,
                                                     ),
                                                   ),
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                              // Numéro de l'image
+                                              Positioned(
+                                                bottom: AppTheme.spacingS,
+                                                left: AppTheme.spacingS,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme
+                                                        .textPrimaryColor
+                                                        .withValues(alpha: 0.8),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          AppTheme.radiusS,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    '${index + 1}',
+                                                    style: AppTheme.bodySmall
+                                                        .copyWith(
+                                                          color:
+                                                              AppTheme
+                                                                  .surfaceColor,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        );
-                                      },
-                                    ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: AppTheme.spacingS),
@@ -646,7 +630,10 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 value: MediaType.video,
                 child: Row(
                   children: [
-                    Icon(Icons.video_library_rounded, color: AppTheme.errorColor),
+                    Icon(
+                      Icons.video_library_rounded,
+                      color: AppTheme.errorColor,
+                    ),
                     const SizedBox(width: AppTheme.spacingS),
                     const Text('فيديو'),
                   ],

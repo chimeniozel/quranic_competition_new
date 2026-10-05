@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
@@ -33,7 +34,9 @@ class _ParticipantCompetitionArchivesPageState
   List<ArchiveMedia> _filteredMedia = [];
   String? _competitionName;
   bool _isLoading = true;
-  String _selectedFilter = 'all'; // 'all', 'video', 'image'
+  String _selectedFilter = 'all';
+  // Vidéo en cours d'ouverture (indicateur sur sa vignette)
+  String? _openingVideoUrl; // 'all', 'video', 'image'
 
   @override
   void initState() {
@@ -75,129 +78,15 @@ class _ParticipantCompetitionArchivesPageState
     }
   }
 
-  String _extractVideoId(String url) {
-    if (url.isEmpty) return '';
-
-    try {
-      // Handle youtu.be short URLs
-      if (url.contains('youtu.be/')) {
-        final parts = url.split('youtu.be/');
-        if (parts.length > 1) {
-          final videoId = parts[1].split('?')[0].split('&')[0];
-          return videoId;
-        }
-      }
-
-      // Handle youtube.com URLs
-      if (url.contains('youtube.com')) {
-        final uri = Uri.tryParse(url);
-        if (uri != null) {
-          // Try query parameter first
-          final videoId = uri.queryParameters['v'];
-          if (videoId != null && videoId.isNotEmpty) {
-            return videoId;
-          }
-
-          // Try path segments for embed URLs
-          if (uri.pathSegments.contains('embed')) {
-            final embedIndex = uri.pathSegments.indexOf('embed');
-            if (embedIndex + 1 < uri.pathSegments.length) {
-              return uri.pathSegments[embedIndex + 1].split('?')[0];
-            }
-          }
-
-          // Try watch path
-          if (uri.pathSegments.contains('watch') &&
-              uri.queryParameters.containsKey('v')) {
-            return uri.queryParameters['v']!;
-          }
-        }
-      }
-
-      // Try to extract from any YouTube URL pattern
-      final regex = RegExp(
-        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
-      );
-      final match = regex.firstMatch(url);
-      if (match != null && match.groupCount >= 1) {
-        return match.group(1) ?? '';
-      }
-    } catch (e) {
-      print('Error extracting video ID: $e');
-    }
-
-    return '';
-  }
 
   Widget _buildVideoThumbnail(String videoUrl) {
-    final videoId = _extractVideoId(videoUrl);
-
-    if (videoId.isEmpty) {
-      return Container(
-        height: double.infinity,
-        width: double.infinity,
-        color: AppTheme.errorColor,
-        child: const Center(
-          child: Icon(
-            Icons.video_library_rounded,
-            size: 50,
-            color: Colors.white,
-          ),
-        ),
-      );
-    }
-
-    // Try maxresdefault first, then hqdefault as fallback
-    return Image.network(
-      'https://img.youtube.com/vi/$videoId/maxresdefault.jpg',
-      width: double.infinity,
-      height: double.infinity,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          height: double.infinity,
-          width: double.infinity,
-          color: AppTheme.backgroundColor,
-          child: Center(
-            child: CircularProgressIndicator(
-              value:
-                  loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : null,
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        // Fallback to hqdefault if maxresdefault fails
-        return Image.network(
-          'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
-          width: double.infinity,
-          height: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            // Final fallback
-            return Container(
-              height: double.infinity,
-              width: double.infinity,
-              color: AppTheme.errorColor,
-              child: const Center(
-                child: Icon(
-                  Icons.video_library_rounded,
-                  size: 50,
-                  color: Colors.white,
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+    // Miniature standard (toujours disponible) + indicateur de chargement
+    return YoutubeThumbnail.fromUrl(videoUrl);
   }
 
   Future<void> _launchVideo(String url) async {
+    if (_openingVideoUrl != null) return;
+    setState(() => _openingVideoUrl = url);
     try {
       // Convertir l'URL YouTube en format mobile
       String mobileUrl = url;
@@ -207,27 +96,29 @@ class _ParticipantCompetitionArchivesPageState
       }
 
       final uri = Uri.parse(mobileUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('لا يمكن فتح الفيديو'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
+      final opened =
+          await canLaunchUrl(uri) &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في فتح الفيديو: $e'),
+          const SnackBar(
+            content: Text('لا يمكن فتح الفيديو'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
       }
+    } catch (e) {
+      debugPrint('Erreur lors de l\'ouverture de la vidéo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر فتح الفيديو'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingVideoUrl = null);
     }
   }
 
@@ -307,33 +198,10 @@ class _ParticipantCompetitionArchivesPageState
                           clipBehavior: Clip.none,
                           minScale: 0.8,
                           maxScale: 4.0,
-                          child: Image.network(
-                            imageUrl,
+                          child: AppNetworkImage(
+                            url: imageUrl,
                             fit: BoxFit.contain,
                             width: double.infinity,
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value:
-                                      progress.expectedTotalBytes != null
-                                          ? progress.cumulativeBytesLoaded /
-                                              progress.expectedTotalBytes!
-                                          : null,
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: AppTheme.dividerColor,
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.image_not_supported_rounded,
-                                    size: 64,
-                                  ),
-                                ),
-                              );
-                            },
                           ),
                         ),
                       ),
@@ -419,15 +287,29 @@ class _ParticipantCompetitionArchivesPageState
                     fit: StackFit.expand,
                     children: [
                       _buildVideoThumbnail(media.url),
-                      // Bouton play transparent au centre
+                      // Bouton lecture, ou indicateur pendant l'ouverture
                       Center(
                         child: Container(
                           padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Icon(
-                            Icons.play_circle_filled_rounded,
-                            color: Colors.white.withOpacity(0.7),
-                            size: 64,
+                          decoration: const BoxDecoration(
+                            color: Colors.black45,
+                            shape: BoxShape.circle,
                           ),
+                          child:
+                              _openingVideoUrl == media.url
+                                  ? const SizedBox(
+                                    width: 32,
+                                    height: 32,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
                         ),
                       ),
                       // Titre en bas
@@ -455,24 +337,10 @@ class _ParticipantCompetitionArchivesPageState
                     ],
                   )
                   : // Image : expansion complète sans titre
-                  Image.network(
-                    media.url,
-                    fit: BoxFit.cover,
+                  AppNetworkImage(
+                    url: media.url,
                     width: double.infinity,
                     height: double.infinity,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: double.infinity,
-                        height: double.infinity,
-                        color: AppTheme.backgroundColor,
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_not_supported_rounded,
-                            size: 32,
-                          ),
-                        ),
-                      );
-                    },
                   ),
         ),
       ),

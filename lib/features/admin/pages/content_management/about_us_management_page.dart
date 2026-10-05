@@ -347,9 +347,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
-                                    Icons.title_rounded,
-                                  ),
+                                  prefixIcon: const Icon(Icons.title_rounded),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
@@ -454,7 +452,9 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                                     return Container(
                                                       height: 300,
                                                       decoration: BoxDecoration(
-                                                        gradient: AppTheme.primaryGradient,
+                                                        gradient:
+                                                            AppTheme
+                                                                .primaryGradient,
                                                       ),
                                                       child: const Center(
                                                         child: FaIcon(
@@ -601,9 +601,7 @@ class _AboutUsManagementPageState extends State<AboutUsManagementPage> {
                                       AppTheme.radiusM,
                                     ),
                                   ),
-                                  prefixIcon: const Icon(
-                                    Icons.email_rounded,
-                                  ),
+                                  prefixIcon: const Icon(Icons.email_rounded),
                                 ),
                               ),
                               const SizedBox(height: AppTheme.spacingS),

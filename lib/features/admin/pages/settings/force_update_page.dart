@@ -507,7 +507,9 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
                   ),
                 ),
                 Icon(
-                  _showAdvanced ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  _showAdvanced
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
                   color: AppTheme.textSecondaryColor,
                 ),
               ],

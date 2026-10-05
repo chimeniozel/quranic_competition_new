@@ -899,7 +899,11 @@ class _VersionResultPageState extends State<VersionResultPage> {
         child: Center(
           child:
               rank <= 3
-                  ? Icon(Icons.emoji_events_rounded, color: medalColor, size: 22)
+                  ? Icon(
+                    Icons.emoji_events_rounded,
+                    color: medalColor,
+                    size: 22,
+                  )
                   : Text(
                     '$rank',
                     style: AppTheme.bodyLarge.copyWith(
@@ -919,10 +923,15 @@ class _VersionResultPageState extends State<VersionResultPage> {
         AppTag(
           text: result.passed ? 'ناجح' : 'لم ينجح',
           color: statusColor,
-          icon: result.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          icon:
+              result.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
         ),
         if (rank <= 3)
-          AppTag(text: 'المركز $rank', color: medalColor, icon: Icons.star_rounded),
+          AppTag(
+            text: 'المركز $rank',
+            color: medalColor,
+            icon: Icons.star_rounded,
+          ),
       ],
       trailing: Column(
         mainAxisSize: MainAxisSize.min,
@@ -981,7 +990,9 @@ class _VersionResultPageState extends State<VersionResultPage> {
                       _isPublishing
                           ? const AppButtonLoader()
                           : Icon(
-                            _published ? Icons.refresh_rounded : Icons.publish_rounded,
+                            _published
+                                ? Icons.refresh_rounded
+                                : Icons.publish_rounded,
                             size: 18,
                           ),
                   label: FittedBox(

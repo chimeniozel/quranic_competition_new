@@ -228,6 +228,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                 ),
               ),
               PopupMenuButton<String>(
+                icon: appMenuIcon,
                 onSelected: (value) {
                   switch (value) {
                     case 'edit':
@@ -245,15 +246,10 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                   // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
                   if (permissionService.canModifySync()) {
                     items.add(
-                      PopupMenuItem(
+                      appMenuItem(
                         value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_rounded, size: 16),
-                            SizedBox(width: 8),
-                            Text('تعديل'),
-                          ],
-                        ),
+                        icon: Icons.edit_rounded,
+                        label: 'تعديل',
                       ),
                     );
                   }
@@ -261,15 +257,11 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                   // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
                   if (permissionService.canDeleteSync()) {
                     items.add(
-                      PopupMenuItem(
+                      appMenuItem(
                         value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_rounded, size: 16, color: AppTheme.errorColor),
-                            SizedBox(width: 8),
-                            Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
-                          ],
-                        ),
+                        icon: Icons.delete_rounded,
+                        label: 'حذف',
+                        color: AppTheme.errorColor,
                       ),
                     );
                   }
@@ -366,12 +358,13 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                 ),
               ),
       floatingActionButton: CanModifyGuard(
-        child: ModernFAB(
+        child: FloatingActionButton.extended(
           onPressed:
               () => context.push(
                 '/admin/quiz/questions/add?levelId=${widget.levelId}',
               ),
-          icon: Icons.add_rounded,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('سؤال جديد'),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/services/benefit_read_store.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
@@ -21,6 +22,8 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
   final ScrollController _scrollController = ScrollController();
 
   List<QuranicBenefit> _benefits = [];
+  // فوائد déjà ouvertes sur cet appareil : plus signalées comme « جديد »
+  Set<String> _readIds = {};
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
@@ -31,6 +34,7 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _loadBenefits(reset: true);
+    _loadReadIds();
   }
 
   @override
@@ -104,12 +108,23 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
 
   Future<void> _loadMoreBenefits() => _loadBenefits(reset: false);
 
-  void _openBenefit(QuranicBenefit benefit) {
-    context.push('/participant/benefits/${benefit.id}', extra: benefit);
+  Future<void> _loadReadIds() async {
+    final ids = await BenefitReadStore().readIds();
+    if (mounted) setState(() => _readIds = ids);
   }
 
-  /// Publiée depuis moins de 7 jours
+  Future<void> _openBenefit(QuranicBenefit benefit) async {
+    // Le badge « جديد » disparaît tout de suite pour cette فائدة
+    setState(() => _readIds = {..._readIds, benefit.id});
+    BenefitReadStore().markRead(benefit.id);
+
+    await context.push('/participant/benefits/${benefit.id}', extra: benefit);
+    if (mounted) _loadReadIds();
+  }
+
+  /// Publiée depuis moins de 7 jours et pas encore ouverte sur cet appareil
   bool _isNew(QuranicBenefit benefit) =>
+      !_readIds.contains(benefit.id) &&
       DateTime.now().difference(benefit.createdAt).inDays < 7;
 
   /// Aperçu « citation » : titre, image réduite et début du texte. Le texte

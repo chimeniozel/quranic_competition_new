@@ -593,7 +593,13 @@ class AppStatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color:
-          selected ? color.withValues(alpha: 0.16) : AppTheme.backgroundColor,
+          // Teinte opaque : lisible aussi sur le dégradé d'un en-tête
+          selected
+              ? Color.alphaBlend(
+                color.withValues(alpha: 0.16),
+                AppTheme.backgroundColor,
+              )
+              : AppTheme.backgroundColor,
       borderRadius: BorderRadius.circular(AppTheme.radiusM),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -678,4 +684,128 @@ class AppButtonLoader extends StatelessWidget {
       child: CircularProgressIndicator(strokeWidth: 2, color: color),
     );
   }
+}
+
+/// Élément de menu d'actions (modifier, activer, supprimer...) : même
+/// icône, même taille et même couleur sémantique dans toute l'application.
+PopupMenuItem<T> appMenuItem<T>({
+  required T value,
+  required IconData icon,
+  required String label,
+  Color? color,
+}) {
+  final effectiveColor = color ?? AppTheme.textPrimaryColor;
+  return PopupMenuItem<T>(
+    value: value,
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: color ?? AppTheme.textSecondaryColor),
+        const SizedBox(width: AppTheme.spacingS),
+        Text(
+          label,
+          style: AppTheme.bodyMedium.copyWith(
+            color: effectiveColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Bouton « ⋮ » des menus d'actions
+const Icon appMenuIcon = Icon(Icons.more_vert_rounded);
+
+/// Fenêtre de confirmation commune : icône dans un cercle coloré, titre,
+/// message, avertissement facultatif et deux boutons pleine largeur.
+///
+/// Retourne true uniquement si l'utilisateur confirme.
+Future<bool> showAppConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required IconData icon,
+  Color color = AppTheme.primaryColor,
+  String confirmText = 'تأكيد',
+  IconData? confirmIcon,
+  String cancelText = 'إلغاء',
+  String? warning,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder:
+        (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingL),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(AppTheme.spacingM),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 32, color: color),
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingM),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTheme.headingSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.spacingS),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.textSecondaryColor,
+                    height: 1.5,
+                  ),
+                ),
+                if (warning != null) ...[
+                  const SizedBox(height: AppTheme.spacingM),
+                  AppNotice(
+                    text: warning,
+                    color: AppTheme.errorColor,
+                    icon: Icons.warning_amber_rounded,
+                  ),
+                ],
+                const SizedBox(height: AppTheme.spacingL),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: AppButtonStyles.outlined(
+                          AppTheme.textSecondaryColor,
+                        ),
+                        child: Text(cancelText),
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: AppButtonStyles.filled(color),
+                        icon: Icon(confirmIcon ?? icon, size: 20),
+                        label: FittedBox(child: Text(confirmText)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+  );
+  return confirmed == true;
 }

@@ -153,124 +153,104 @@ class _EidSessionPageState extends State<EidSessionPage> {
               children: [
                 // Affichage des gagnants - Toujours visible en haut
                 if (_winners.isNotEmpty) ...[
-                  ModernCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.emoji_events_rounded,
-                                color: AppTheme.secondaryColor,
-                                size: 24,
+                  AppSection(
+                    margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
+                    icon: Icons.emoji_events_rounded,
+                    color: AppTheme.secondaryColor,
+                    title: '🎉 الفائزون 🎉',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_isLoadingWinners)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(AppTheme.spacingL),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else
+                          ...List.generate(_winners.length, (index) {
+                            final winner = _winners[index];
+                            return Container(
+                              margin: const EdgeInsets.only(
+                                bottom: AppTheme.spacingS,
                               ),
-                              const SizedBox(width: AppTheme.spacingS),
-                              Text(
-                                '🎉 الفائزون 🎉',
-                                style: AppTheme.headingSmall.copyWith(
-                                  color: AppTheme.secondaryColor,
-                                  fontWeight: FontWeight.bold,
+                              padding: const EdgeInsets.all(AppTheme.spacingS),
+                              decoration: BoxDecoration(
+                                color: AppTheme.secondaryColor.withValues(
+                                  alpha: 0.08,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppTheme.spacingS),
-                          if (_isLoadingWinners)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(AppTheme.spacingL),
-                                child: CircularProgressIndicator(),
-                              ),
-                            )
-                          else
-                            ...List.generate(_winners.length, (index) {
-                              final winner = _winners[index];
-                              return Container(
-                                margin: const EdgeInsets.only(
-                                  bottom: AppTheme.spacingS,
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusM,
                                 ),
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
+                                border: Border.all(
                                   color: AppTheme.secondaryColor.withValues(
-                                    alpha: 0.08,
+                                    alpha: 0.3,
                                   ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusM,
-                                  ),
-                                  border: Border.all(
-                                    color: AppTheme.secondaryColor.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    width: 1.5,
-                                  ),
+                                  width: 1.5,
                                 ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: AppTheme.primaryGradient,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '${index + 1}',
-                                          style: AppTheme.headingSmall.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: AppTheme.primaryGradient,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: AppTheme.headingSmall.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Icon(
-                                      winner.gender == 'ذكر'
-                                          ? Icons.male_rounded
-                                          : Icons.female_rounded,
-                                      color:
-                                          winner.gender == 'ذكر'
-                                              ? AppTheme.infoColor
-                                              : AppTheme.accentColor,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            winner.fullName,
-                                            style: AppTheme.bodyMedium.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.secondaryColor,
-                                            ),
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Icon(
+                                    winner.gender == 'ذكر'
+                                        ? Icons.male_rounded
+                                        : Icons.female_rounded,
+                                    color:
+                                        winner.gender == 'ذكر'
+                                            ? AppTheme.infoColor
+                                            : AppTheme.accentColor,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingS),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          winner.fullName,
+                                          style: AppTheme.bodyMedium.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.secondaryColor,
                                           ),
-                                          Text(
-                                            winner.phone,
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color:
-                                                  AppTheme.textSecondaryColor,
-                                            ),
+                                        ),
+                                        Text(
+                                          winner.phone,
+                                          style: AppTheme.bodySmall.copyWith(
+                                            color: AppTheme.textSecondaryColor,
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
-                                    Icon(
-                                      Icons.emoji_events_rounded,
-                                      color: AppTheme.secondaryColor,
-                                      size: 28,
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                        ],
-                      ),
+                                  ),
+                                  Icon(
+                                    Icons.emoji_events_rounded,
+                                    color: AppTheme.secondaryColor,
+                                    size: 28,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                      ],
                     ),
                   ),
                   const SizedBox(height: AppTheme.spacingS),

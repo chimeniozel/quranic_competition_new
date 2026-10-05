@@ -177,9 +177,10 @@ class _NewCompetitionArchivesPageState
           ),
         ],
       ),
-      floatingActionButton: ModernFAB(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/admin/archives/batch-add'),
-        icon: Icons.add_box_rounded,
+        icon: const Icon(Icons.add_photo_alternate_rounded),
+        label: const Text('إضافة وسائط'),
       ),
       body:
           _isLoading

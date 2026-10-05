@@ -100,7 +100,10 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
+                child: const Text(
+                  'حذف',
+                  style: TextStyle(color: AppTheme.errorColor),
+                ),
               ),
             ],
           ),
@@ -163,7 +166,10 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
               level.isActive
                   ? AppTheme.successColor
                   : AppTheme.textSecondaryColor,
-          icon: level.isActive ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+          icon:
+              level.isActive
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_off_rounded,
         ),
         AppTag(
           text: 'الترتيب ${level.order}',
@@ -172,6 +178,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
         ),
       ],
       trailing: PopupMenuButton<String>(
+        icon: appMenuIcon,
         onSelected: (value) {
           switch (value) {
             case 'edit':
@@ -195,60 +202,33 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
           // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
           if (permissionService.canModifySync()) {
             items.add(
-              PopupMenuItem(
+              appMenuItem(
                 value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_rounded, size: 16, color: AppTheme.primaryColor),
-                    SizedBox(width: 8),
-                    Text('تعديل'),
-                  ],
-                ),
+                icon: Icons.edit_rounded,
+                label: 'تعديل',
               ),
             );
           }
 
           // عنصر الأسئلة متاح للجميع (للقراءة فقط)
           items.add(
-            PopupMenuItem(
+            appMenuItem(
               value: 'questions',
-              child: Row(
-                children: [
-                  Icon(Icons.quiz_rounded, size: 16, color: AppTheme.successColor),
-                  SizedBox(width: 8),
-                  Text('إدارة الأسئلة'),
-                ],
-              ),
+              icon: Icons.quiz_rounded,
+              label: 'إدارة الأسئلة',
             ),
           );
 
           // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
           if (permissionService.canModifySync()) {
             items.add(
-              PopupMenuItem(
+              appMenuItem(
                 value: 'toggle',
-                child: Row(
-                  children: [
-                    Icon(
-                      level.isActive ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                      size: 16,
-                      color:
-                          level.isActive
-                              ? AppTheme.warningColor
-                              : AppTheme.successColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                      style: TextStyle(
-                        color:
-                            level.isActive
-                                ? AppTheme.warningColor
-                                : AppTheme.successColor,
-                      ),
-                    ),
-                  ],
-                ),
+                icon:
+                    level.isActive
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                label: level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
               ),
             );
           }
@@ -256,15 +236,11 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
           // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
           if (permissionService.canDeleteSync()) {
             items.add(
-              PopupMenuItem(
+              appMenuItem(
                 value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_rounded, size: 16, color: AppTheme.errorColor),
-                    SizedBox(width: 8),
-                    Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
-                  ],
-                ),
+                icon: Icons.delete_rounded,
+                label: 'حذف',
+                color: AppTheme.errorColor,
               ),
             );
           }

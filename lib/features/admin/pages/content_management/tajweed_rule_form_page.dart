@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -292,41 +293,72 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
   }
 
   Widget _buildTypeSelector() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'نوع المحتوى',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    Widget option(TajweedType type, IconData icon, String title, String hint) {
+      final selected = _selectedType == type;
+      return Expanded(
+        child: Material(
+          color:
+              selected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                  : AppTheme.backgroundColor,
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            onTap: () => setState(() => _selectedType = type),
+            child: Container(
+              padding: const EdgeInsets.all(AppTheme.spacingS),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                border: Border.all(
+                  color:
+                      selected ? AppTheme.primaryColor : AppTheme.dividerColor,
+                  width: selected ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    icon,
+                    size: 30,
+                    color:
+                        selected
+                            ? AppTheme.primaryColor
+                            : AppTheme.textSecondaryColor,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: AppTheme.bodyMedium.copyWith(
+                      color:
+                          selected
+                              ? AppTheme.primaryColor
+                              : AppTheme.textPrimaryColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(hint, style: AppTheme.bodySmall),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            RadioListTile<TajweedType>(
-              title: const Text('منشور'),
-              subtitle: const Text('نص وصور'),
-              value: TajweedType.post,
-              groupValue: _selectedType,
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value!;
-                });
-              },
-            ),
-            RadioListTile<TajweedType>(
-              title: const Text('فيديو'),
-              subtitle: const Text('رابط فيديو'),
-              value: TajweedType.video,
-              groupValue: _selectedType,
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value!;
-                });
-              },
-            ),
-          ],
+          ),
         ),
+      );
+    }
+
+    return AppSection(
+      icon: Icons.category_rounded,
+      title: 'نوع المحتوى',
+      child: Row(
+        children: [
+          option(TajweedType.post, Icons.article_rounded, 'منشور', 'نص وصور'),
+          const SizedBox(width: AppTheme.spacingS),
+          option(
+            TajweedType.video,
+            Icons.smart_display_rounded,
+            'فيديو',
+            'رابط يوتيوب',
+          ),
+        ],
       ),
     );
   }
@@ -335,197 +367,77 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'تعديل' : 'إضافة'),
-        actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-        ],
+        title: Text(_isEditing ? 'تعديل حكم تجويد' : 'إضافة حكم تجويد'),
       ),
       body:
           _isLoading && _isEditing
               ? const Center(child: CircularProgressIndicator())
               : Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTypeSelector(),
-                      const SizedBox(height: 16),
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  children: [
+                    _buildTypeSelector(),
+                    const SizedBox(height: AppTheme.spacingM),
 
-                      // Titre
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'العنوان',
-                          hintText: 'مثال: النون الساكنة والتنوين',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال العنوان ';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Contenu
-                      TextFormField(
-                        controller: _contentController,
-                        decoration: const InputDecoration(
-                          labelText: 'المحتوى',
-                          hintText: 'اشرح بالتفصيل...',
-                          border: OutlineInputBorder(),
-                          alignLabelWithHint: true,
-                        ),
-                        maxLines: 6,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال المحتوى';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Section Image
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'الصورة',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Aperçu de l'image sélectionnée
-                              if (_selectedImage != null) ...[
-                                Container(
-                                  width: double.infinity,
-                                  height: 200,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppTheme.dividerColor,
-                                    ),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.file(
-                                      _selectedImage!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _pickImage,
-                                        icon: const Icon(Icons.edit_rounded),
-                                        label: const Text('تغيير الصورة'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _removeSelectedImage,
-                                        icon: const Icon(
-                                          Icons.delete_rounded,
-                                          color: AppTheme.errorColor,
-                                        ),
-                                        label: const Text(
-                                          'حذف',
-                                          style: TextStyle(color: AppTheme.errorColor),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                const Divider(),
-                                const SizedBox(height: 8),
-                              ],
-
-                              // Bouton pour choisir une image
-                              if (_selectedImage == null)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _pickImage,
-                                    icon: const Icon(Icons.photo_library_rounded),
-                                    label: const Text('اختيار صورة من المعرض'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.infoColor.withValues(alpha: 0.08),
-                                      foregroundColor: AppTheme.infoColor,
-                                    ),
-                                  ),
-                                ),
-
-                              const SizedBox(height: 12),
-
-                              // URL de l'image (alternative)
-                              TextFormField(
-                                controller: _imageUrlController,
-                                decoration: InputDecoration(
-                                  labelText: 'أو رابط الصورة (اختياري)',
-                                  hintText: 'https://example.com/image.jpg',
-                                  border: const OutlineInputBorder(),
-                                  prefixIcon: const Icon(Icons.link_rounded),
-                                  suffixIcon:
-                                      _imageUrlController.text.isNotEmpty
-                                          ? IconButton(
-                                            icon: const Icon(Icons.clear_rounded),
-                                            onPressed: () {
-                                              _imageUrlController.clear();
-                                              setState(() {});
-                                            },
-                                          )
-                                          : null,
-                                ),
-                                keyboardType: TextInputType.url,
-                                onChanged: (value) {
-                                  if (value.isNotEmpty) {
-                                    setState(() {
-                                      _selectedImage =
-                                          null; // Effacer l'image si une URL est saisie
-                                    });
-                                  }
-                                },
-                              ),
-                            ],
+                    AppSection(
+                      icon: Icons.edit_note_rounded,
+                      title: 'المحتوى',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _titleController,
+                            decoration: const InputDecoration(
+                              labelText: 'العنوان',
+                              hintText: 'مثال: النون الساكنة والتنوين',
+                              prefixIcon: Icon(Icons.title_rounded),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'يرجى إدخال العنوان ';
+                              }
+                              return null;
+                            },
                           ),
-                        ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          TextFormField(
+                            controller: _contentController,
+                            decoration: const InputDecoration(
+                              labelText: 'الشرح',
+                              hintText: 'اشرح بالتفصيل...',
+                              alignLabelWithHint: true,
+                            ),
+                            maxLines: 6,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'يرجى إدخال المحتوى';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
 
-                      // URL de la vidéo (seulement si type = video)
-                      if (_selectedType == TajweedType.video) ...[
-                        TextFormField(
+                    // Vidéo (seulement si type = vidéo)
+                    if (_selectedType == TajweedType.video) ...[
+                      AppSection(
+                        icon: Icons.smart_display_rounded,
+                        color: AppTheme.accentColor,
+                        title: 'الفيديو',
+                        child: TextFormField(
                           controller: _videoUrlController,
                           decoration: const InputDecoration(
                             labelText: 'رابط الفيديو',
                             hintText: 'https://youtube.com/watch?v=...',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.video_library_rounded),
+                            prefixIcon: Icon(Icons.link_rounded),
                           ),
                           keyboardType: TextInputType.url,
+                          textDirection: TextDirection.ltr,
                           validator: (value) {
                             if (_selectedType == TajweedType.video) {
                               if (value == null || value.trim().isEmpty) {
@@ -543,71 +455,180 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
-                      ],
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+                    ],
 
-                      // Informations sur l'état par défaut
-                      Card(
-                        color: AppTheme.warningColor.withValues(alpha: 0.08),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_rounded, color: AppTheme.warningColor),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'سيكون المنشور غير نشط افتراضياً. يمكنك تفعيله لاحقاً.',
-                                  style: TextStyle(
-                                    color: AppTheme.warningColor,
-                                    fontSize: 12,
+                    AppSection(
+                      icon: Icons.image_rounded,
+                      color: AppTheme.secondaryColor,
+                      title: 'الصورة',
+                      subtitle: 'اختيارية',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_selectedImage != null) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                              child: Image.file(
+                                _selectedImage!,
+                                height: 200,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: _pickImage,
+                                    style: AppButtonStyles.outlined(
+                                      AppTheme.primaryColor,
+                                    ),
+                                    icon: const Icon(Icons.swap_horiz_rounded),
+                                    label: const Text('تغيير'),
+                                  ),
+                                ),
+                                const SizedBox(width: AppTheme.spacingS),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: _removeSelectedImage,
+                                    style: AppButtonStyles.outlined(
+                                      AppTheme.errorColor,
+                                    ),
+                                    icon: const Icon(Icons.delete_rounded),
+                                    label: const Text('حذف'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else
+                            // Zone de sélection d'image
+                            Material(
+                              color: AppTheme.secondaryColor.withValues(
+                                alpha: 0.06,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusM,
+                              ),
+                              child: InkWell(
+                                onTap: _pickImage,
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusM,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppTheme.spacingL,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTheme.radiusM,
+                                    ),
+                                    border: Border.all(
+                                      color: AppTheme.secondaryColor.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Icon(
+                                        Icons.add_photo_alternate_rounded,
+                                        size: 40,
+                                        color: AppTheme.secondaryColor,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'اختيار صورة من المعرض',
+                                        style: AppTheme.bodyMedium.copyWith(
+                                          color: AppTheme.secondaryColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Boutons
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed:
-                                  _isLoading ? null : () => context.pop(),
-                              child: const Text('إلغاء'),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _saveRule,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.infoColor,
-                                foregroundColor: Colors.white,
-                              ),
-                              child:
-                                  _isLoading
-                                      ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
-                                              ),
-                                        ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          TextFormField(
+                            controller: _imageUrlController,
+                            textDirection: TextDirection.ltr,
+                            decoration: InputDecoration(
+                              labelText: 'أو رابط الصورة',
+                              hintText: 'https://example.com/image.jpg',
+                              prefixIcon: const Icon(Icons.link_rounded),
+                              suffixIcon:
+                                  _imageUrlController.text.isNotEmpty
+                                      ? IconButton(
+                                        icon: const Icon(Icons.close_rounded),
+                                        onPressed: () {
+                                          _imageUrlController.clear();
+                                          setState(() {});
+                                        },
                                       )
-                                      : Text(_isEditing ? 'تحديث' : 'إنشاء'),
+                                      : null,
                             ),
+                            keyboardType: TextInputType.url,
+                            onChanged: (value) {
+                              // Une URL saisie remplace l'image choisie
+                              if (value.isNotEmpty) {
+                                setState(() => _selectedImage = null);
+                              }
+                            },
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+
+                    if (!_isEditing) ...[
+                      const AppNotice(
+                        text:
+                            'سيكون المحتوى غير منشور افتراضياً، يمكنك نشره لاحقاً من القائمة.',
+                        color: AppTheme.warningColor,
+                        icon: Icons.visibility_off_rounded,
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
                     ],
-                  ),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : () => context.pop(),
+                            style: AppButtonStyles.outlined(
+                              AppTheme.textSecondaryColor,
+                            ),
+                            icon: const Icon(Icons.close_rounded),
+                            label: const Text('إلغاء'),
+                          ),
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : _saveRule,
+                            style: AppButtonStyles.filled(
+                              AppTheme.primaryColor,
+                            ),
+                            icon:
+                                _isLoading
+                                    ? const AppButtonLoader()
+                                    : Icon(
+                                      _isEditing
+                                          ? Icons.save_rounded
+                                          : Icons.add_circle_rounded,
+                                    ),
+                            label: Text(_isEditing ? 'حفظ التعديلات' : 'إضافة'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.spacingL),
+                  ],
                 ),
               ),
     );
