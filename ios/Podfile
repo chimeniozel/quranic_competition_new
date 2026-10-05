@@ -44,6 +44,9 @@ post_install do |installer|
         '$(inherited)',
         'PERMISSION_PHOTOS=1',
       ]
+      # Align all pods (including privacy resource bundles) with the app's
+      # deployment target to silence "IPHONEOS_DEPLOYMENT_TARGET is set to 9.0/11.0" warnings
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
       # Enable dSYM generation for all pods
       config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
       # Disable Bitcode for all pods
