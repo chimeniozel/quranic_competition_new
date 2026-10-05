@@ -255,7 +255,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.stars,
+                                  Icons.stars_rounded,
                                   color: AppTheme.warningColor,
                                   size: 20,
                                 ),
@@ -415,7 +415,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
         title: _currentSession.name,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.edit_rounded),
             tooltip: 'تعديل الفسحة',
             onPressed: () async {
               final result = await context.push(
@@ -465,7 +465,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
       child:
           _participants.isEmpty
               ? EmptyState(
-                icon: Icons.people_outline,
+                icon: Icons.people_outline_rounded,
                 title: 'لا يوجد مشاركون',
                 subtitle: 'لم يسجل أي شخص بعد في هذه الفسحة أو الدورة',
               )
@@ -486,7 +486,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
       child:
           _winners.isEmpty
               ? EmptyState(
-                icon: Icons.emoji_events_outlined,
+                icon: Icons.emoji_events_rounded,
                 title: 'لا يوجد فائزون بعد',
                 subtitle: 'قم بإجراء القرعة لاختيار الفائزين',
               )
@@ -531,8 +531,8 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                                   : 'تفعيل الفسحة أو الدورة',
                           icon:
                               _currentSession.isActive
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
                         ),
                       ),
                       const SizedBox(width: AppTheme.spacingS),
@@ -545,8 +545,8 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                                   : 'فتح التسجيل',
                           icon:
                               _currentSession.isOpen
-                                  ? Icons.lock
-                                  : Icons.lock_open,
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
                         ),
                       ),
                     ],
@@ -557,7 +557,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                     child: SecondaryButton(
                       onPressed: () => _deleteSession(_currentSession),
                       text: 'حذف الفسحة',
-                      icon: Icons.delete,
+                      icon: Icons.delete_rounded,
                       borderColor: AppTheme.errorColor,
                       textColor: AppTheme.errorColor,
                     ),
@@ -589,7 +589,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                               ? _showLotteryDialog
                               : null,
                       text: '🎲 القرعة',
-                      icon: Icons.casino,
+                      icon: Icons.casino_rounded,
                     ),
                   ),
                   if (!_currentSession.isActive || _currentSession.isOpen) ...[
@@ -606,7 +606,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                       child: Row(
                         children: [
                           Icon(
-                            Icons.info_outline,
+                            Icons.info_outline_rounded,
                             color: AppTheme.warningColor,
                             size: 20,
                           ),
@@ -633,7 +633,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
                       child: SecondaryButton(
                         onPressed: _resetWinners,
                         text: 'إعادة تعيين الفائزين',
-                        icon: Icons.refresh,
+                        icon: Icons.refresh_rounded,
                       ),
                     ),
                   ],
@@ -704,8 +704,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
         if (updatedSession.isOpen) {
           try {
             final push = PushNotificationService();
-            final currentUserId =
-                Supabase.instance.client.auth.currentUser?.id;
+            final currentUserId = Supabase.instance.client.auth.currentUser?.id;
             await push.sendNotification(
               title: '📝 تم فتح التسجيل',
               body: 'تم فتح التسجيل لفعالية "${updatedSession.name}"',
@@ -788,11 +787,11 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
         leading: CircleAvatar(
           backgroundColor:
               participant.gender == 'ذكر'
-                  ? Colors.blue.withOpacity(0.1)
-                  : Colors.pink.withOpacity(0.1),
+                  ? AppTheme.infoColor.withOpacity(0.1)
+                  : AppTheme.accentColor.withOpacity(0.1),
           child: Icon(
-            participant.gender == 'ذكر' ? Icons.male : Icons.female,
-            color: participant.gender == 'ذكر' ? Colors.blue : Colors.pink,
+            participant.gender == 'ذكر' ? Icons.male_rounded : Icons.female_rounded,
+            color: participant.gender == 'ذكر' ? AppTheme.infoColor : AppTheme.accentColor,
           ),
         ),
         title: Text(
@@ -801,7 +800,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
         ),
         subtitle: Text(participant.phone),
         trailing: IconButton(
-          icon: const Icon(Icons.delete, color: AppTheme.errorColor),
+          icon: const Icon(Icons.delete_rounded, color: AppTheme.errorColor),
           onPressed: () => _deleteParticipant(participant),
         ),
       ),
@@ -813,12 +812,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
       margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.warningColor.withOpacity(0.1),
-              AppTheme.warningColor.withOpacity(0.05),
-            ],
-          ),
+          color: AppTheme.warningColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
         ),
         child: ListTile(
@@ -828,7 +822,7 @@ class _EidSessionDetailPageState extends State<EidSessionDetailPage> {
               color: AppTheme.warningColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.stars, color: Colors.white, size: 20),
+            child: const Icon(Icons.stars_rounded, color: Colors.white, size: 20),
           ),
           title: Text(
             winner.fullName,

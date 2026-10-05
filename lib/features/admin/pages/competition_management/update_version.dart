@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import '../../../../core/services/competition_version_service.dart';
@@ -50,6 +51,9 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
   Map<String, int> _participantCounts = {'adults': 0, 'children': 0};
   bool _canDelete = false;
   bool _isDeleting = false;
+  // Empêche d'ouvrir plusieurs dialogues (et d'empiler leurs fonds sombres)
+  // en cas d'appuis répétés sur le bouton de suppression.
+  bool _isDeleteDialogOpen = false;
 
   @override
   void initState() {
@@ -145,7 +149,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم تحديث البيانات'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       }
@@ -154,7 +158,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحديث البيانات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -289,7 +293,9 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
       final jurys = await _userService.getJurysByVersion(widget.version.id);
 
       if (jurys.isEmpty) {
-        print('⚠️ Aucun jury assigné à cette version, aucune notification envoyée');
+        print(
+          '⚠️ Aucun jury assigné à cette version, aucune notification envoyée',
+        );
         return;
       }
 
@@ -304,11 +310,12 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
       for (final jury in jurys) {
         try {
           // Vérifier que le jury a vraiment le rôle محكم avant d'envoyer la notification
-          final juryProfile = await supabase
-              .from('profiles')
-              .select('role, is_validated')
-              .eq('id', jury.id)
-              .maybeSingle();
+          final juryProfile =
+              await supabase
+                  .from('profiles')
+                  .select('role, is_validated')
+                  .eq('id', jury.id)
+                  .maybeSingle();
 
           if (juryProfile == null) {
             print('⚠️ Le profil du jury ${jury.fullName} n\'existe pas');
@@ -319,7 +326,8 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
           final isVerified = juryProfile['is_validated'] as bool? ?? false;
 
           // Vérifier que le rôle est محكم (jury)
-          final isJuryRole = juryRole.trim().toLowerCase() == 'jury' ||
+          final isJuryRole =
+              juryRole.trim().toLowerCase() == 'jury' ||
               juryRole.trim().toLowerCase().contains('jury');
 
           if (!isJuryRole) {
@@ -351,11 +359,11 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         }
       }
 
-      print('✅ Notification d\'ouverture de l\'évaluation envoyée à ${jurys.length} jurys');
-    } catch (e) {
       print(
-        '❌ Erreur lors de l\'envoi de la notification d\'évaluation: $e',
+        '✅ Notification d\'ouverture de l\'évaluation envoyée à ${jurys.length} jurys',
       );
+    } catch (e) {
+      print('❌ Erreur lors de l\'envoi de la notification d\'évaluation: $e');
       // Ne pas bloquer la mise à jour en cas d'erreur de notification
     }
   }
@@ -372,13 +380,13 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
       );
       return;
     }
-    
+
     // Vérifier si les modifications sont autorisées
     if (!_canEdit) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_getEditabilityMessage()),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppTheme.warningColor,
         ),
       );
       return;
@@ -472,17 +480,17 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
   IconData _getIconForTable(String tableName) {
     switch (tableName) {
       case 'participants':
-        return Icons.people;
+        return Icons.people_rounded;
       case 'rounds':
-        return Icons.emoji_events;
+        return Icons.emoji_events_rounded;
       case 'evaluations':
-        return Icons.rate_review;
+        return Icons.rate_review_rounded;
       case 'juryAssignments':
-        return Icons.gavel;
+        return Icons.gavel_rounded;
       case 'results':
-        return Icons.assessment;
+        return Icons.assessment_rounded;
       default:
-        return Icons.data_object;
+        return Icons.data_object_rounded;
     }
   }
 
@@ -503,7 +511,118 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     }
   }
 
+  /// Détail des éléments qui seront supprimés avec la version
+  Widget _buildDeleteStats(Map<String, int> counts) {
+    final totalElements = counts.values.fold<int>(0, (sum, v) => sum + v);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (totalElements > 0) ...[
+          Text(
+            'العناصر التي سيتم حذفها:',
+            style: AppTheme.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: AppTheme.spacingS),
+
+          // Liste des statistiques
+          ...counts.entries.map((entry) {
+            if (entry.value > 0) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppTheme.spacingXS,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _getIconForTable(entry.key),
+                      size: 16,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Text(
+                      _getLabelForTable(entry.key),
+                      style: AppTheme.bodyMedium,
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${entry.value}',
+                      style: AppTheme.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.errorColor,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }).toList(),
+
+          const SizedBox(height: AppTheme.spacingS),
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingS),
+            decoration: BoxDecoration(
+              color: AppTheme.errorColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(AppTheme.radiusS),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calculate_rounded, size: 16, color: AppTheme.errorColor),
+                const SizedBox(width: AppTheme.spacingS),
+                Text('إجمالي العناصر: ', style: AppTheme.bodyMedium),
+                Text(
+                  '$totalElements',
+                  style: AppTheme.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.errorColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingS),
+            decoration: BoxDecoration(
+              color: AppTheme.successColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(color: AppTheme.successColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppTheme.successColor,
+                  size: 20,
+                ),
+                const SizedBox(width: AppTheme.spacingS),
+                Text(
+                  'لا توجد بيانات مرتبطة بهذه النسخة',
+                  style: AppTheme.bodyMedium.copyWith(
+                    color: AppTheme.successColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _showDeleteConfirmation() async {
+    if (_isDeleteDialogOpen) return;
+    _isDeleteDialogOpen = true;
+    try {
+      await _confirmAndDeleteVersion();
+    } finally {
+      _isDeleteDialogOpen = false;
+    }
+  }
+
+  Future<void> _confirmAndDeleteVersion() async {
     try {
       // Vérifier الصلاحيات
       if (!_canDelete) {
@@ -515,7 +634,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         );
         return;
       }
-      
+
       // Vérifier si la compétition est active
       if (_isActive) {
         if (!mounted) return;
@@ -532,18 +651,9 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
         return;
       }
 
-      // Récupérer les statistiques des éléments liés
-      final counts = await _service.getVersionRelatedCounts(widget.version.id);
-
-      // Calculer le total des éléments qui seront supprimés
-      final totalElements =
-          counts['participants']! +
-          counts['rounds']! +
-          counts['evaluations']! +
-          counts['juryAssignments']! +
-          counts['results']!;
-
-      if (!mounted) return;
+      // Lancer le comptage sans l'attendre : le dialogue s'ouvre tout de
+      // suite et affiche les statistiques dès qu'elles arrivent.
+      final countsFuture = _service.getVersionRelatedCounts(widget.version.id);
 
       final confirmed = await showDialog<bool>(
         context: context,
@@ -551,7 +661,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
             (context) => AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.warning, color: AppTheme.errorColor, size: 28),
+                  Icon(Icons.warning_rounded, color: AppTheme.errorColor, size: 28),
                   const SizedBox(width: AppTheme.spacingS),
                   Text(
                     'تأكيد الحذف',
@@ -590,7 +700,7 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                           Row(
                             children: [
                               Icon(
-                                Icons.info_outline,
+                                Icons.info_outline_rounded,
                                 color: AppTheme.errorColor,
                                 size: 20,
                               ),
@@ -617,107 +727,26 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
                     const SizedBox(height: AppTheme.spacingS),
 
                     // Statistiques des éléments à supprimer
-                    if (totalElements > 0) ...[
-                      Text(
-                        'العناصر التي سيتم حذفها:',
-                        style: AppTheme.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Liste des statistiques
-                      ...counts.entries.map((entry) {
-                        if (entry.value > 0) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppTheme.spacingXS,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _getIconForTable(entry.key),
-                                  size: 16,
-                                  color: AppTheme.textSecondaryColor,
+                    FutureBuilder<Map<String, int>>(
+                      future: countsFuture,
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Padding(
+                            padding: EdgeInsets.all(AppTheme.spacingM),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
-                                const SizedBox(width: AppTheme.spacingS),
-                                Text(
-                                  _getLabelForTable(entry.key),
-                                  style: AppTheme.bodyMedium,
-                                ),
-                                const Spacer(),
-                                Text(
-                                  '${entry.value}',
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.errorColor,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         }
-                        return const SizedBox.shrink();
-                      }).toList(),
-
-                      const SizedBox(height: AppTheme.spacingS),
-                      Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          color: AppTheme.errorColor.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calculate,
-                              size: 16,
-                              color: AppTheme.errorColor,
-                            ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'إجمالي العناصر: ',
-                              style: AppTheme.bodyMedium,
-                            ),
-                            Text(
-                              '$totalElements',
-                              style: AppTheme.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.errorColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          color: AppTheme.successColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          border: Border.all(
-                            color: AppTheme.successColor.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: AppTheme.successColor,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'لا توجد بيانات مرتبطة بهذه النسخة',
-                              style: AppTheme.bodyMedium.copyWith(
-                                color: AppTheme.successColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                        return _buildDeleteStats(snapshot.data!);
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -779,983 +808,383 @@ class _UpdateVersionPageState extends State<UpdateVersionPage> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Interface
+  // ---------------------------------------------------------------------------
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? hint,
+    String? suffix,
+    bool number = false,
+  }) {
+    return TextField(
+      controller: controller,
+      enabled: _canEdit,
+      keyboardType: number ? TextInputType.number : TextInputType.text,
+      // Rafraîchit le remplissage affiché quand la capacité change
+      onChanged: number ? (_) => setState(() {}) : null,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        suffixText: suffix,
+        prefixIcon: Icon(icon),
+      ),
+    );
+  }
+
+  Widget _buildCapacityTile(String label, int count, String maxText) {
+    final max = int.tryParse(maxText.trim()) ?? 0;
+    final exceeded = max > 0 && count > max;
+    final ratio = max > 0 ? (count / max).clamp(0.0, 1.0) : 0.0;
+    final color = exceeded ? AppTheme.errorColor : AppTheme.primaryColor;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTheme.labelMedium),
+          Text(
+            '$count / ${max > 0 ? max : '-'}',
+            style: AppTheme.headingSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              color: color,
+              backgroundColor: color.withValues(alpha: 0.12),
+            ),
+          ),
+          if (exceeded) ...[
+            const SizedBox(height: 4),
+            Text(
+              'تجاوز الحد الأقصى!',
+              style: AppTheme.bodySmall.copyWith(
+                color: AppTheme.errorColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _switchTile({
+    required IconData icon,
+    required String title,
+    required String onText,
+    required String offText,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+  }) {
+    final color = value ? AppTheme.successColor : AppTheme.textSecondaryColor;
+
+    return SwitchListTile.adaptive(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingXS,
+      ),
+      secondary: AppIconBadge(icon: icon, color: color, size: 18),
+      title: Text(
+        title,
+        style: AppTheme.bodyMedium.copyWith(
+          color: AppTheme.textPrimaryColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(value ? onText : offText, style: AppTheme.bodySmall),
+      value: value,
+      onChanged: onChanged,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final version = widget.version;
+
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'تعديل النسخة',
+        title: 'إعدادات النسخة',
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _refreshData,
-            icon: Icon(
-              Icons.refresh,
-              color:
-                  _isLoading
-                      ? AppTheme.textSecondaryColor
-                      : AppTheme.surfaceColor,
-            ),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'تحديث البيانات',
-          ),
-          IconButton(
-            onPressed: (_isLoading || !_canEdit) ? null : _submitUpdate,
-            icon: Icon(
-              Icons.save,
-              color:
-                  (_isLoading || !_canEdit)
-                      ? AppTheme.textSecondaryColor
-                      : AppTheme.surfaceColor,
-            ),
-            tooltip: !_canEdit ? 'التعديل غير متاح' : 'حفظ التغييرات',
           ),
         ],
       ),
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
+              ? const Center(child: CircularProgressIndicator())
               : ModernPullToRefresh(
                 onRefresh: _refreshData,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  child: Column(
-                    children: [
-                      // Avertissement si la compétition ne peut pas être modifiée
-                      if (_isCheckingEditability)
-                        ModernCard(
-                          backgroundColor: AppTheme.infoColor.withOpacity(0.1),
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppTheme.infoColor,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppTheme.spacingS),
-                                Expanded(
-                                  child: Text(
-                                    'جاري التحقق من إمكانية التعديل...',
-                                    style: AppTheme.bodyMedium.copyWith(
-                                      color: AppTheme.infoColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (!_isCheckingEditability && !_canEdit)
-                        ModernCard(
-                          backgroundColor: AppTheme.warningColor.withOpacity(
-                            0.1,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.warning_outlined,
-                                      color: AppTheme.warningColor,
-                                      size: 28,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Text(
-                                        'التعديل غير متاح',
-                                        style: AppTheme.labelLarge.copyWith(
-                                          color: AppTheme.warningColor,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-                                Text(
-                                  _getEditabilityMessage(),
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    color: AppTheme.warningColor.withOpacity(
-                                      0.8,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (!_isCheckingEditability && !_canEdit)
-                        const SizedBox(height: AppTheme.spacingS),
-
-                      // Header avec informations de la version
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      AppTheme.spacingS,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryColor.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.edit,
-                                      color: AppTheme.primaryColor,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'تعديل النسخة',
-                                          style: AppTheme.labelLarge.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'تحديث معلومات النسخة الحالية',
-                                          style: AppTheme.labelMedium.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  children: [
+                    // En-tête : version modifiée
+                    AppGradientHeader(
+                      shape: AppHeaderShape.card,
+                      compact: true,
+                      icon: Icons.settings_rounded,
+                      title: version.name,
+                      subtitle: 'سنة ${version.year}',
+                      trailing: AppHeaderBadge(
+                        icon: _isActive ? Icons.check_circle_rounded : Icons.history_rounded,
+                        text: _isActive ? 'نشطة' : 'غير نشطة',
+                        highlightColor:
+                            _isActive ? AppTheme.secondaryColor : null,
                       ),
-                      const SizedBox(height: AppTheme.spacingS),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
 
-                      // Formulaire de base
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'المعلومات الأساسية',
-                                style: AppTheme.headingMedium,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              TextField(
-                                controller: _nameController,
-                                enabled: _canEdit,
-                                style: AppTheme.bodyMedium,
-                                decoration: InputDecoration(
-                                  labelText: 'اسم النسخة',
-                                  hintText: 'أدخل اسم النسخة',
-                                  prefixIcon: Icon(
-                                    Icons.title,
-                                    color:
-                                        _canEdit
-                                            ? AppTheme.primaryColor
-                                            : AppTheme.textDisabledColor,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              TextField(
-                                controller: _yearController,
-                                enabled: _canEdit,
-                                keyboardType: TextInputType.number,
-                                style: AppTheme.bodyMedium,
-                                decoration: InputDecoration(
-                                  labelText: 'السنة',
-                                  hintText: 'أدخل السنة',
-                                  prefixIcon: Icon(
-                                    Icons.calendar_today,
-                                    color:
-                                        _canEdit
-                                            ? AppTheme.primaryColor
-                                            : AppTheme.textDisabledColor,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    // Possibilité de modifier
+                    if (_isCheckingEditability) ...[
+                      const AppNotice(
+                        text: 'جاري التحقق من إمكانية التعديل...',
+                        icon: Icons.hourglass_top_rounded,
                       ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Limites des participants
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'حدود المشاركين',
-                                style: AppTheme.headingMedium,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _maxAdultsController,
-                                      enabled: _canEdit,
-                                      keyboardType: TextInputType.number,
-                                      style: AppTheme.bodyMedium,
-                                      decoration: InputDecoration(
-                                        labelText: 'الحد الأقصى للكبار',
-                                        hintText: 'عدد الكبار',
-                                        prefixIcon: Icon(
-                                          Icons.person,
-                                          color:
-                                              _canEdit
-                                                  ? AppTheme.primaryColor
-                                                  : AppTheme.textDisabledColor,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusM,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _maxChildrenController,
-                                      enabled: _canEdit,
-                                      keyboardType: TextInputType.number,
-                                      style: AppTheme.bodyMedium,
-                                      decoration: InputDecoration(
-                                        labelText: 'الحد الأقصى للصغار',
-                                        hintText: 'عدد الصغار',
-                                        prefixIcon: Icon(
-                                          Icons.person,
-                                          color:
-                                              _canEdit
-                                                  ? AppTheme.secondaryColor
-                                                  : AppTheme.textDisabledColor,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusM,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                      const SizedBox(height: AppTheme.spacingM),
+                    ] else if (!_canEdit) ...[
+                      AppNotice(
+                        text: 'التعديل غير متاح: ${_getEditabilityMessage()}',
+                        color: AppTheme.warningColor,
+                        icon: Icons.lock_outline_rounded,
                       ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Moyennes de succès
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'متوسطات النجاح',
-                                style: AppTheme.headingMedium,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller:
-                                          _successAverageAdultsController,
-                                      enabled: _canEdit,
-                                      keyboardType: TextInputType.number,
-                                      style: AppTheme.bodyMedium,
-                                      decoration: InputDecoration(
-                                        labelText: 'متوسط النجاح للكبار (%)',
-                                        hintText: '85.0',
-                                        prefixIcon: Icon(
-                                          Icons.trending_up,
-                                          color:
-                                              _canEdit
-                                                  ? AppTheme.primaryColor
-                                                  : AppTheme.textDisabledColor,
-                                        ),
-                                        suffixText: '%',
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusM,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Expanded(
-                                    child: TextField(
-                                      controller:
-                                          _successAverageChildrenController,
-                                      enabled: _canEdit,
-                                      keyboardType: TextInputType.number,
-                                      style: AppTheme.bodyMedium,
-                                      decoration: InputDecoration(
-                                        labelText: 'متوسط النجاح للصغار (%)',
-                                        hintText: '14.0',
-                                        prefixIcon: Icon(
-                                          Icons.trending_up,
-                                          color:
-                                              _canEdit
-                                                  ? AppTheme.secondaryColor
-                                                  : AppTheme.textDisabledColor,
-                                        ),
-                                        suffixText: '%',
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusM,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.infoColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusM,
-                                  ),
-                                  border: Border.all(
-                                    color: AppTheme.infoColor.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color: AppTheme.infoColor,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Text(
-                                        'هذه المتوسطات تحدد الحد الأدنى للنجاح في كل جولة. يجب أن تكون بين 0 و 100.',
-                                        style: AppTheme.bodySmall.copyWith(
-                                          color: AppTheme.infoColor,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Statistiques des participants actuels
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'إحصائيات المشاركين الحاليين',
-                                style: AppTheme.headingMedium,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            _participantCounts['adults']! >
-                                                    int.tryParse(
-                                                      _maxAdultsController.text,
-                                                    )!
-                                                ? AppTheme.errorColor
-                                                    .withOpacity(0.1)
-                                                : AppTheme.successColor
-                                                    .withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                        border: Border.all(
-                                          color:
-                                              _participantCounts['adults']! >
-                                                      int.tryParse(
-                                                        _maxAdultsController
-                                                            .text,
-                                                      )!
-                                                  ? AppTheme.errorColor
-                                                      .withOpacity(0.3)
-                                                  : AppTheme.successColor
-                                                      .withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            Icons.person,
-                                            color:
-                                                _participantCounts['adults']! >
-                                                        int.tryParse(
-                                                          _maxAdultsController
-                                                              .text,
-                                                        )!
-                                                    ? AppTheme.errorColor
-                                                    : AppTheme.successColor,
-                                            size: 32,
-                                          ),
-                                          const SizedBox(
-                                            height: AppTheme.spacingS,
-                                          ),
-                                          Text(
-                                            'الكبار',
-                                            style: AppTheme.labelMedium
-                                                .copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${_participantCounts['adults']} / ${_maxAdultsController.text}',
-                                            style: AppTheme.headingSmall.copyWith(
-                                              color:
-                                                  _participantCounts['adults']! >
-                                                          int.tryParse(
-                                                            _maxAdultsController
-                                                                .text,
-                                                          )!
-                                                      ? AppTheme.errorColor
-                                                      : AppTheme.successColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          if (_participantCounts['adults']! >
-                                              int.tryParse(
-                                                _maxAdultsController.text,
-                                              )!)
-                                            Text(
-                                              'تجاوز الحد الأقصى!',
-                                              style: AppTheme.bodySmall
-                                                  .copyWith(
-                                                    color: AppTheme.errorColor,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            _participantCounts['children']! >
-                                                    int.tryParse(
-                                                      _maxChildrenController
-                                                          .text,
-                                                    )!
-                                                ? AppTheme.errorColor
-                                                    .withOpacity(0.1)
-                                                : AppTheme.successColor
-                                                    .withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusM,
-                                        ),
-                                        border: Border.all(
-                                          color:
-                                              _participantCounts['children']! >
-                                                      int.tryParse(
-                                                        _maxChildrenController
-                                                            .text,
-                                                      )!
-                                                  ? AppTheme.errorColor
-                                                      .withOpacity(0.3)
-                                                  : AppTheme.successColor
-                                                      .withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            Icons.child_care,
-                                            color:
-                                                _participantCounts['children']! >
-                                                        int.tryParse(
-                                                          _maxChildrenController
-                                                              .text,
-                                                        )!
-                                                    ? AppTheme.errorColor
-                                                    : AppTheme.successColor,
-                                            size: 32,
-                                          ),
-                                          const SizedBox(
-                                            height: AppTheme.spacingS,
-                                          ),
-                                          Text(
-                                            'الصغار',
-                                            style: AppTheme.labelMedium
-                                                .copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${_participantCounts['children']} / ${_maxChildrenController.text}',
-                                            style: AppTheme.headingSmall.copyWith(
-                                              color:
-                                                  _participantCounts['children']! >
-                                                          int.tryParse(
-                                                            _maxChildrenController
-                                                                .text,
-                                                          )!
-                                                      ? AppTheme.errorColor
-                                                      : AppTheme.successColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          if (_participantCounts['children']! >
-                                              int.tryParse(
-                                                _maxChildrenController.text,
-                                              )!)
-                                            Text(
-                                              'تجاوز الحد الأقصى!',
-                                              style: AppTheme.bodySmall
-                                                  .copyWith(
-                                                    color: AppTheme.errorColor,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Paramètres de statut
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'إعدادات النسخة',
-                                style: AppTheme.headingMedium,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              // Message d'information sur la logique des switches
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.infoColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusM,
-                                  ),
-                                  border: Border.all(
-                                    color: AppTheme.infoColor.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          color: AppTheme.infoColor,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(
-                                          width: AppTheme.spacingS,
-                                        ),
-                                        Text(
-                                          'قواعد الإعدادات',
-                                          style: AppTheme.bodyMedium.copyWith(
-                                            color: AppTheme.infoColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: AppTheme.spacingS),
-                                    Text(
-                                      '• لا يمكن فتح التسجيل وتفعيل تقييم المحكمين في نفس الوقت',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: AppTheme.infoColor,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '• عند إلغاء تفعيل النسخة، يتم إغلاق التسجيل والتقييم تلقائياً',
-                                      style: AppTheme.bodySmall.copyWith(
-                                        color: AppTheme.infoColor,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              // Statut actif
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      _isActive
-                                          ? AppTheme.successColor.withValues(
-                                            alpha: 0.1,
-                                          )
-                                          : AppTheme.errorColor.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusM,
-                                  ),
-                                  border: Border.all(
-                                    color:
-                                        _isActive
-                                            ? AppTheme.successColor.withValues(
-                                              alpha: 0.3,
-                                            )
-                                            : AppTheme.errorColor.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _isActive
-                                          ? Icons.check_circle
-                                          : Icons.cancel,
-                                      color:
-                                          _isActive
-                                              ? AppTheme.successColor
-                                              : AppTheme.errorColor,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'النسخة نشطة',
-                                            style: AppTheme.bodyLarge.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            _isActive
-                                                ? 'النسخة متاحة للاستخدام'
-                                                : 'النسخة غير متاحة',
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color:
-                                                  AppTheme.textSecondaryColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Switch(
-                                      value: _isActive,
-                                      onChanged:
-                                          _canEdit
-                                              ? (val) {
-                                                setState(() {
-                                                  _isActive = val;
-                                                  // Si la version est désactivée, fermer l'inscription et l'évaluation
-                                                  if (!val) {
-                                                    _isRegistrationOpen = false;
-                                                    _juryEvaluationEnabled =
-                                                        false;
-                                                  }
-                                                });
-                                              }
-                                              : null,
-                                      activeColor: AppTheme.successColor,
-                                      inactiveThumbColor: AppTheme.errorColor,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              // Statut d'inscription
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      _isRegistrationOpen
-                                          ? AppTheme.successColor.withValues(
-                                            alpha: 0.1,
-                                          )
-                                          : AppTheme.errorColor.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusM,
-                                  ),
-                                  border: Border.all(
-                                    color:
-                                        _isRegistrationOpen
-                                            ? AppTheme.successColor.withValues(
-                                              alpha: 0.3,
-                                            )
-                                            : AppTheme.errorColor.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _isRegistrationOpen
-                                          ? Icons.lock_open
-                                          : Icons.lock,
-                                      color:
-                                          _isRegistrationOpen
-                                              ? AppTheme.successColor
-                                              : AppTheme.errorColor,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'فتح التسجيل',
-                                            style: AppTheme.bodyLarge.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            _isRegistrationOpen
-                                                ? 'التسجيل مفتوح للمشاركين'
-                                                : 'التسجيل مغلق',
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color:
-                                                  AppTheme.textSecondaryColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Switch(
-                                      value: _isRegistrationOpen,
-                                      onChanged:
-                                          (_canEdit && _isActive)
-                                              ? (val) {
-                                                setState(() {
-                                                  _isRegistrationOpen = val;
-                                                  // Si l'inscription est ouverte, désactiver l'évaluation des jurys
-                                                  if (val) {
-                                                    _juryEvaluationEnabled =
-                                                        false;
-                                                  }
-                                                });
-                                              }
-                                              : null,
-                                      activeColor: AppTheme.successColor,
-                                      inactiveThumbColor: AppTheme.errorColor,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              // Statut d'évaluation des jurys
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      _juryEvaluationEnabled
-                                          ? AppTheme.successColor.withValues(
-                                            alpha: 0.1,
-                                          )
-                                          : AppTheme.errorColor.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusM,
-                                  ),
-                                  border: Border.all(
-                                    color:
-                                        _juryEvaluationEnabled
-                                            ? AppTheme.successColor.withValues(
-                                              alpha: 0.3,
-                                            )
-                                            : AppTheme.errorColor.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _juryEvaluationEnabled
-                                          ? Icons.gavel
-                                          : Icons.gavel_outlined,
-                                      color:
-                                          _juryEvaluationEnabled
-                                              ? AppTheme.successColor
-                                              : AppTheme.errorColor,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'تفعيل تقييم المحكمين',
-                                            style: AppTheme.bodyLarge.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            _juryEvaluationEnabled
-                                                ? 'المحكمون يمكنهم تقييم المشاركين'
-                                                : 'تقييم المحكمين معطل',
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color:
-                                                  AppTheme.textSecondaryColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Switch(
-                                      value: _juryEvaluationEnabled,
-                                      onChanged:
-                                          (_canEdit && _isActive)
-                                              ? (val) {
-                                                setState(() {
-                                                  _juryEvaluationEnabled = val;
-                                                  // Si l'évaluation des jurys est activée, fermer l'inscription
-                                                  if (val) {
-                                                    _isRegistrationOpen = false;
-                                                  }
-                                                });
-                                              }
-                                              : null,
-                                      activeColor: AppTheme.successColor,
-                                      inactiveThumbColor: AppTheme.errorColor,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingL),
-
-                      // Bouton de sauvegarde
-                      SizedBox(
-                        width: double.infinity,
-                        child: PrimaryButton(
-                          onPressed:
-                              (_isLoading || !_canEdit) ? null : _submitUpdate,
-                          text:
-                              _isLoading
-                                  ? 'جاري التحديث...'
-                                  : !_canEdit
-                                  ? 'التعديل غير متاح'
-                                  : 'حفظ التغييرات',
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Bouton de suppression (seulement si non active et avec الصلاحيات)
-                      if (!_isActive && _canDelete) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: SecondaryButton(
-                            onPressed: _isDeleting ? null : () => _showDeleteConfirmation(),
-                            text: _isDeleting ? 'جاري الحذف...' : 'حذف النسخة',
-                            icon: Icons.delete,
-                            borderColor: AppTheme.errorColor,
-                            textColor: AppTheme.errorColor,
-                          ),
-                        ),
-                        const SizedBox(height: AppTheme.spacingS),
-                      ],
+                      const SizedBox(height: AppTheme.spacingM),
                     ],
-                  ),
+
+                    AppSection(
+                      icon: Icons.info_outline_rounded,
+                      title: 'المعلومات الأساسية',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _field(
+                            controller: _nameController,
+                            label: 'اسم النسخة',
+                            hint: 'أدخل اسم النسخة',
+                            icon: Icons.title_rounded,
+                          ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          _field(
+                            controller: _yearController,
+                            label: 'السنة',
+                            hint: 'أدخل السنة',
+                            icon: Icons.calendar_today_rounded,
+                            number: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+
+                    AppSection(
+                      icon: Icons.groups_rounded,
+                      color: AppTheme.secondaryColor,
+                      title: 'المشاركون',
+                      subtitle: 'الحد الأقصى لكل فرع والعدد المسجل حالياً',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _field(
+                                  controller: _maxAdultsController,
+                                  label: 'الحد الأقصى للكبار',
+                                  icon: Icons.person_rounded,
+                                  number: true,
+                                ),
+                              ),
+                              const SizedBox(width: AppTheme.spacingS),
+                              Expanded(
+                                child: _field(
+                                  controller: _maxChildrenController,
+                                  label: 'الحد الأقصى للصغار',
+                                  icon: Icons.child_care_rounded,
+                                  number: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppTheme.spacingS),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildCapacityTile(
+                                  'الكبار',
+                                  _participantCounts['adults'] ?? 0,
+                                  _maxAdultsController.text,
+                                ),
+                              ),
+                              const SizedBox(width: AppTheme.spacingS),
+                              Expanded(
+                                child: _buildCapacityTile(
+                                  'الصغار',
+                                  _participantCounts['children'] ?? 0,
+                                  _maxChildrenController.text,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+
+                    AppSection(
+                      icon: Icons.trending_up_rounded,
+                      color: AppTheme.successColor,
+                      title: 'متوسطات النجاح',
+                      subtitle: 'الحد الأدنى للنجاح في كل جولة (بين 0 و 100)',
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _field(
+                              controller: _successAverageAdultsController,
+                              label: 'الكبار',
+                              hint: '85.0',
+                              suffix: '%',
+                              icon: Icons.person_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingS),
+                          Expanded(
+                            child: _field(
+                              controller: _successAverageChildrenController,
+                              label: 'الصغار',
+                              hint: '14.0',
+                              suffix: '%',
+                              icon: Icons.child_care_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+
+                    AppSection(
+                      icon: Icons.tune_rounded,
+                      color: AppTheme.infoColor,
+                      title: 'حالة النسخة',
+                      child: Column(
+                        children: [
+                          const AppNotice(
+                            text:
+                                'لا يمكن فتح التسجيل وتفعيل تقييم المحكمين في نفس الوقت. '
+                                'عند إلغاء تفعيل النسخة يُغلق التسجيل والتقييم تلقائياً.',
+                          ),
+                          const SizedBox(height: AppTheme.spacingXS),
+                          _switchTile(
+                            icon: Icons.power_settings_new_rounded,
+                            title: 'النسخة نشطة',
+                            onText: 'النسخة متاحة للاستخدام',
+                            offText: 'النسخة غير متاحة',
+                            value: _isActive,
+                            onChanged:
+                                _canEdit
+                                    ? (val) => setState(() {
+                                      _isActive = val;
+                                      // Désactivée : inscription et évaluation fermées
+                                      if (!val) {
+                                        _isRegistrationOpen = false;
+                                        _juryEvaluationEnabled = false;
+                                      }
+                                    })
+                                    : null,
+                          ),
+                          const Divider(),
+                          _switchTile(
+                            icon: Icons.how_to_reg_rounded,
+                            title: 'فتح التسجيل',
+                            onText: 'التسجيل مفتوح للمشاركين',
+                            offText: 'التسجيل مغلق',
+                            value: _isRegistrationOpen,
+                            onChanged:
+                                (_canEdit && _isActive)
+                                    ? (val) => setState(() {
+                                      _isRegistrationOpen = val;
+                                      // Inscription ouverte : évaluation désactivée
+                                      if (val) _juryEvaluationEnabled = false;
+                                    })
+                                    : null,
+                          ),
+                          const Divider(),
+                          _switchTile(
+                            icon: Icons.gavel_rounded,
+                            title: 'تقييم المحكمين',
+                            onText: 'المحكمون يمكنهم تقييم المشاركين',
+                            offText: 'تقييم المحكمين معطل',
+                            value: _juryEvaluationEnabled,
+                            onChanged:
+                                (_canEdit && _isActive)
+                                    ? (val) => setState(() {
+                                      _juryEvaluationEnabled = val;
+                                      // Évaluation activée : inscription fermée
+                                      if (val) _isRegistrationOpen = false;
+                                    })
+                                    : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingM),
+
+                    ElevatedButton.icon(
+                      onPressed:
+                          (_isLoading || !_canEdit) ? null : _submitUpdate,
+                      style: AppButtonStyles.filled(AppTheme.primaryColor),
+                      icon: const Icon(Icons.save_rounded),
+                      label: Text(
+                        !_canEdit ? 'التعديل غير متاح' : 'حفظ التغييرات',
+                      ),
+                    ),
+
+                    // Suppression : seulement si non active et avec la صلاحية
+                    if (!_isActive && _canDelete) ...[
+                      const SizedBox(height: AppTheme.spacingM),
+                      AppSection(
+                        icon: Icons.warning_amber_rounded,
+                        color: AppTheme.errorColor,
+                        title: 'منطقة الخطر',
+                        subtitle:
+                            'حذف النسخة يحذف جميع المشاركين والجولات والنتائج',
+                        borderColor: AppTheme.errorColor,
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _isDeleting ? null : _showDeleteConfirmation,
+                          style: AppButtonStyles.outlined(AppTheme.errorColor),
+                          icon:
+                              _isDeleting
+                                  ? const AppButtonLoader(
+                                    color: AppTheme.errorColor,
+                                  )
+                                  : const Icon(Icons.delete_forever_rounded),
+                          label: Text(
+                            _isDeleting ? 'جاري الحذف...' : 'حذف النسخة',
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppTheme.spacingL),
+                  ],
                 ),
               ),
     );

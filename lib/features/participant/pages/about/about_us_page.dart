@@ -4,6 +4,7 @@ import 'package:quranic_competition/models/about_us.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
@@ -19,6 +20,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
   final AboutUsService _service = AboutUsService();
   AboutUs? _aboutUs;
   bool _isLoading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -27,7 +29,11 @@ class _AboutUsPageState extends State<AboutUsPage> {
   }
 
   Future<void> _loadAboutUs() async {
-    setState(() => _isLoading = true);
+    // Au rafraîchissement, le contenu reste affiché pendant le chargement
+    setState(() {
+      _isLoading = _aboutUs == null;
+      _hasError = false;
+    });
     try {
       final aboutUs = await _service.getAboutUs();
       if (mounted) {
@@ -37,14 +43,12 @@ class _AboutUsPageState extends State<AboutUsPage> {
         });
       }
     } catch (e) {
+      debugPrint('Erreur lors du chargement de « من نحن »: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل المعلومات: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
       }
     }
   }
@@ -56,16 +60,33 @@ class _AboutUsPageState extends State<AboutUsPage> {
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
+              : _aboutUs == null && _hasError
+              ? Center(
+                child: SingleChildScrollView(
+                  child: EmptyState(
+                    icon: Icons.wifi_off_rounded,
+                    iconColor: AppTheme.errorColor,
+                    title: 'تعذر تحميل المعلومات',
+                    subtitle: 'تحقق من الاتصال وحاول مجدداً',
+                    action: PrimaryButton(
+                      text: 'إعادة المحاولة',
+                      icon: Icons.refresh_rounded,
+                      onPressed: _loadAboutUs,
+                    ),
+                  ),
+                ),
+              )
               : _aboutUs == null
               ? EmptyState(
-                icon: Icons.info_outline,
+                icon: Icons.info_outline_rounded,
                 title: 'لا توجد معلومات',
                 subtitle: 'لم يتم إضافة معلومات "من نحن" بعد',
               )
               : ModernPullToRefresh(
                 onRefresh: _loadAboutUs,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -102,18 +123,8 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                     return Container(
                                       height: 300,
                                       decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            AppTheme.primaryColor.withOpacity(
-                                              0.3,
-                                            ),
-                                            AppTheme.secondaryColor.withOpacity(
-                                              0.3,
-                                            ),
-                                          ],
-                                        ),
+                                        color: AppTheme.primaryColor
+                                            .withOpacity(0.3),
                                       ),
                                       child: Center(
                                         child: CircularProgressIndicator(
@@ -135,14 +146,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                     return Container(
                                       height: 300,
                                       decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            AppTheme.primaryColor,
-                                            AppTheme.secondaryColor,
-                                          ],
-                                        ),
+                                        gradient: AppTheme.primaryGradient,
                                       ),
                                       child: Center(
                                         child: Column(
@@ -150,7 +154,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                               MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              Icons.image_not_supported,
+                                              Icons.image_not_supported_rounded,
                                               size: 48,
                                               color: Colors.white,
                                             ),
@@ -170,22 +174,6 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                     );
                                   },
                                 ),
-                                // Overlay gradient pour meilleure lisibilité
-                                Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusL,
-                                    ),
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.black.withOpacity(0.3),
-                                      ],
-                                    ),
-                                  ),
-                                ),
                               ],
                             ),
                           ),
@@ -193,62 +181,14 @@ class _AboutUsPageState extends State<AboutUsPage> {
                         const SizedBox(height: AppTheme.spacingS),
                       ],
 
-                      // Titre - Design moderne
-                      ModernCard(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.spacingS,
-                            vertical: AppTheme.spacingS,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppTheme.spacingS,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusS,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.info_outline,
-                                  color: AppTheme.primaryColor,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.spacingS),
-                              Expanded(
-                                child: Text(
-                                  _aboutUs!.title,
-                                  style: AppTheme.headingSmall.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimaryColor,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Contenu - Design moderne
-                      ModernCard(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Text(
-                            _aboutUs!.content,
-                            style: AppTheme.bodyMedium.copyWith(
-                              height: 1.8,
-                              color: AppTheme.textPrimaryColor,
-                            ),
-                            textAlign: TextAlign.justify,
-                          ),
+                      // Présentation
+                      AppSection(
+                        icon: Icons.info_rounded,
+                        title: _aboutUs!.title,
+                        child: SelectableText(
+                          _aboutUs!.content,
+                          textAlign: TextAlign.justify,
+                          style: AppTheme.bodyLarge.copyWith(height: 1.9),
                         ),
                       ),
 
@@ -283,7 +223,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                         ),
                                       ),
                                       child: Icon(
-                                        Icons.contact_phone,
+                                        Icons.contact_phone_rounded,
                                         color: AppTheme.primaryColor,
                                         size: 20,
                                       ),
@@ -301,7 +241,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                 // Email
                                 if (_aboutUs!.email != null) ...[
                                   _buildContactRow(
-                                    icon: Icons.email,
+                                    icon: Icons.email_rounded,
                                     label: 'البريد الإلكتروني',
                                     value: _aboutUs!.email!,
                                     onTap: () => _launchEmail(_aboutUs!.email!),
@@ -311,7 +251,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                 // Adresse
                                 if (_aboutUs!.address != null) ...[
                                   _buildContactRow(
-                                    icon: Icons.location_on,
+                                    icon: Icons.location_on_rounded,
                                     label: 'العنوان',
                                     value: _aboutUs!.address!,
                                     onTap:
@@ -347,7 +287,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                           ),
                                         ),
                                         child: Icon(
-                                          Icons.share,
+                                          Icons.share_rounded,
                                           color: AppTheme.primaryColor,
                                           size: 20,
                                         ),
@@ -418,9 +358,9 @@ class _AboutUsPageState extends State<AboutUsPage> {
                                       iconData: FontAwesomeIcons.globe,
                                       label: 'الموقع الإلكتروني',
                                       url: _aboutUs!.website!,
-                                      backgroundColor: const Color(
-                                        0xFF6B46C1,
-                                      ), // Couleur primaire de l'app
+                                      backgroundColor:
+                                          AppTheme
+                                              .primaryColor, // Couleur primaire de l'app
                                       textColor: Colors.white,
                                     ),
                                 ],

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/services/error_service.dart';
 import '../../../core/services/password_validation_service.dart';
 import '../../../core/widgets/password_field_widget.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/auth_layout.dart';
 import '../../../core/widgets/ui_components.dart';
 
 class ResetPasswordPage extends StatefulWidget {
@@ -18,7 +18,6 @@ class ResetPasswordPage extends StatefulWidget {
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _errorService = ErrorService();
   final _passwordService = PasswordValidationService();
   final _supabase = Supabase.instance.client;
 
@@ -97,9 +96,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         print('❌ Stack trace: $stackTrace');
 
         // إذا فشلت Edge Function، نعرض رسالة خطأ واضحة
+        // Détail technique dans les logs uniquement, pas à l'écran
         throw Exception(
-          'لا يمكن تغيير كلمة المرور حالياً. يرجى المحاولة مرة أخرى.\n\n'
-          'التفاصيل: ${e.toString()}',
+          'لا يمكن تغيير كلمة المرور حالياً. يرجى المحاولة مرة أخرى.',
         );
       }
 
@@ -123,7 +122,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       print('❌ Stack trace: $stackTrace');
       if (mounted) {
         print('❌ Calling _showErrorDialog');
-        _showErrorDialog(_errorService.analyzeException(e));
+        _showErrorDialog(e.toString().replaceAll('Exception: ', '').trim());
       }
     } finally {
       if (mounted) {
@@ -145,7 +144,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       ModernDialog.showSuccess(
         context,
         title: 'تم إعادة تعيين كلمة المرور',
-        message: 'تم إعادة تعيين كلمة المرور بنجاح!\n\n'
+        message:
+            'تم إعادة تعيين كلمة المرور بنجاح!\n\n'
             'يرجى تسجيل الدخول بكلمة المرور الجديدة.',
         barrierDismissible: false,
         onConfirm: () {
@@ -173,61 +173,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إعادة تعيين كلمة المرور'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
-        child: Form(
+    return AuthLayout(
+      title: 'إعادة تعيين كلمة المرور',
+      heading: 'كلمة مرور جديدة',
+      subtitle: 'اختر كلمة مرور قوية لحسابك',
+      icon: Icons.password_rounded,
+      children: [
+        Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header avec logo
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Image.asset(
-                      'assets/images/logos/logo.png',
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'إعادة تعيين كلمة المرور',
-                      style: AppTheme.headingLarge.copyWith(
-                        color: AppTheme.primaryColor,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'أدخل كلمة المرور الجديدة',
-                      style: AppTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Nouveau mot de passe avec validation avancée
               PasswordFieldWidget(
                 controller: _newPasswordController,
                 labelText: 'كلمة المرور الجديدة',
@@ -235,45 +191,29 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 showSuggestions: true,
               ),
               const SizedBox(height: AppTheme.spacingS),
-
-              // Confirmation du nouveau mot de passe
               ConfirmPasswordFieldWidget(
                 controller: _confirmPasswordController,
                 passwordController: _newPasswordController,
                 labelText: 'تأكيد كلمة المرور الجديدة',
               ),
-              const SizedBox(height: AppTheme.spacingXL),
-
-              // Bouton de réinitialisation
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                    onPressed: _resetPassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingL,
-                        vertical: AppTheme.spacingS,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                    ),
-                    child: const Text(
-                      'إعادة تعيين كلمة المرور',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('العودة لتسجيل الدخول'),
+              const SizedBox(height: AppTheme.spacingM),
+              AuthSubmitButton(
+                text: 'إعادة تعيين كلمة المرور',
+                icon: Icons.check_rounded,
+                isLoading: _isLoading,
+                onPressed: _resetPassword,
               ),
             ],
           ),
         ),
-      ),
+      ],
+      footer: [
+        TextButton.icon(
+          onPressed: () => context.go('/login'),
+          icon: const Icon(Icons.arrow_forward_rounded),
+          label: const Text('العودة لتسجيل الدخول'),
+        ),
+      ],
     );
   }
 }

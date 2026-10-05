@@ -59,7 +59,7 @@ class _NewCompetitionMediaManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل الأرشيف: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -116,7 +116,7 @@ class _NewCompetitionMediaManagementPageState
                   ? 'تم تفعيل الأرشيف'
                   : 'تم إلغاء تفعيل الأرشيف',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       }
@@ -125,7 +125,7 @@ class _NewCompetitionMediaManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تغيير حالة الأرشيف: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -160,7 +160,7 @@ class _NewCompetitionMediaManagementPageState
       );
       return;
     }
-    
+
     final confirmed = await ConfirmationService.showDeleteConfirmation(
       context,
       title: 'تأكيد حذف الميديا',
@@ -183,7 +183,7 @@ class _NewCompetitionMediaManagementPageState
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف الأرشيف بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.successColor,
             ),
           );
         }
@@ -192,7 +192,7 @@ class _NewCompetitionMediaManagementPageState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('خطأ في حذف الأرشيف: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -216,7 +216,7 @@ class _NewCompetitionMediaManagementPageState
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('لا يمكن فتح الفيديو'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -226,7 +226,7 @@ class _NewCompetitionMediaManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في فتح الفيديو: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -272,14 +272,7 @@ class _NewCompetitionMediaManagementPageState
                       vertical: AppTheme.spacingS,
                     ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primaryColor,
-                          AppTheme.primaryColor.withValues(alpha: 0.85),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
+                      gradient: AppTheme.primaryGradient,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -299,7 +292,7 @@ class _NewCompetitionMediaManagementPageState
                         ),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: const Icon(Icons.close_rounded, color: Colors.white),
                         ),
                       ],
                     ),
@@ -324,18 +317,22 @@ class _NewCompetitionMediaManagementPageState
                               if (progress == null) return child;
                               return Center(
                                 child: CircularProgressIndicator(
-                                  value: progress.expectedTotalBytes != null
-                                      ? progress.cumulativeBytesLoaded /
-                                          progress.expectedTotalBytes!
-                                      : null,
+                                  value:
+                                      progress.expectedTotalBytes != null
+                                          ? progress.cumulativeBytesLoaded /
+                                              progress.expectedTotalBytes!
+                                          : null,
                                 ),
                               );
                             },
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                color: Colors.grey[200],
+                                color: AppTheme.dividerColor,
                                 child: const Center(
-                                  child: Icon(Icons.image_not_supported, size: 64),
+                                  child: Icon(
+                                    Icons.image_not_supported_rounded,
+                                    size: 64,
+                                  ),
                                 ),
                               );
                             },
@@ -365,7 +362,10 @@ class _NewCompetitionMediaManagementPageState
                       children: [
                         TextButton.icon(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close, color: AppTheme.textPrimaryColor),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: AppTheme.textPrimaryColor,
+                          ),
                           label: Text(
                             'إغلاق',
                             style: AppTheme.bodyMedium.copyWith(
@@ -442,7 +442,7 @@ class _NewCompetitionMediaManagementPageState
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('خطأ: رابط الفيديو غير متوفر'),
-                backgroundColor: Colors.red,
+                backgroundColor: AppTheme.errorColor,
               ),
             );
           }
@@ -478,7 +478,7 @@ class _NewCompetitionMediaManagementPageState
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.play_circle_filled,
+                        Icons.play_circle_filled_rounded,
                         size: 48,
                         color: AppTheme.infoColor,
                       ),
@@ -523,7 +523,7 @@ class _NewCompetitionMediaManagementPageState
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.image_not_supported,
+                            Icons.image_not_supported_rounded,
                             size: 32,
                             color: AppTheme.textSecondaryColor,
                           ),
@@ -586,7 +586,7 @@ class _NewCompetitionMediaManagementPageState
                     ],
                   ),
                   child: Icon(
-                    Icons.more_vert,
+                    Icons.more_vert_rounded,
                     color: AppTheme.textPrimaryColor,
                     size: 16,
                   ),
@@ -615,7 +615,7 @@ class _NewCompetitionMediaManagementPageState
                       child: Row(
                         children: [
                           Icon(
-                            Icons.edit,
+                            Icons.edit_rounded,
                             color: AppTheme.primaryColor,
                             size: 16,
                           ),
@@ -634,8 +634,8 @@ class _NewCompetitionMediaManagementPageState
                         children: [
                           Icon(
                             media.isActive
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
                             color:
                                 media.isActive
                                     ? AppTheme.warningColor
@@ -657,7 +657,7 @@ class _NewCompetitionMediaManagementPageState
                         child: Row(
                           children: [
                             Icon(
-                              Icons.delete,
+                              Icons.delete_rounded,
                               color: AppTheme.errorColor,
                               size: 16,
                             ),
@@ -687,12 +687,12 @@ class _NewCompetitionMediaManagementPageState
         actions: [
           IconButton(
             onPressed: _addNewMedia,
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_rounded),
             tooltip: 'إضافة أرشيف جديدة',
           ),
           IconButton(
             onPressed: _loadCompetitionMedia,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'تحديث',
           ),
         ],
@@ -793,7 +793,7 @@ class _NewCompetitionMediaManagementPageState
                                           MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          Icons.perm_media_outlined,
+                                          Icons.perm_media_rounded,
                                           size: 64,
                                           color: AppTheme.textSecondaryColor,
                                         ),

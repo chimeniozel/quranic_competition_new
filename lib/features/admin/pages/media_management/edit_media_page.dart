@@ -67,7 +67,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل المسابقات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -101,7 +101,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار نسخة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -114,7 +114,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('خطأ: معرف النسخة فارغ'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -204,7 +204,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                   ? 'تم إنشاء ${(_selectedMediaType.toString().contains('video') ? 'الفيديو' : 'الصورة')} بنجاح'
                   : 'تم تحديث الأرشيف بنجاح',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
         context.pop(true); // Retour avec succès
@@ -216,7 +216,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحديث الأرشيف: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -232,8 +232,9 @@ class _EditMediaPageState extends State<EditMediaPage> {
 
   Future<void> _pickImageFromGallery() async {
     // Demander la permission avant de charger l'image
-    final hasPermission =
-        await _permissionService.requestStoragePermission(context);
+    final hasPermission = await _permissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) {
       return; // L'utilisateur n'a pas accordé la permission
     }
@@ -255,7 +256,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في اختيار الصورة: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -350,7 +351,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                           MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          Icons.play_circle_filled,
+                                          Icons.play_circle_filled_rounded,
                                           size: 64,
                                           color: AppTheme.surfaceColor,
                                         ),
@@ -433,7 +434,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                                 ),
                                                 child: IconButton(
                                                   icon: Icon(
-                                                    Icons.photo_library,
+                                                    Icons.photo_library_rounded,
                                                     color:
                                                         AppTheme.primaryColor,
                                                   ),
@@ -476,7 +477,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                                   ),
                                                   child: IconButton(
                                                     icon: Icon(
-                                                      Icons.close,
+                                                      Icons.close_rounded,
                                                       color:
                                                           AppTheme.errorColor,
                                                     ),
@@ -560,7 +561,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                         ),
                                       ),
                                       prefixIcon: const Icon(
-                                        Icons.emoji_events,
+                                        Icons.emoji_events_rounded,
                                       ),
                                     ),
                                     items:
@@ -598,7 +599,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                           AppTheme.radiusM,
                                         ),
                                       ),
-                                      prefixIcon: const Icon(Icons.category),
+                                      prefixIcon: const Icon(Icons.category_rounded),
                                     ),
                                     items: [
                                       DropdownMenuItem<MediaType>(
@@ -606,7 +607,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                         child: Row(
                                           children: [
                                             Icon(
-                                              Icons.image,
+                                              Icons.image_rounded,
                                               color: AppTheme.primaryColor,
                                             ),
                                             const SizedBox(
@@ -621,7 +622,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                         child: Row(
                                           children: [
                                             Icon(
-                                              Icons.video_library,
+                                              Icons.video_library_rounded,
                                               color: AppTheme.errorColor,
                                             ),
                                             const SizedBox(
@@ -664,7 +665,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                           AppTheme.radiusM,
                                         ),
                                       ),
-                                      prefixIcon: const Icon(Icons.title),
+                                      prefixIcon: const Icon(Icons.title_rounded),
                                     ),
                                     validator: (value) {
                                       if (value == null ||
@@ -710,7 +711,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                     child: Row(
                                       children: [
                                         Icon(
-                                          Icons.info_outline,
+                                          Icons.info_outline_rounded,
                                           color: AppTheme.infoColor,
                                           size: 20,
                                         ),
@@ -764,8 +765,8 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                                   : widget.media.type)
                                               .toString()
                                               .contains('video')
-                                          ? Icons.video_library
-                                          : Icons.image,
+                                          ? Icons.video_library_rounded
+                                          : Icons.image_rounded,
                                     ),
                                   ),
                                   validator: (value) {
@@ -853,7 +854,7 @@ class _EditMediaPageState extends State<EditMediaPage> {
                                       child: Row(
                                         children: [
                                           Icon(
-                                            Icons.check_circle,
+                                            Icons.check_circle_rounded,
                                             color: AppTheme.successColor,
                                             size: 20,
                                           ),

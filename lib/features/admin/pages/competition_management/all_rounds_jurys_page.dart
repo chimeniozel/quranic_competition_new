@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:quranic_competition/core/services/user_service.dart';
 import 'package:quranic_competition/core/services/round_jury_service.dart';
 import 'package:quranic_competition/core/services/evaluation_service.dart';
@@ -9,7 +10,6 @@ import 'package:quranic_competition/models/round.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import '../../../../core/widgets/modern_navigation.dart';
-import '../../../../core/widgets/ui_components.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'package:excel/excel.dart' as xls;
@@ -173,7 +173,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ أثناء تحميل المحكمين: $e'),
+          content: const Text('تعذر تحميل المحكمين. حاول مجدداً.'),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -183,84 +183,81 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
   Widget _buildAddJurySheet(Round round, List<AppUser> availableJurys) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: const BoxDecoration(
+        color: AppTheme.pageBackgroundColor,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusXL),
+        ),
       ),
       child: Column(
         children: [
-          // Handle
           Container(
             margin: const EdgeInsets.only(top: 12),
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppTheme.textSecondaryColor,
+              color: AppTheme.dividerColor,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-
-          // Header
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppTheme.spacingM),
             child: Row(
               children: [
-                Icon(Icons.person_add, color: AppTheme.primaryColor, size: 24),
-                const SizedBox(width: 12),
+                const AppIconBadge(
+                  icon: Icons.person_add_alt_1_rounded,
+                  color: AppTheme.primaryColor,
+                ),
+                const SizedBox(width: AppTheme.spacingS),
                 Expanded(
-                  child: Text(
-                    'إضافة مصحح للجولة ${round.number}',
-                    style: AppTheme.headingMedium.copyWith(
-                      color: AppTheme.textPrimaryColor,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'إضافة مصحح',
+                        style: AppTheme.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'الجولة ${round.number} · ${availableJurys.length} محكم متاح',
+                        style: AppTheme.bodySmall,
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: AppTheme.textSecondaryColor),
+                  icon: const Icon(Icons.close_rounded),
                 ),
               ],
             ),
           ),
-
-          // List of available jurys
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingM,
+              ),
               itemCount: availableJurys.length,
               itemBuilder: (context, index) {
                 final jury = availableJurys[index];
-                return ModernCard(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                      child: Icon(Icons.person, color: AppTheme.primaryColor),
-                    ),
-                    title: Text(
-                      jury.fullName,
-                      style: AppTheme.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
+                final name = jury.fullName.trim();
+                return AppListCard(
+                  leading: CircleAvatar(
+                    backgroundColor: AppTheme.infoColor.withValues(alpha: 0.12),
+                    child: Text(
+                      name.isNotEmpty ? name.characters.first : '?',
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: AppTheme.infoColor,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Text(
-                      jury.phone,
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                    trailing: ElevatedButton(
-                      onPressed: () => _addJuryToRound(round, jury),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('إضافة'),
-                    ),
+                  ),
+                  title: name.isNotEmpty ? name : 'بدون اسم',
+                  subtitle: jury.phone,
+                  trailing: FilledButton.tonal(
+                    onPressed: () => _addJuryToRound(round, jury),
+                    child: const Text('إضافة'),
                   ),
                 );
               },
@@ -355,7 +352,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
             content: Text(
               'تم إضافة ${jury.fullName} بنجاح للجولة ${round.number}',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       } else {
@@ -363,7 +360,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل في إضافة المصحح'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -373,7 +370,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('خطأ أثناء إضافة المصحح: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
     }
@@ -459,7 +456,7 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
               title: Row(
                 children: [
                   Icon(
-                    Icons.warning_outlined,
+                    Icons.warning_rounded,
                     color: AppTheme.warningColor,
                     size: 24,
                   ),
@@ -497,8 +494,8 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
                       children: [
                         Icon(
                           hasEvaluatedAll
-                              ? Icons.check_circle_outline
-                              : Icons.info_outline,
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.info_outline_rounded,
                           color:
                               hasEvaluatedAll
                                   ? AppTheme.primaryColor
@@ -772,216 +769,151 @@ class _AllRoundsJurysPageState extends State<AllRoundsJurysPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: ModernAppBar(title: 'إدارة المصححين - ${widget.version.name}'),
-      body: _isLoading ? _buildLoadingState() : _buildContent(),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'جاري التحميل...',
-            style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-        ],
-      ),
+      appBar: ModernAppBar(title: 'المصححون - ${widget.version.name}'),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _buildContent(),
     );
   }
 
   Widget _buildContent() {
     if (_rounds.isEmpty) {
-      return Center(
-        child: EmptyState(
-          icon: Icons.event_busy,
-          title: 'لا توجد جولات',
-          subtitle: 'لم يتم إنشاء أي جولات لهذه النسخة بعد',
-        ),
+      return const EmptyState(
+        icon: Icons.event_busy_rounded,
+        title: 'لا توجد جولات',
+        subtitle: 'لم يتم إنشاء أي جولات لهذه النسخة بعد',
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _rounds.length,
-      itemBuilder: (context, index) {
-        final round = _rounds[index];
-        final jurys = _jurysByRound[round.id] ?? [];
-
-        return _buildRoundCard(round, jurys);
-      },
+    return ListView(
+      padding: const EdgeInsets.all(AppTheme.spacingM),
+      children: [
+        if (widget.version.juryEvaluationEnabled) ...[
+          const AppNotice(
+            text:
+                'تقييم المحكمين مفعل حالياً: لا يمكن إضافة مصححين حتى يتم إيقافه.',
+            color: AppTheme.warningColor,
+            icon: Icons.lock_outline_rounded,
+          ),
+          const SizedBox(height: AppTheme.spacingM),
+        ],
+        for (final round in _rounds) ...[
+          _buildRoundCard(round, _jurysByRound[round.id] ?? []),
+          const SizedBox(height: AppTheme.spacingM),
+        ],
+      ],
     );
   }
 
   Widget _buildRoundCard(Round round, List<AppUser> jurys) {
-    return ModernCard(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header du round
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
+    final name = round.name?.trim();
+
+    return AppSection(
+      icon: Icons.flag_rounded,
+      title:
+          name != null && name.isNotEmpty
+              ? 'الجولة ${round.number} - $name'
+              : 'الجولة ${round.number}',
+      subtitle: jurys.isEmpty ? 'لا يوجد مصححون بعد' : '${jurys.length} مصحح',
+      trailing: IconButton.filledTonal(
+        onPressed: () => _showAddJurySheet(round),
+        icon: const Icon(Icons.person_add_alt_1_rounded),
+        tooltip: 'إضافة مصحح',
+      ),
+      child:
+          jurys.isEmpty
+              ? OutlinedButton.icon(
+                onPressed: () => _showAddJurySheet(round),
+                style: AppButtonStyles.outlined(AppTheme.primaryColor),
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('إضافة مصحح'),
+              )
+              : Column(
+                children: [
+                  for (var i = 0; i < jurys.length; i++) ...[
+                    if (i > 0) const Divider(),
+                    _buildJuryRow(round, jurys[i]),
+                  ],
+                ],
               ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.event, color: Colors.white, size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    round.name != null ? ' - ${round.name}' : '',
-                    style: AppTheme.headingMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                // Container(
-                //   padding: const EdgeInsets.symmetric(
-                //     horizontal: 8,
-                //     vertical: 4,
-                //   ),
-                //   decoration: BoxDecoration(
-                //     color: Colors.white.withOpacity(0.2),
-                //     borderRadius: BorderRadius.circular(12),
-                //   ),
-                //   child: Text(
-                //     '${jurys.length} مصحح',
-                //     style: AppTheme.bodySmall.copyWith(
-                //       color: Colors.white,
-                //       fontWeight: FontWeight.w600,
-                //     ),
-                //   ),
-                // ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => _showAddJurySheet(round),
-                  icon: const Icon(Icons.person_add, color: Colors.white),
-                  tooltip: 'إضافة مصحح',
-                ),
-              ],
+    );
+  }
+
+  Widget _buildJuryRow(Round round, AppUser jury) {
+    final name = jury.fullName.trim();
+    final initial = name.isNotEmpty ? name.characters.first : '?';
+    final canExport = _juryEvaluationStatus[round.id]?[jury.id] == true;
+    final exporting = _isExporting['${jury.id}_${round.id}'] == true;
+
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: AppTheme.infoColor.withValues(alpha: 0.12),
+          child: Text(
+            initial,
+            style: AppTheme.bodyLarge.copyWith(
+              color: AppTheme.infoColor,
+              fontWeight: FontWeight.bold,
             ),
           ),
-
-          // Liste des jurys
-          if (jurys.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.people_outline,
-                      size: 48,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'لا يوجد مصححون لهذه الجولة',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                  ],
+        ),
+        const SizedBox(width: AppTheme.spacingS),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isNotEmpty ? name : 'بدون اسم',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+              if (jury.phone.isNotEmpty)
+                Text(
+                  jury.phone,
+                  textDirection: TextDirection.ltr,
+                  style: AppTheme.bodySmall,
+                ),
+              if (canExport)
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: AppTag(
+                    text: 'أنهى التصحيح',
+                    color: AppTheme.successColor,
+                    icon: Icons.check_circle_rounded,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Export possible seulement quand toutes les évaluations sont faites
+        if (canExport)
+          exporting
+              ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: AppButtonLoader(color: AppTheme.infoColor),
+              )
+              : IconButton(
+                onPressed: () => _exportJuryEvaluations(round, jury),
+                icon: const Icon(Icons.file_download_rounded),
+                color: AppTheme.infoColor,
+                tooltip: 'تصدير التصحيحات',
+              ),
+        _isCheckingEvaluations
+            ? const Padding(
+              padding: EdgeInsets.all(12),
+              child: AppButtonLoader(color: AppTheme.primaryColor),
             )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: jurys.length,
-              itemBuilder: (context, index) {
-                final jury = jurys[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                    child: Text(
-                      '${index + 1}',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    jury.fullName,
-                    style: AppTheme.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                  subtitle: Text(
-                    jury.phone,
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Bouton d'exportation si toutes les évaluations sont terminées
-                      if (_juryEvaluationStatus[round.id]?[jury.id] == true)
-                        _isExporting['${jury.id}_${round.id}'] == true
-                            ? Container(
-                              width: 24,
-                              height: 24,
-                              padding: const EdgeInsets.all(4),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.infoColor,
-                                ),
-                              ),
-                            )
-                            : IconButton(
-                              onPressed:
-                                  () => _exportJuryEvaluations(round, jury),
-                              icon: Icon(
-                                Icons.file_download,
-                                color: AppTheme.infoColor,
-                              ),
-                              tooltip: 'تصدير التصحيحات',
-                            ),
-                      const SizedBox(width: 8),
-                      // Bouton de suppression
-                      _isCheckingEvaluations
-                          ? Container(
-                            width: 24,
-                            height: 24,
-                            padding: const EdgeInsets.all(4),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.primaryColor,
-                              ),
-                            ),
-                          )
-                          : IconButton(
-                            onPressed: () => _removeJuryFromRound(round, jury),
-                            icon: Icon(Icons.delete_outline, color: Colors.red),
-                            tooltip: 'إزالة من الجولة',
-                          ),
-                    ],
-                  ),
-                );
-              },
+            : IconButton(
+              onPressed: () => _removeJuryFromRound(round, jury),
+              icon: const Icon(Icons.person_remove_rounded),
+              color: AppTheme.errorColor,
+              tooltip: 'إزالة من الجولة',
             ),
-        ],
-      ),
+      ],
     );
   }
 

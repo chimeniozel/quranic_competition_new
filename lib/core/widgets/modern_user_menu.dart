@@ -209,7 +209,7 @@ class UserMenuItem extends StatelessWidget {
                   ),
                 )
                 : const Icon(
-                  Icons.arrow_forward_ios,
+                  Icons.arrow_forward_ios_rounded,
                   size: 16,
                   color: AppTheme.textSecondaryColor,
                 ),
@@ -455,7 +455,7 @@ class UserProfileCompact extends StatelessWidget {
             ),
             if (showArrow && onTap != null)
               Icon(
-                Icons.arrow_forward_ios,
+                Icons.arrow_forward_ios_rounded,
                 size: 16,
                 color: AppTheme.textSecondaryColor,
               ),

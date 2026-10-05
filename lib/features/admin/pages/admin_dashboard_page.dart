@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/logout_dialog.dart';
 import '../../../core/widgets/notification_bell.dart';
 import 'package:go_router/go_router.dart';
-import 'package:quranic_competition/core/services/auth_service.dart';
-import 'package:quranic_competition/core/widgets/role_info_widget.dart';
-import 'package:quranic_competition/core/services/confirmation_service.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
 import 'package:quranic_competition/core/widgets/modern_dashboard.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
-import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/services/evaluation_stats_service.dart';
 import 'package:quranic_competition/core/services/user_service.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/competition_version.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -29,6 +26,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   final EvaluationStatsService _statsService = EvaluationStatsService();
   final CompetitionVersionService _versionService = CompetitionVersionService();
   CompetitionVersion? _activeVersion;
+  // Chargé une seule fois (le FutureBuilder relançait la requête à chaque
+  // reconstruction de l'écran)
+  late final Future<AppUser?> _profileFuture =
+      UserService().getCurrentUserProfile();
 
   @override
   void initState() {
@@ -82,208 +83,138 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
-  Future<void> _showLogoutConfirmation(BuildContext context) async {
-    final confirmed = await ConfirmationService.showDeleteConfirmation(
-      context,
-      title: 'تأكيد تسجيل الخروج',
-      message: 'هل أنت متأكد من رغبتك في تسجيل الخروج؟',
-      confirmText: 'تسجيل الخروج',
-      cancelText: 'إلغاء',
-      isDestructive: false,
+  Future<void> _showLogoutConfirmation(BuildContext context) =>
+      confirmAndSignOut(context);
+
+  Widget _buildWelcomeHeader() {
+    return FutureBuilder<AppUser?>(
+      future: _profileFuture,
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        final name =
+            user?.fullName.trim().isNotEmpty == true
+                ? user!.fullName.trim()
+                : 'مدير النظام';
+        final isSuperAdmin = user?.role == 'super_admin';
+
+        return AppGradientHeader(
+          leading: CircleAvatar(
+            radius: 34,
+            backgroundColor: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Image.asset('assets/images/logos/logo.png'),
+            ),
+          ),
+          title: 'مرحباً بكم، $name',
+          subtitle: 'لوحة تحكم مسابقة أهل القرآن',
+          badges: [
+            AppHeaderBadge(
+              icon: Icons.admin_panel_settings_rounded,
+              text: isSuperAdmin ? 'مدير عام' : 'مدير',
+            ),
+            if (_activeVersion != null)
+              AppHeaderBadge(
+                icon: Icons.emoji_events_rounded,
+                text: _activeVersion!.name,
+                highlightColor: AppTheme.secondaryColor,
+              ),
+          ],
+        );
+      },
     );
-
-    if (confirmed) {
-      await AuthService().signOut();
-      if (context.mounted) {
-        context.go('/login');
-      }
-    }
   }
 
-  List<Widget> _buildEvaluationProgressCards() {
-    // Ne pas afficher de cartes si aucune version active n'existe
-    if (_activeVersion == null || !_activeVersion!.isActive) {
-      return [];
-    }
+  Widget _buildProgressSection() {
+    final stats =
+        _evaluationStats.isNotEmpty
+            ? _evaluationStats
+                .map(
+                  (s) => (
+                    label: s.ageGroup,
+                    progress: s.progressPercentage,
+                    text: s.progressText,
+                  ),
+                )
+                .toList()
+            : [
+              (label: 'كبار', progress: 0.0, text: 'لا توجد بيانات متاحة'),
+              (label: 'صغار', progress: 0.0, text: 'لا توجد بيانات متاحة'),
+            ];
 
-    if (_evaluationStats.isEmpty) {
-      // Afficher des cartes par défaut si aucune donnée n'est disponible
-      return [
-        _buildDefaultProgressCard(
-          'تقييم المشاركين - الكبار',
-          'كبار',
-          Icons.people_alt,
-          AppTheme.primaryColor,
-          0,
-          0,
-        ),
-        const SizedBox(height: AppTheme.spacingS),
-        _buildDefaultProgressCard(
-          'تقييم المشاركين - الصغار',
-          'صغار',
-          Icons.people_alt,
-          AppTheme.infoColor,
-          0,
-          0,
-        ),
-      ];
-    }
-
-    final cards = <Widget>[];
-
-    for (int i = 0; i < _evaluationStats.length; i++) {
-      final stat = _evaluationStats[i];
-
-      cards.add(
-        _buildProgressCard(
-          'تقييم المشاركين - ${stat.ageGroup}',
-          stat.ageGroup,
-          Icons.people_alt,
-          AppTheme.primaryColor,
-          stat.evaluatedParticipants,
-          stat.totalParticipants,
-          stat.progressPercentage,
-          stat.progressText,
-        ),
-      );
-
-      if (i < _evaluationStats.length - 1) {
-        cards.add(const SizedBox(height: AppTheme.spacingS));
-      }
-    }
-
-    return cards;
+    return AppSection(
+      icon: Icons.insights_rounded,
+      color: AppTheme.successColor,
+      title: 'تقدم تقييمات المشاركين',
+      subtitle: _activeVersion?.name,
+      child:
+          _isLoading
+              ? const Padding(
+                padding: EdgeInsets.all(AppTheme.spacingM),
+                child: Center(child: CircularProgressIndicator()),
+              )
+              : Column(
+                children: [
+                  for (var i = 0; i < stats.length; i++) ...[
+                    if (i > 0) const SizedBox(height: AppTheme.spacingM),
+                    _buildProgressRow(
+                      stats[i].label == 'صغار' ? 'فرع الصغار' : 'فرع الكبار',
+                      stats[i].text,
+                      stats[i].progress,
+                      stats[i].label == 'صغار'
+                          ? AppTheme.secondaryColor
+                          : AppTheme.primaryColor,
+                    ),
+                  ],
+                ],
+              ),
+    );
   }
 
-  Widget _buildProgressCard(
+  Widget _buildProgressRow(
     String title,
-    String ageGroup,
-    IconData icon,
-    Color color,
-    int evaluated,
-    int total,
+    String detail,
     double progress,
-    String progressText,
-  ) {
-    return ModernCard(
-      child: Container(
-        height: 80,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              ),
-              child: Icon(icon, color: color, size: 25),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    style: AppTheme.bodyLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    progressText,
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  ModernProgressIndicator(
-                    value: progress,
-                    color: color,
-                    height: 6,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
-            Text(
-              '${(progress * 100).toInt()}%',
-              style: AppTheme.headingSmall.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultProgressCard(
-    String title,
-    String ageGroup,
-    IconData icon,
     Color color,
-    int evaluated,
-    int total,
   ) {
-    return ModernCard(
-      child: Container(
-        height: 80,
-        child: Row(
+    final value = progress.clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              ),
-              child: Icon(icon, color: color, size: 25),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    style: AppTheme.bodyLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'لا توجد بيانات متاحة',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  ModernProgressIndicator(value: 0.0, color: color, height: 6),
-                ],
+              child: Text(
+                title,
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            const SizedBox(width: AppTheme.spacingS),
             Text(
-              '0%',
-              style: AppTheme.headingSmall.copyWith(
+              '${(value * 100).toInt()}%',
+              style: AppTheme.bodyLarge.copyWith(
                 color: color,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.radiusS),
+          child: LinearProgressIndicator(
+            value: value,
+            minHeight: 8,
+            color: color,
+            backgroundColor: color.withOpacity(0.12),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(detail, style: AppTheme.bodySmall),
+      ],
     );
   }
 
@@ -304,138 +235,91 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
       body: ModernPullToRefresh(
         onRefresh: _loadDashboardData,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Welcome message
-              FutureBuilder<AppUser?>(
-                future: UserService().getCurrentUserProfile(),
-                builder: (context, snapshot) {
-                  final username = snapshot.data?.fullName ?? 'مدير النظام';
-                  return Container(
-                    padding: const EdgeInsets.all(AppTheme.spacingM),
-                    margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Image.asset(
-                          'assets/images/logos/logo.png',
-                          height: 50,
-                          width: 50,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          children: [
+            _buildWelcomeHeader(),
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingM),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppSection(
+                    icon: Icons.apps_rounded,
+                    title: 'إجراءات سريعة',
+                    subtitle: 'الوصول السريع للوظائف الأساسية',
+                    child: QuickActionGrid(
+                      actions: [
+                        QuickAction(
+                          title: 'إدارة المستخدمين',
+                          icon: Icons.manage_accounts_rounded,
+                          color: AppTheme.primaryColor,
+                          onTap: () => context.push('/admin/users'),
                         ),
-                        const SizedBox(width: AppTheme.spacingS),
-                        Expanded(
-                          child: Text(
-                            'مرحبا بكم $username',
-                            style: AppTheme.headingSmall.copyWith(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        QuickAction(
+                          title: 'إدارة المسابقات',
+                          icon: Icons.emoji_events_rounded,
+                          color: AppTheme.successColor,
+                          onTap: () => context.push('/admin/versions'),
+                        ),
+                        QuickAction(
+                          title: 'أحكام التجويد',
+                          icon: Icons.record_voice_over_rounded,
+                          color: AppTheme.warningColor,
+                          onTap: () => context.push('/admin/tajweed-rules'),
+                        ),
+                        QuickAction(
+                          title: 'إدارة الفوائد القرآنية',
+                          icon: Icons.menu_book_rounded,
+                          color: AppTheme.warningColor,
+                          onTap: () => context.push('/admin/quranic-benefits'),
+                        ),
+                        QuickAction(
+                          title: 'أسئلة و أجوبة في القرآن',
+                          icon: Icons.quiz_rounded,
+                          color: AppTheme.infoColor,
+                          onTap: () => context.push('/admin/quiz/levels'),
+                        ),
+                        QuickAction(
+                          title: 'أرشيف المسابقات',
+                          icon: Icons.photo_library_rounded,
+                          color: AppTheme.secondaryColor,
+                          onTap: () => context.push('/admin/archives'),
+                        ),
+                        QuickAction(
+                          title: 'فسحة العيد',
+                          icon: Icons.celebration_rounded,
+                          color: AppTheme.successColor,
+                          onTap: () => context.push('/admin/eid-sessions'),
+                        ),
+                        QuickAction(
+                          title: 'من نحن',
+                          icon: Icons.info_rounded,
+                          color: AppTheme.primaryColor,
+                          onTap: () => context.push('/admin/about-us'),
+                        ),
+                        QuickAction(
+                          title: 'التحديث الإجباري',
+                          icon: Icons.system_update_rounded,
+                          color: AppTheme.warningColor,
+                          onTap: () => context.push('/admin/force-update'),
                         ),
                       ],
+                      crossAxisCount: 2,
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-              // Informations de l'utilisateur
-              RoleInfoWidget(),
-              // const SizedBox(height: AppTheme.spacingL),
-
-              // Actions rapides
-              DashboardSection(
-                title: 'إجراءات سريعة',
-                subtitle: 'الوصول السريع للوظائف الأساسية',
-                child: QuickActionGrid(
-                  actions: [
-                    QuickAction(
-                      title: 'إدارة المستخدمين',
-                      imagePath: 'assets/images/admin.png',
-                      color: AppTheme.primaryColor,
-                      onTap: () => context.push('/admin/users'),
-                    ),
-                    QuickAction(
-                      title: 'إدارة المسابقات',
-                      imagePath: 'assets/images/competition.png',
-                      color: AppTheme.successColor,
-                      onTap: () => context.push('/admin/versions'),
-                    ),
-                    QuickAction(
-                      title: 'أحكام التجويد',
-                      imagePath: 'assets/images/tajweed_rules.png',
-                      color: AppTheme.warningColor,
-                      onTap: () => context.push('/admin/tajweed-rules'),
-                    ),
-                    QuickAction(
-                      title: 'إدارة الفوائد القرآنية',
-                      imagePath: 'assets/images/فوائد قرآنية.png',
-                      color: Colors.deepOrange,
-                      onTap: () => context.push('/admin/quranic-benefits'),
-                    ),
-                    QuickAction(
-                      title: 'أسئلة و أجوبة في القرآن',
-                      imagePath:
-                          'assets/images/أسئلة_وأجوبة_عن_القرآن_الكريم.png',
-                      color: AppTheme.infoColor,
-                      onTap: () => context.push('/admin/quiz/levels'),
-                    ),
-                    QuickAction(
-                      title: 'أرشيف المسابقات',
-                      imagePath: 'assets/images/archive.png',
-                      color: AppTheme.secondaryColor,
-                      onTap: () => context.push('/admin/archives'),
-                    ),
-                    QuickAction(
-                      title: 'فسحة العيد',
-                      icon: Icons.celebration,
-                      color: Colors.green,
-                      onTap: () => context.push('/admin/eid-sessions'),
-                    ),
-                    QuickAction(
-                      title: 'من نحن',
-                      imagePath: 'assets/images/about-us.png',
-                      color: Colors.teal,
-                      onTap: () => context.push('/admin/about-us'),
-                    ),
-                    QuickAction(
-                      title: 'التحديث الإجباري',
-                      icon: Icons.system_update,
-                      color: AppTheme.warningColor,
-                      onTap: () => context.push('/admin/force-update'),
-                    ),
+                  ),
+                  // Progression des évaluations : seulement si une version
+                  // est active
+                  if (_activeVersion != null && _activeVersion!.isActive) ...[
+                    const SizedBox(height: AppTheme.spacingM),
+                    _buildProgressSection(),
                   ],
-                  crossAxisCount: 2,
-                ),
+                  const SizedBox(height: AppTheme.spacingL),
+                ],
               ),
-
-              const SizedBox(height: AppTheme.spacingM),
-
-              // Progression des évaluations (déplacé en bas) - afficher seulement si une version active existe
-              if (_activeVersion != null && _activeVersion!.isActive) ...[
-                DashboardSection(
-                  title: 'تقدم تقييمات المشاركين',
-                  subtitle: 'حالة التقييمات حسب المجموعات العمرية',
-                  child:
-                      _isLoading
-                          ? const Padding(
-                            padding: EdgeInsets.all(AppTheme.spacingL),
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                          : Column(children: _buildEvaluationProgressCards()),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -152,7 +152,7 @@ class EmptyState extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    this.icon = Icons.inbox_outlined,
+    this.icon = Icons.inbox_rounded,
     this.iconColor,
     this.action,
     this.iconSize = 64,
@@ -166,16 +166,27 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: iconSize,
-              color: iconColor ?? AppTheme.textDisabledColor,
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacingL),
+              decoration: BoxDecoration(
+                color: (iconColor ?? AppTheme.primaryColor).withValues(
+                  alpha: 0.08,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: iconSize * 0.75,
+                color:
+                    iconColor ?? AppTheme.primaryColor.withValues(alpha: 0.6),
+              ),
             ),
-            const SizedBox(height: AppTheme.spacingL),
+            const SizedBox(height: AppTheme.spacingM),
             Text(
               title,
-              style: AppTheme.headingSmall.copyWith(
-                color: AppTheme.textSecondaryColor,
+              style: AppTheme.bodyLarge.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
               textAlign: TextAlign.center,
             ),
@@ -210,7 +221,7 @@ class ErrorState extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    this.icon = Icons.error_outline,
+    this.icon = Icons.error_outline_rounded,
     this.onRetry,
     this.retryText = 'إعادة المحاولة',
   });
@@ -243,7 +254,7 @@ class ErrorState extends StatelessWidget {
               PrimaryButton(
                 text: retryText,
                 onPressed: onRetry,
-                icon: Icons.refresh,
+                icon: Icons.refresh_rounded,
               ),
             ],
           ],
@@ -291,7 +302,7 @@ class SuccessState extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.check_circle,
+                        Icons.check_circle_rounded,
                         size: 48,
                         color: AppTheme.successColor,
                       ),
@@ -308,7 +319,7 @@ class SuccessState extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.check_circle,
+                  Icons.check_circle_rounded,
                   size: 48,
                   color: AppTheme.successColor,
                 ),

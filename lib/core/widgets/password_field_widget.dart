@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../services/password_validation_service.dart';
 import '../services/error_service.dart';
 import '../theme/app_theme.dart';
@@ -76,7 +75,7 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
             decoration: InputDecoration(
               labelText: widget.labelText,
               hintText: 'أدخل ${widget.labelText.toLowerCase()}',
-              prefixIcon: const FaIcon(FontAwesomeIcons.lock, size: 20),
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -84,22 +83,21 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                     IconButton(
                       icon: Icon(
                         _validationResult?.isValid == true
-                            ? Icons.check_circle_outline
-                            : Icons.error_outline,
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.error_outline_rounded,
                         size: 20,
                         color:
                             _validationResult?.isValid == true
-                                ? Colors.green
-                                : Colors.red,
+                                ? AppTheme.successColor
+                                : AppTheme.errorColor,
                       ),
                       onPressed: null,
                     ),
                   IconButton(
                     icon: Icon(
                       _obscurePassword
-                          ? FontAwesomeIcons.eyeSlash.data
-                          : FontAwesomeIcons.eye.data,
-                      size: 20,
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
                     ),
                     onPressed: () {
                       setState(() {
@@ -119,7 +117,10 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                borderSide: const BorderSide(
+                  color: AppTheme.primaryColor,
+                  width: 2,
+                ),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -127,7 +128,10 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
+                borderSide: const BorderSide(
+                  color: AppTheme.errorColor,
+                  width: 2,
+                ),
               ),
               filled: true,
               fillColor: Colors.white,
@@ -180,13 +184,13 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
       decoration: BoxDecoration(
         color:
             _validationResult!.isValid
-                ? Colors.green.shade50
-                : Colors.red.shade50,
+                ? AppTheme.successColor.withValues(alpha: 0.08)
+                : AppTheme.errorColor.withValues(alpha: 0.08),
         border: Border.all(
           color:
               _validationResult!.isValid
-                  ? Colors.green.shade200
-                  : Colors.red.shade200,
+                  ? AppTheme.successColor.withValues(alpha: 0.3)
+                  : AppTheme.errorColor.withValues(alpha: 0.3),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -199,7 +203,7 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
               Expanded(
                 child: LinearProgressIndicator(
                   value: _validationResult!.strength / 10,
-                  backgroundColor: Colors.grey.shade300,
+                  backgroundColor: AppTheme.dividerColor,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     _validationResult!.strengthColor,
                   ),
@@ -225,12 +229,19 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red, size: 16),
+                    Icon(
+                      Icons.error_outline_rounded,
+                      color: AppTheme.errorColor,
+                      size: 16,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         error,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                        style: const TextStyle(
+                          color: AppTheme.errorColor,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
@@ -248,8 +259,8 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.warning_outlined,
-                      color: Colors.orange,
+                      Icons.warning_rounded,
+                      color: AppTheme.warningColor,
                       size: 16,
                     ),
                     const SizedBox(width: 4),
@@ -257,7 +268,7 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
                       child: Text(
                         warning,
                         style: const TextStyle(
-                          color: Colors.orange,
+                          color: AppTheme.warningColor,
                           fontSize: 12,
                         ),
                       ),
@@ -281,8 +292,8 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        border: Border.all(color: Colors.blue.shade200),
+        color: AppTheme.infoColor.withValues(alpha: 0.08),
+        border: Border.all(color: AppTheme.infoColor.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -290,12 +301,16 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
         children: [
           Row(
             children: [
-              Icon(Icons.lightbulb_outline, color: Colors.blue, size: 16),
+              Icon(
+                Icons.lightbulb_outline_rounded,
+                color: AppTheme.infoColor,
+                size: 16,
+              ),
               const SizedBox(width: 4),
               const Text(
                 'اقتراحات للتحسين:',
                 style: TextStyle(
-                  color: Colors.blue,
+                  color: AppTheme.infoColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -309,11 +324,14 @@ class _PasswordFieldWidgetState extends State<PasswordFieldWidget> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('• ', style: TextStyle(color: Colors.blue)),
+                  const Text('• ', style: TextStyle(color: AppTheme.infoColor)),
                   Expanded(
                     child: Text(
                       suggestion,
-                      style: const TextStyle(color: Colors.blue, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppTheme.infoColor,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -359,13 +377,12 @@ class _ConfirmPasswordFieldWidgetState
         decoration: InputDecoration(
           labelText: widget.labelText,
           hintText: 'أدخل ${widget.labelText.toLowerCase()}',
-          prefixIcon: const FaIcon(FontAwesomeIcons.lock, size: 20),
+          prefixIcon: const Icon(Icons.lock_outline_rounded),
           suffixIcon: IconButton(
             icon: Icon(
               _obscurePassword
-                  ? FontAwesomeIcons.eyeSlash.data
-                  : FontAwesomeIcons.eye.data,
-              size: 20,
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
             ),
             onPressed: () {
               setState(() {
@@ -383,7 +400,10 @@ class _ConfirmPasswordFieldWidgetState
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+            borderSide: const BorderSide(
+              color: AppTheme.primaryColor,
+              width: 2,
+            ),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusM),

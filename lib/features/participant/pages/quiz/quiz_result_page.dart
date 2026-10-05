@@ -7,6 +7,7 @@ import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 
@@ -33,7 +34,9 @@ class _QuizResultPageState extends State<QuizResultPage> {
 
   Future<void> _loadQuestionsAndOptions() async {
     try {
-      final questions = await _quizService.getQuestionsByLevel(widget.result.levelId);
+      final questions = await _quizService.getQuestionsByLevel(
+        widget.result.levelId,
+      );
       final optionsMap = <String, List<QuizOption>>{};
 
       for (final question in questions) {
@@ -57,34 +60,34 @@ class _QuizResultPageState extends State<QuizResultPage> {
   Color _getGradeColor(String grade) {
     switch (grade) {
       case 'ممتاز':
-        return Colors.green;
+        return AppTheme.successColor;
       case 'جيد جداً':
-        return Colors.blue;
+        return AppTheme.infoColor;
       case 'جيد':
-        return Colors.orange;
+        return AppTheme.warningColor;
       case 'مقبول':
-        return Colors.yellow[700]!;
+        return AppTheme.secondaryColor;
       case 'ضعيف':
-        return Colors.red;
+        return AppTheme.errorColor;
       default:
-        return Colors.grey;
+        return AppTheme.textSecondaryColor;
     }
   }
 
   IconData _getGradeIcon(String grade) {
     switch (grade) {
       case 'ممتاز':
-        return Icons.star;
+        return Icons.star_rounded;
       case 'جيد جداً':
-        return Icons.thumb_up;
+        return Icons.thumb_up_rounded;
       case 'جيد':
-        return Icons.check_circle;
+        return Icons.check_circle_rounded;
       case 'مقبول':
-        return Icons.info;
+        return Icons.info_rounded;
       case 'ضعيف':
-        return Icons.warning;
+        return Icons.warning_rounded;
       default:
-        return Icons.help;
+        return Icons.help_rounded;
     }
   }
 
@@ -100,8 +103,8 @@ class _QuizResultPageState extends State<QuizResultPage> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.home),
-            onPressed: () => context.go('/participant'),
+            icon: const Icon(Icons.home_rounded),
+            onPressed: () => context.go('/participant_home_page'),
           ),
         ],
       ),
@@ -111,43 +114,24 @@ class _QuizResultPageState extends State<QuizResultPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // En-tête avec le niveau
-              ModernCard(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primaryColor.withValues(alpha: 0.8),
-                        AppTheme.primaryColor,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              // En-tête avec le niveau et le score
+              AppGradientHeader(
+                shape: AppHeaderShape.card,
+                icon: _getGradeIcon(widget.result.grade),
+                title: widget.result.levelName,
+                subtitle: 'تم إكمال الاختبار',
+                badges: [
+                  AppHeaderBadge(
+                    icon: Icons.workspace_premium_rounded,
+                    text: widget.result.grade,
+                    highlightColor: AppTheme.secondaryColor,
                   ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.quiz, size: 60, color: Colors.white),
-                      const SizedBox(height: AppTheme.spacingS),
-                      Text(
-                        widget.result.levelName,
-                        style: AppTheme.labelLarge.copyWith(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-                      Text(
-                        'تم إكمال المسابقة بنجاح',
-                        style: AppTheme.labelMedium.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                      ),
-                    ],
-                  ),
+                ],
+                bottom: AppHeaderProgress(
+                  value: widget.result.percentage / 100,
+                  label: 'النسبة المئوية',
+                  trailingText:
+                      '${widget.result.percentage.toStringAsFixed(1)}%',
                 ),
               ),
               const SizedBox(height: AppTheme.spacingS),
@@ -159,8 +143,8 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     child: _buildStatCard(
                       'النقاط المكتسبة',
                       '${widget.result.earnedPoints}/${widget.result.totalPoints}',
-                      Icons.stars,
-                      Colors.orange,
+                      Icons.stars_rounded,
+                      AppTheme.warningColor,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -168,8 +152,8 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     child: _buildStatCard(
                       'الإجابات الصحيحة',
                       '${widget.result.correctAnswers}/${widget.result.totalQuestions}',
-                      Icons.check_circle,
-                      Colors.green,
+                      Icons.check_circle_rounded,
+                      AppTheme.successColor,
                     ),
                   ),
                 ],
@@ -181,8 +165,8 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     child: _buildStatCard(
                       'النسبة المئوية',
                       '${widget.result.percentage.toStringAsFixed(1)}%',
-                      Icons.percent,
-                      Colors.blue,
+                      Icons.percent_rounded,
+                      AppTheme.infoColor,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -202,9 +186,9 @@ class _QuizResultPageState extends State<QuizResultPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: AppTheme.pageBackgroundColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[200]!),
+                  border: Border.all(color: AppTheme.dividerColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,13 +198,13 @@ class _QuizResultPageState extends State<QuizResultPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
+                        color: AppTheme.textSecondaryColor,
                       ),
                     ),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
                       value: widget.result.percentage / 100,
-                      backgroundColor: Colors.grey[300],
+                      backgroundColor: AppTheme.dividerColor,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         _getGradeColor(widget.result.grade),
                       ),
@@ -228,7 +212,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     const SizedBox(height: 8),
                     Text(
                       '${widget.result.percentage.toStringAsFixed(1)}% مكتمل',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondaryColor,
+                      ),
                     ),
                   ],
                 ),
@@ -239,23 +226,28 @@ class _QuizResultPageState extends State<QuizResultPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: AppTheme.infoColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[200]!),
+                  border: Border.all(
+                    color: AppTheme.infoColor.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.analytics, color: Colors.blue[600]),
+                        Icon(
+                          Icons.analytics_rounded,
+                          color: AppTheme.infoColor,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'تفاصيل النتائج',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue[600],
+                            color: AppTheme.infoColor,
                           ),
                         ),
                       ],
@@ -274,7 +266,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
                       'الإجابات الخاطئة',
                       '${widget.result.totalQuestions - widget.result.correctAnswers}',
                     ),
-                    _buildDetailRow('إجمالي النقاط', '${widget.result.totalPoints}'),
+                    _buildDetailRow(
+                      'إجمالي النقاط',
+                      '${widget.result.totalPoints}',
+                    ),
                     _buildDetailRow(
                       'النقاط المكتسبة',
                       '${widget.result.earnedPoints}',
@@ -293,10 +288,14 @@ class _QuizResultPageState extends State<QuizResultPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: _getGradeColor(widget.result.grade).withValues(alpha: 0.1),
+                  color: _getGradeColor(
+                    widget.result.grade,
+                  ).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _getGradeColor(widget.result.grade).withValues(alpha: 0.3),
+                    color: _getGradeColor(
+                      widget.result.grade,
+                    ).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
@@ -319,7 +318,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     const SizedBox(height: 8),
                     Text(
                       _getEncouragementMessage(widget.result.percentage),
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondaryColor,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -332,23 +334,23 @@ class _QuizResultPageState extends State<QuizResultPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: AppTheme.pageBackgroundColor,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: AppTheme.dividerColor),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.quiz, color: Colors.blue[600]),
+                          Icon(Icons.quiz_rounded, color: AppTheme.infoColor),
                           const SizedBox(width: 8),
                           Text(
                             'مراجعة الإجابات',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue[600],
+                              color: AppTheme.infoColor,
                             ),
                           ),
                         ],
@@ -380,7 +382,7 @@ class _QuizResultPageState extends State<QuizResultPage> {
                   const SizedBox(width: AppTheme.spacingS),
                   Expanded(
                     child: PrimaryButton(
-                      onPressed: () => context.go('/participant'),
+                      onPressed: () => context.go('/participant_home_page'),
                       text: 'الرئيسية',
                     ),
                   ),
@@ -399,34 +401,7 @@ class _QuizResultPageState extends State<QuizResultPage> {
     IconData icon,
     Color color,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8)),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+    return AppStatTile(label: title, value: value, icon: icon, color: color);
   }
 
   Widget _buildDetailRow(String label, String value) {
@@ -435,7 +410,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          Text(
+            label,
+            style: TextStyle(fontSize: 14, color: AppTheme.textSecondaryColor),
+          ),
           Text(
             value,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
@@ -482,14 +460,15 @@ class _QuizResultPageState extends State<QuizResultPage> {
     final selectedOptionId = widget.result.answers[question.id];
     final selectedOption = options.firstWhere(
       (opt) => opt.id == selectedOptionId,
-      orElse: () => QuizOption(
-        id: '',
-        questionId: question.id,
-        text: '',
-        isCorrect: false,
-        order: 0,
-        createdAt: DateTime.now(),
-      ),
+      orElse:
+          () => QuizOption(
+            id: '',
+            questionId: question.id,
+            text: '',
+            isCorrect: false,
+            order: 0,
+            createdAt: DateTime.now(),
+          ),
     );
     final isCorrect = selectedOption.isCorrect;
 
@@ -500,7 +479,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isCorrect ? Colors.green[300]! : Colors.red[300]!,
+          color:
+              isCorrect
+                  ? AppTheme.successColor.withValues(alpha: 0.3)
+                  : AppTheme.errorColor.withValues(alpha: 0.3),
           width: 2,
         ),
       ),
@@ -514,12 +496,13 @@ class _QuizResultPageState extends State<QuizResultPage> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: isCorrect ? Colors.green : Colors.red,
+                  color:
+                      isCorrect ? AppTheme.successColor : AppTheme.errorColor,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
                   child: Icon(
-                    isCorrect ? Icons.check : Icons.close,
+                    isCorrect ? Icons.check_rounded : Icons.close_rounded,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -532,7 +515,8 @@ class _QuizResultPageState extends State<QuizResultPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isCorrect ? Colors.green[700] : Colors.red[700],
+                    color:
+                        isCorrect ? AppTheme.successColor : AppTheme.errorColor,
                   ),
                 ),
               ),
@@ -541,7 +525,7 @@ class _QuizResultPageState extends State<QuizResultPage> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.orange[600],
+                  color: AppTheme.warningColor,
                 ),
               ),
             ],
@@ -586,9 +570,9 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         height: 150,
-                        color: Colors.grey[200],
+                        color: AppTheme.dividerColor,
                         child: const Center(
-                          child: Icon(Icons.image_not_supported),
+                          child: Icon(Icons.image_not_supported_rounded),
                         ),
                       );
                     },
@@ -612,21 +596,21 @@ class _QuizResultPageState extends State<QuizResultPage> {
 
             if (isCorrectAnswer) {
               // La bonne réponse est toujours en vert
-              backgroundColor = Colors.green[50];
-              borderColor = Colors.green[400]!;
-              textColor = Colors.green[800]!;
-              icon = Icons.check_circle;
+              backgroundColor = AppTheme.successColor.withValues(alpha: 0.08);
+              borderColor = AppTheme.successColor;
+              textColor = AppTheme.successColor;
+              icon = Icons.check_circle_rounded;
             } else if (isSelected && !isCorrect) {
               // La réponse de l'utilisateur est incorrecte → rouge
-              backgroundColor = Colors.red[50];
-              borderColor = Colors.red[400]!;
-              textColor = Colors.red[800]!;
-              icon = Icons.cancel;
+              backgroundColor = AppTheme.errorColor.withValues(alpha: 0.08);
+              borderColor = AppTheme.errorColor;
+              textColor = AppTheme.errorColor;
+              icon = Icons.cancel_rounded;
             } else {
               // Réponse non sélectionnée et incorrecte
-              backgroundColor = Colors.grey[50];
-              borderColor = Colors.grey[300]!;
-              textColor = Colors.grey[700]!;
+              backgroundColor = AppTheme.pageBackgroundColor;
+              borderColor = AppTheme.dividerColor;
+              textColor = AppTheme.textSecondaryColor;
               icon = null;
             }
 
@@ -644,12 +628,7 @@ class _QuizResultPageState extends State<QuizResultPage> {
                 ),
                 child: Row(
                   children: [
-                    if (icon != null)
-                      Icon(
-                        icon,
-                        color: textColor,
-                        size: 24,
-                      ),
+                    if (icon != null) Icon(icon, color: textColor, size: 24),
                     if (icon != null) const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -657,9 +636,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
                         style: TextStyle(
                           fontSize: 16,
                           color: textColor,
-                          fontWeight: isSelected || isCorrectAnswer
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+                          fontWeight:
+                              isSelected || isCorrectAnswer
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                         ),
                       ),
                     ),

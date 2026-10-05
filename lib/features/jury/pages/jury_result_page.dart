@@ -8,6 +8,7 @@ import '../../../core/services/competition_version_service.dart';
 import '../../../core/services/round_results_service.dart';
 import '../../../core/services/round_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/loading_states.dart';
 import '../../../core/widgets/modern_navigation.dart';
 import '../../../core/widgets/ui_components.dart';
@@ -42,6 +43,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
   List<CompetitionVersion> _versions = [];
   List<Round> _rounds = [];
   List<RoundResult> _results = [];
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -59,27 +61,28 @@ class _JuryResultPageState extends State<JuryResultPage> {
   }
 
   Future<void> _loadVersions() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
     try {
       _versions = await _versionService.fetchVersions();
       if (_versions.isNotEmpty) {
-        // Si un versionId est fourni, le pré-sélectionner
-        if (widget.versionId != null) {
-          _selectedVersion = _versions.firstWhere(
-            (v) => v.id == widget.versionId,
-            orElse: () => _versions.first,
-          );
-          print('🔍 Version pré-sélectionnée: ${_selectedVersion?.name}');
-        } else {
-          _selectedVersion = _versions.first;
-        }
+        // Version demandée, sinon la plus récente
+        _selectedVersion =
+            widget.versionId != null
+                ? _versions.firstWhere(
+                  (v) => v.id == widget.versionId,
+                  orElse: () => _versions.first,
+                )
+                : _versions.first;
         await _loadRounds();
       }
     } catch (e) {
-      print('Erreur lors du chargement des versions: $e');
-      _showErrorSnackBar('خطأ أثناء تحميل النسخ');
+      debugPrint('Erreur lors du chargement des versions: $e');
+      _hasError = true;
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -91,29 +94,32 @@ class _JuryResultPageState extends State<JuryResultPage> {
       final allRounds = await _roundService.getRoundsByVersion(
         _selectedVersion!.id,
       );
-      // Filtrer seulement les rounds avec des résultats publiés
-      _rounds = allRounds.where((round) => round.resultIsPublished).toList();
+      // Tours publiés seulement, le plus récent d'abord
+      _rounds =
+          allRounds.where((round) => round.resultIsPublished).toList()
+            ..sort((a, b) => b.number.compareTo(a.number));
 
       if (_rounds.isNotEmpty) {
         _selectedRound = _rounds.first;
         await _loadResults();
-      } else {
+      } else if (mounted) {
         setState(() {
           _results = [];
           _selectedRound = null;
         });
       }
     } catch (e) {
-      print('Erreur lors du chargement des tours: $e');
-      _showErrorSnackBar('خطأ أثناء تحميل الجولات');
+      debugPrint('Erreur lors du chargement des tours: $e');
+      _hasError = true;
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loadResults({
     bool reset = true,
     bool isFilterChange = false,
+    int page = 0,
   }) async {
     if (_selectedVersion == null || _selectedRound == null) return;
 
@@ -132,7 +138,7 @@ class _JuryResultPageState extends State<JuryResultPage> {
       final result = await _resultsService.getResultsWithPagination(
         roundId: _selectedRound!.id,
         ageGroup: _selectedAgeGroup,
-        page: reset ? 0 : _currentPage,
+        page: reset ? 0 : page,
         limit: 20,
         searchQuery: _searchQuery,
         // Cet écran cherche uniquement par numéro d'inscription.
@@ -144,16 +150,16 @@ class _JuryResultPageState extends State<JuryResultPage> {
       setState(() {
         if (reset) {
           _results = result['results'] as List<RoundResult>;
-          _currentPage = 0;
         } else {
           _results.addAll(result['results'] as List<RoundResult>);
         }
         _hasMore = result['hasMore'] as bool;
+        // La page n'avance qu'en cas de succès
         _currentPage = result['currentPage'] as int;
       });
     } catch (e) {
-      print('Erreur lors du chargement des résultats: $e');
-      _showErrorSnackBar('خطأ أثناء تحميل النتائج');
+      debugPrint('Erreur lors du chargement des résultats: $e');
+      if (mounted) _showErrorSnackBar('تعذر تحميل النتائج');
     } finally {
       if (mounted && requestedQuery == _searchQuery) {
         setState(() {
@@ -168,17 +174,13 @@ class _JuryResultPageState extends State<JuryResultPage> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      if (_hasMore && !_isLoadingMore) {
-        _loadMoreResults();
-      }
+      _loadMoreResults();
     }
   }
 
   Future<void> _loadMoreResults() async {
-    if (!_hasMore || _isLoadingMore) return;
-
-    setState(() => _currentPage++);
-    await _loadResults(reset: false);
+    if (!_hasMore || _isLoadingMore || _isLoadingFilters) return;
+    await _loadResults(reset: false, page: _currentPage + 1);
   }
 
   void _showErrorSnackBar(String message) {
@@ -186,10 +188,6 @@ class _JuryResultPageState extends State<JuryResultPage> {
       SnackBar(content: Text(message), backgroundColor: AppTheme.errorColor),
     );
   }
-
-  // La recherche est effectuée en base de données : la liste reçue du
-  // serveur est déjà filtrée, il n'y a plus de filtrage local à faire.
-  List<RoundResult> get _filteredResults => _results;
 
   void _onSearchChanged(String query) {
     if (query == _searchQuery) return;
@@ -206,6 +204,30 @@ class _JuryResultPageState extends State<JuryResultPage> {
     });
   }
 
+  void _selectRound(Round round) {
+    if (round.id == _selectedRound?.id) return;
+    setState(() {
+      _selectedRound = round;
+      _currentPage = 0;
+      _hasMore = true;
+    });
+    _loadResults(isFilterChange: true);
+  }
+
+  void _selectAgeGroup(String group) {
+    if (group == _selectedAgeGroup) return;
+    setState(() {
+      _selectedAgeGroup = group;
+      _currentPage = 0;
+      _hasMore = true;
+    });
+    _loadResults(isFilterChange: true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Interface
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -213,299 +235,140 @@ class _JuryResultPageState extends State<JuryResultPage> {
       body:
           _isLoading
               ? const ModernLoadingIndicator()
-              : _rounds.isEmpty
-              ? ModernPullToRefresh(
-                onRefresh: _loadVersions,
+              : _hasError && _results.isEmpty
+              ? Center(
                 child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingL),
-                    child: Column(
-                      children: [
-                        _buildVersionSelector(),
-                        const SizedBox(height: AppTheme.spacingXL),
-                        ModernCard(
-                          child: Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingXL),
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(
-                                    AppTheme.spacingL,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.emoji_events_outlined,
-                                    size: 64,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.spacingL),
-                                Text(
-                                  'لا توجد نتائج متاحة',
-                                  style: AppTheme.headingMedium.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimaryColor,
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-                                Text(
-                                  'لم يتم نشر نتائج أي جولة بعد في هذه النسخة',
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: AppTheme.spacingXS),
-                                Text(
-                                  'يرجى الانتظار حتى يتم نشر النتائج',
-                                  style: AppTheme.bodySmall.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                  child: EmptyState(
+                    icon: Icons.wifi_off_rounded,
+                    iconColor: AppTheme.errorColor,
+                    title: 'تعذر تحميل النتائج',
+                    subtitle: 'تحقق من الاتصال وحاول مجدداً',
+                    action: PrimaryButton(
+                      text: 'إعادة المحاولة',
+                      icon: Icons.refresh_rounded,
+                      onPressed: _loadVersions,
                     ),
                   ),
                 ),
               )
               : ModernPullToRefresh(
-                onRefresh: () => _loadResults(reset: true),
+                // Recharge aussi les tours : un nouveau tour a pu être publié
+                onRefresh: _loadRounds,
                 child: CustomScrollView(
                   controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _buildVersionSelector(),
-                          const SizedBox(height: AppTheme.spacingS),
-                          _buildRoundSelector(),
-                          _buildAgeGroupSelector(),
-                          _buildSearchBar(),
-                        ]),
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildVersionHeader(),
+                            const SizedBox(height: AppTheme.spacingM),
+                            if (_rounds.isEmpty)
+                              const EmptyState(
+                                icon: Icons.emoji_events_rounded,
+                                title: 'لا توجد نتائج متاحة',
+                                subtitle:
+                                    'لم يتم نشر نتائج أي جولة بعد في هذه النسخة',
+                              )
+                            else
+                              _buildFiltersCard(),
+                          ],
+                        ),
                       ),
                     ),
-                    _buildResultsSliver(),
-                    if (_hasMore && _rounds.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child:
-                            _isLoadingMore
-                                ? const Padding(
-                                  padding: EdgeInsets.all(AppTheme.spacingS),
-                                  child: Center(
-                                    child: const CircularProgressIndicator(),
-                                  ),
-                                )
-                                : const SizedBox(height: AppTheme.spacingL),
-                      ),
-                  ],
-                ),
-              ),
-    );
-  }
-
-  Widget _buildVersionSelector() {
-    return ModernCard(
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.primaryColor.withOpacity(0.05),
-              Colors.transparent,
-            ],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingS),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryColor,
-                    AppTheme.primaryColor.withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.emoji_events,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _selectedVersion?.name ?? 'جاري التحميل...',
-                    style: AppTheme.headingSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'السنة: ${_selectedVersion?.year ?? '...'}',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoundSelector() {
-    return ModernCard(
-      child: Row(
-        children: [
-          Icon(Icons.emoji_events, color: AppTheme.successColor, size: 24),
-          const SizedBox(width: AppTheme.spacingS),
-          Expanded(
-            child:
-                _rounds.isEmpty
-                    ? Text(
-                      'لا توجد نتائج متاحة',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    )
-                    : DropdownButtonHideUnderline(
-                      child: DropdownButton<Round>(
-                        value: _selectedRound,
-                        isExpanded: true,
-                        hint: Text('اختر الجولة', style: AppTheme.bodyMedium),
-                        items:
-                            _rounds.map((round) {
-                              return DropdownMenuItem(
-                                value: round,
-                                child: Text(
-                                  'الجولة ${round.number} - ${round.name}',
-                                  style: AppTheme.bodyMedium,
+                    if (_rounds.isNotEmpty) _buildResultsSliver(),
+                    SliverToBoxAdapter(
+                      child:
+                          _isLoadingMore
+                              ? const Padding(
+                                padding: EdgeInsets.all(AppTheme.spacingM),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
                                 ),
-                              );
-                            }).toList(),
-                        onChanged: (round) {
-                          if (round != null && round.id != _selectedRound?.id) {
-                            setState(() {
-                              _selectedRound = round;
-                              _currentPage = 0;
-                              _hasMore = true;
-                            });
-                            _loadResults(reset: true, isFilterChange: true);
-                          }
-                        },
-                      ),
+                              )
+                              : const SizedBox(height: AppTheme.spacingL),
                     ),
-          ),
-        ],
-      ),
+                  ],
+                ),
+              ),
     );
   }
 
-  Widget _buildAgeGroupSelector() {
-    return ModernCard(
-      child: Row(
+  Widget _buildVersionHeader() {
+    final version = _selectedVersion;
+
+    return AppGradientHeader(
+      shape: AppHeaderShape.card,
+      compact: true,
+      icon: Icons.leaderboard_rounded,
+      title: version?.name ?? 'لا توجد نسخة',
+      subtitle:
+          version != null
+              ? 'السنة ${version.year} · ${_rounds.length} جولة منشورة'
+              : null,
+    );
+  }
+
+  Widget _buildFiltersCard() {
+    return AppSection(
+      icon: Icons.filter_list_rounded,
+      title: 'عرض النتائج',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.groups, color: AppTheme.warningColor, size: 24),
-          const SizedBox(width: AppTheme.spacingS),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildAgeGroupButton(
-                    'كبار',
-                    _selectedAgeGroup == 'كبار',
+          if (_rounds.length == 1)
+            AppNotice(
+              text: 'الجولة ${_rounds.first.number} - ${_rounds.first.name}',
+              icon: Icons.flag_rounded,
+              color: AppTheme.successColor,
+            )
+          else
+            DropdownButtonFormField<String>(
+              value: _selectedRound?.id,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'الجولة',
+                prefixIcon: Icon(Icons.flag_rounded),
+                isDense: true,
+              ),
+              items: [
+                for (final round in _rounds)
+                  DropdownMenuItem(
+                    value: round.id,
+                    child: Text(
+                      'الجولة ${round.number} - ${round.name}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: _buildAgeGroupButton(
-                    'صغار',
-                    _selectedAgeGroup == 'صغار',
-                  ),
-                ),
               ],
+              onChanged: (id) {
+                final match = _rounds.where((r) => r.id == id);
+                if (match.isNotEmpty) _selectRound(match.first);
+              },
             ),
+          const SizedBox(height: AppTheme.spacingS),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'كبار', label: Text('الكبار')),
+              ButtonSegment(value: 'صغار', label: Text('الصغار')),
+            ],
+            selected: {_selectedAgeGroup},
+            showSelectedIcon: false,
+            onSelectionChanged: (value) => _selectAgeGroup(value.first),
+          ),
+          ModernSearchBar(
+            controller: _searchController,
+            hintText: 'البحث برقم التسجيل...',
+            margin: const EdgeInsets.only(top: AppTheme.spacingS),
+            onChanged: _onSearchChanged,
+            onClear: () => _onSearchChanged(''),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAgeGroupButton(String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        if (label != _selectedAgeGroup) {
-          setState(() {
-            _selectedAgeGroup = label;
-            _currentPage = 0;
-            _hasMore = true;
-          });
-          _loadResults(reset: true, isFilterChange: true);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppTheme.spacingS,
-          horizontal: AppTheme.spacingS,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor : AppTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: AppTheme.labelMedium.copyWith(
-            color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return ModernCard(
-      child: ModernSearchBar(
-        controller: _searchController,
-        hintText: 'البحث برقم التسجيل...',
-        onChanged: _onSearchChanged,
-        onClear: () {
-          _searchController.clear();
-          _onSearchChanged('');
-        },
-        margin: EdgeInsets.zero,
       ),
     );
   }
@@ -513,194 +376,98 @@ class _JuryResultPageState extends State<JuryResultPage> {
   Widget _buildResultsSliver() {
     if (_isLoadingFilters) {
       return const SliverToBoxAdapter(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: const CircularProgressIndicator(),
-          ),
+        child: Padding(
+          padding: EdgeInsets.all(AppTheme.spacingL),
+          child: Center(child: CircularProgressIndicator()),
         ),
       );
     }
 
-    if (_rounds.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox());
-    }
-
-    final filteredResults = _filteredResults;
-
-    if (filteredResults.isEmpty) {
+    if (_results.isEmpty) {
       return SliverToBoxAdapter(
         child:
             _searchQuery.isNotEmpty
                 ? const EmptyState(
-                  icon: Icons.search_off,
+                  icon: Icons.search_off_rounded,
                   title: 'لا توجد نتائج',
-                  subtitle: 'لم يتم العثور على نتائج تطابق البحث',
+                  subtitle: 'لا يوجد مشارك بهذا الرقم',
                 )
                 : const EmptyState(
-                  icon: Icons.emoji_events_outlined,
+                  icon: Icons.emoji_events_rounded,
                   title: 'لا توجد نتائج لهذه الجولة',
-                  subtitle: 'لم يتم العثور على نتائج للجولة المحددة',
                 ),
       );
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final result = filteredResults[index];
-          return _buildResultCard(
-            result,
-            // Rang réel calculé côté serveur (reste juste même quand le
-            // résultat provient d'une recherche sur toute la base).
-            result.rank ?? index + 1,
-          );
-        }, childCount: filteredResults.length),
+          final result = _results[index];
+          // Rang réel calculé côté serveur (juste aussi après une recherche)
+          return _buildResultCard(result, result.rank ?? index + 1);
+        }, childCount: _results.length),
       ),
     );
   }
 
   Widget _buildResultCard(RoundResult result, int rank) {
-    Color medalColor;
-    IconData? medalIcon;
+    // Or, argent, bronze pour les trois premiers
+    final medalColor = switch (rank) {
+      1 => const Color(0xFFD4A84B),
+      2 => const Color(0xFF94A3B8),
+      3 => const Color(0xFFB45309),
+      _ => AppTheme.primaryColor,
+    };
+    final statusColor =
+        result.passed ? AppTheme.successColor : AppTheme.errorColor;
 
-    if (rank == 1) {
-      medalColor = AppTheme.warningColor;
-      medalIcon = Icons.emoji_events;
-    } else if (rank == 2) {
-      medalColor = AppTheme.textSecondaryColor;
-      medalIcon = Icons.emoji_events;
-    } else if (rank == 3) {
-      medalColor = Colors.brown;
-      medalIcon = Icons.emoji_events;
-    } else {
-      medalColor = AppTheme.primaryColor;
-      medalIcon = null;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
-      child: ModernCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Row(
-            children: [
-              // Position et médaille
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color:
-                      rank <= 3
-                          ? medalColor.withOpacity(0.1)
-                          : AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  border: Border.all(
-                    color: rank <= 3 ? medalColor : AppTheme.dividerColor,
-                    width: 2,
-                  ),
-                ),
-                child: Center(
-                  child:
-                      medalIcon != null
-                          ? Icon(medalIcon, color: medalColor, size: 20)
-                          : Text(
-                            '$rank',
-                            style: AppTheme.labelLarge.copyWith(
-                              color: medalColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-
-              // Informations du participant (sans nom)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'المشارك رقم ${result.participant.registrationNumber ?? '؟'}',
-                      style: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingXS),
-                    Row(
-                      children: [
-                        Icon(
-                          result.passed ? Icons.check_circle : Icons.cancel,
-                          color:
-                              result.passed
-                                  ? AppTheme.successColor
-                                  : AppTheme.errorColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: AppTheme.spacingXS),
-                        Text(
-                          result.passed ? 'نجح' : 'لم ينجح',
-                          style: AppTheme.bodySmall.copyWith(
-                            color:
-                                result.passed
-                                    ? AppTheme.successColor
-                                    : AppTheme.errorColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Score
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingS,
-                  vertical: AppTheme.spacingS,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      result.passed
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  border: Border.all(
-                    color:
-                        result.passed
-                            ? AppTheme.successColor
-                            : AppTheme.errorColor,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      result.score.toStringAsFixed(1),
-                      style: AppTheme.headingSmall.copyWith(
-                        color:
-                            result.passed
-                                ? AppTheme.successColor
-                                : AppTheme.errorColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'المعدل',
-                      style: AppTheme.bodySmall.copyWith(
-                        color:
-                            result.passed
-                                ? AppTheme.successColor
-                                : AppTheme.errorColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return AppListCard(
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: medalColor.withValues(alpha: rank <= 3 ? 0.15 : 0.08),
+          shape: BoxShape.circle,
         ),
+        child: Center(
+          child:
+              rank <= 3
+                  ? Icon(Icons.emoji_events_rounded, color: medalColor, size: 22)
+                  : Text(
+                    '$rank',
+                    style: AppTheme.bodyLarge.copyWith(
+                      color: medalColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+        ),
+      ),
+      title: result.participant.fullName,
+      tags: [
+        AppTag(
+          text: 'رقم ${result.participant.registrationNumber ?? '؟'}',
+          color: AppTheme.textSecondaryColor,
+          icon: Icons.badge_rounded,
+        ),
+        AppTag(
+          text: result.passed ? 'ناجح' : 'لم ينجح',
+          color: statusColor,
+          icon: result.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
+        ),
+      ],
+      trailing: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            result.score.toStringAsFixed(1),
+            style: AppTheme.headingSmall.copyWith(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text('المعدل', style: AppTheme.labelSmall),
+        ],
       ),
     );
   }

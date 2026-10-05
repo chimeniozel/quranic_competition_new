@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 
 import '../services/push_notification_service.dart';
@@ -51,7 +52,7 @@ class _NotificationBellState extends State<NotificationBell>
       children: [
         IconButton(
           tooltip: 'الإشعارات',
-          icon: const Icon(Icons.notifications_none),
+          icon: const Icon(Icons.notifications_none_rounded),
           onPressed: () async {
             await context.push('/notifications');
             await _refreshCount();
@@ -65,7 +66,7 @@ class _NotificationBellState extends State<NotificationBell>
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               constraints: const BoxConstraints(minWidth: 18),
               decoration: BoxDecoration(
-                color: Colors.red,
+                color: AppTheme.errorColor,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(color: Colors.white, width: 1),
               ),

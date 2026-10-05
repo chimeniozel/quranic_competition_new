@@ -12,8 +12,6 @@ class AccessDeniedPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('وصول مرفوض'),
-        backgroundColor: AppTheme.errorColor,
-        foregroundColor: Colors.white,
       ),
       body: Center(
         child: Padding(
@@ -23,7 +21,7 @@ class AccessDeniedPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(
-                Icons.lock_outline,
+                Icons.lock_outline_rounded,
                 size: 72,
                 color: AppTheme.errorColor.withOpacity(0.9),
               ),
@@ -55,7 +53,7 @@ class AccessDeniedPage extends StatelessWidget {
                       context.go('/');
                     }
                   },
-                  icon: const Icon(Icons.arrow_back),
+                  icon: const Icon(Icons.arrow_back_rounded),
                   label: const Text('الرجوع إلى الصفحة الرئيسية'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
@@ -73,4 +71,3 @@ class AccessDeniedPage extends StatelessWidget {
     );
   }
 }
-

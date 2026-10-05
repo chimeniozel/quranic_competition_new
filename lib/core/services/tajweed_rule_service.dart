@@ -98,6 +98,21 @@ class TajweedRuleService {
     }
   }
 
+  // Récupérer toutes les règles actives (pour les participants)
+  Future<List<TajweedRule>> getActiveRules() async {
+    try {
+      final rows = await _supabase
+          .from('tajweed_rules')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', ascending: false);
+      return rows.map<TajweedRule>((row) => TajweedRule.fromMap(row)).toList();
+    } catch (e) {
+      print('Erreur lors de la récupération des règles actives de Tajweed: $e');
+      throw Exception('Impossible de récupérer les règles actives de Tajweed');
+    }
+  }
+
   // Récupérer les règles actives avec pagination (pour les participants)
   Future<Map<String, dynamic>> getActiveRulesWithPagination({
     String searchQuery = '',

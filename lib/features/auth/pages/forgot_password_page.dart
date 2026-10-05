@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/services/password_reset_otp_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/validators.dart';
+import '../widgets/auth_layout.dart';
 import '../../../core/widgets/ui_components.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -37,28 +38,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _emailController.text.trim(),
       );
 
-      setState(() {
-        _isLoading = false;
-      });
-
-      print('📧 OTP Service result: $result');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
       if (result['success'] == true) {
-        print('✅ Showing success dialog');
         _showSuccessDialog();
       } else {
-        print('❌ Showing error dialog: ${result['message']}');
         _showErrorDialog(result['message'] ?? 'حدث خطأ أثناء إرسال رمز التحقق');
       }
     } catch (e) {
+      debugPrint('Erreur lors de l\'envoi du code: $e');
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      print('❌ Exception in _sendOtpCode: $e');
       _showErrorDialog(_errorService.analyzeException(e));
     }
   }
 
   void _showSuccessDialog() {
-    print('✅ _showSuccessDialog called');
     final email = _emailController.text.trim();
     ModernDialog.showSuccess(
       context,
@@ -77,7 +73,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   void _showErrorDialog(String error) {
-    print('❌ _showErrorDialog called with error: $error');
     ModernDialog.showError(
       context,
       title: 'خطأ في إعادة تعيين كلمة المرور',
@@ -87,148 +82,59 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
+    if (value == null || value.trim().isEmpty) {
       return _errorService.getErrorMessage('VALIDATION_REQUIRED');
     }
-    if (!_isValidEmail(value)) {
+    if (!Validators.isValidEmail(value)) {
       return _errorService.getErrorMessage('AUTH_INVALID_EMAIL');
     }
     return null;
   }
 
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('استعادة كلمة المرور'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
-        child: Form(
+    return AuthLayout(
+      title: 'استعادة كلمة المرور',
+      heading: 'نسيت كلمة المرور؟',
+      subtitle: 'أدخل بريدك الإلكتروني وسنرسل لك رمز تحقق لإعادة تعيينها',
+      icon: Icons.lock_reset_rounded,
+      children: [
+        Form(
           key: _formKey,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header avec logo
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Image.asset(
-                      'assets/images/logos/logo.png',
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'استعادة كلمة المرور',
-                      style: AppTheme.headingLarge.copyWith(
-                        color: AppTheme.primaryColor,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'أدخل بريدك الإلكتروني وسنرسل لك رمز تحقق لإعادة تعيين كلمة المرور',
-                      style: AppTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacingXL),
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 textDirection: TextDirection.ltr,
+                autofillHints: const [AutofillHints.email],
+                onFieldSubmitted: (_) => _sendOtpCode(),
                 validator: _validateEmail,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'البريد الإلكتروني',
                   hintText: 'أدخل بريدك الإلكتروني',
-                  prefixIcon: const FaIcon(FontAwesomeIcons.envelope, size: 20),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: const BorderSide(color: AppTheme.dividerColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: const BorderSide(color: AppTheme.dividerColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: const BorderSide(
-                      color: AppTheme.primaryColor,
-                      width: 2,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: const BorderSide(color: AppTheme.errorColor),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    borderSide: const BorderSide(
-                      color: AppTheme.errorColor,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingS,
-                  ),
+                  prefixIcon: Icon(Icons.email_rounded),
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingS),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                    onPressed: _sendOtpCode,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingL,
-                        vertical: AppTheme.spacingS,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                    ),
-                    child: const Text(
-                      'إرسال رمز التحقق',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('العودة لتسجيل الدخول'),
+              const SizedBox(height: AppTheme.spacingM),
+              AuthSubmitButton(
+                text: 'إرسال رمز التحقق',
+                icon: Icons.send_rounded,
+                isLoading: _isLoading,
+                onPressed: _sendOtpCode,
               ),
             ],
           ),
         ),
-      ),
+      ],
+      footer: [
+        TextButton.icon(
+          onPressed: () => context.go('/login'),
+          icon: const Icon(Icons.arrow_forward_rounded),
+          label: const Text('العودة لتسجيل الدخول'),
+        ),
+      ],
     );
   }
 }

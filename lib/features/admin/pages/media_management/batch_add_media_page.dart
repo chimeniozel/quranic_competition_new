@@ -59,7 +59,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل المسابقات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -106,8 +106,9 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
 
   Future<void> _pickImagesFromGallery(int index) async {
     // Demander la permission avant de charger les images
-    final hasPermission =
-        await _permissionService.requestStoragePermission(context);
+    final hasPermission = await _permissionService.requestStoragePermission(
+      context,
+    );
     if (!hasPermission) {
       return; // L'utilisateur n'a pas accordé la permission
     }
@@ -132,7 +133,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في اختيار الصور: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -197,7 +198,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار النسخة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -272,7 +273,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم إنشاء $successCount أرشيف بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
 
@@ -303,7 +304,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إنشاء الأرشيف: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -363,7 +364,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                         AppTheme.radiusM,
                                       ),
                                     ),
-                                    prefixIcon: const Icon(Icons.emoji_events),
+                                    prefixIcon: const Icon(Icons.emoji_events_rounded),
                                   ),
                                   items:
                                       _versions.map((version) {
@@ -403,7 +404,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                   Row(
                                     children: [
                                       Icon(
-                                        Icons.photo_library,
+                                        Icons.photo_library_rounded,
                                         color: AppTheme.primaryColor,
                                         size: 20,
                                       ),
@@ -453,7 +454,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                                           AppTheme
                                                               .backgroundColor,
                                                       child: Icon(
-                                                        Icons.error,
+                                                        Icons.error_rounded,
                                                         color:
                                                             AppTheme.errorColor,
                                                       ),
@@ -484,7 +485,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                                             ),
                                                       ),
                                                       child: Icon(
-                                                        Icons.close,
+                                                        Icons.close_rounded,
                                                         color:
                                                             AppTheme
                                                                 .surfaceColor,
@@ -615,7 +616,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
               if (_mediaItems.length > 1)
                 IconButton(
                   onPressed: () => _removeMediaItem(index),
-                  icon: Icon(Icons.delete, color: AppTheme.errorColor),
+                  icon: Icon(Icons.delete_rounded, color: AppTheme.errorColor),
                 ),
             ],
           ),
@@ -635,7 +636,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 value: MediaType.image,
                 child: Row(
                   children: [
-                    Icon(Icons.image, color: AppTheme.primaryColor),
+                    Icon(Icons.image_rounded, color: AppTheme.primaryColor),
                     const SizedBox(width: AppTheme.spacingS),
                     const Text('صورة'),
                   ],
@@ -645,7 +646,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 value: MediaType.video,
                 child: Row(
                   children: [
-                    Icon(Icons.video_library, color: AppTheme.errorColor),
+                    Icon(Icons.video_library_rounded, color: AppTheme.errorColor),
                     const SizedBox(width: AppTheme.spacingS),
                     const Text('فيديو'),
                   ],
@@ -675,7 +676,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
                 ),
-                prefixIcon: const Icon(Icons.title),
+                prefixIcon: const Icon(Icons.title_rounded),
               ),
               validator: (value) {
                 if (item.type == MediaType.video &&
@@ -703,7 +704,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
                 ),
-                prefixIcon: const Icon(Icons.video_library),
+                prefixIcon: const Icon(Icons.video_library_rounded),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -755,7 +756,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.check_circle,
+                      Icons.check_circle_rounded,
                       color: AppTheme.successColor,
                       size: 20,
                     ),
@@ -799,7 +800,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                   height: 100,
                                   color: AppTheme.backgroundColor,
                                   child: Icon(
-                                    Icons.error,
+                                    Icons.error_rounded,
                                     color: AppTheme.errorColor,
                                   ),
                                 );
@@ -823,7 +824,7 @@ class _BatchAddMediaPageState extends State<BatchAddMediaPage> {
                                   ),
                                 ),
                                 child: Icon(
-                                  Icons.close,
+                                  Icons.close_rounded,
                                   color: AppTheme.surfaceColor,
                                   size: 16,
                                 ),

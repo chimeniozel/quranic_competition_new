@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/round.dart';
@@ -172,7 +173,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
+                Icon(Icons.check_circle_rounded, color: Colors.white),
                 const SizedBox(width: AppTheme.spacingS),
                 const Text('تم حساب النتائج بنجاح'),
               ],
@@ -198,7 +199,7 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.error, color: Colors.white),
+                Icon(Icons.error_rounded, color: Colors.white),
                 const SizedBox(width: AppTheme.spacingS),
                 Expanded(child: Text('خطأ: ${e.toString()}')),
               ],
@@ -216,268 +217,115 @@ class _VersionRoundResultPageState extends State<VersionRoundResultPage> {
 
   // Bouton de publication supprimé dans cette page (publication depuis صفحة النتائج التفصيلية)
 
+  String _formatDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: Text('نتائج ${widget.version.name}'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text('نتائج ${widget.version.name}')),
       body:
           _isLoading
               ? const ModernLoadingIndicator()
               : _error != null
               ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingL),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: AppTheme.errorColor,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingL),
-                    Text(
-                      'خطأ في التحميل',
-                      style: AppTheme.headingMedium.copyWith(
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingS),
-                    Text(
-                      '$_error',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppTheme.spacingL),
-                    ElevatedButton.icon(
+                child: SingleChildScrollView(
+                  child: EmptyState(
+                    icon: Icons.wifi_off_rounded,
+                    iconColor: AppTheme.errorColor,
+                    title: 'تعذر تحميل الجولات',
+                    subtitle: 'تحقق من الاتصال وحاول مجدداً',
+                    action: PrimaryButton(
+                      text: 'إعادة المحاولة',
+                      icon: Icons.refresh_rounded,
                       onPressed: _loadRounds,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('إعادة المحاولة'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                      ),
                     ),
-                  ],
+                  ),
                 ),
               )
               : _rounds.isEmpty
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingL),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.event_busy,
-                        size: 64,
-                        color: AppTheme.warningColor,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingL),
-                    Text(
-                      'لا توجد جولات',
-                      style: AppTheme.headingMedium.copyWith(
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingS),
-                    Text(
-                      'لم يتم إنشاء أي جولات لهذه النسخة بعد',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              ? const EmptyState(
+                icon: Icons.event_busy_rounded,
+                title: 'لا توجد جولات',
+                subtitle: 'لم يتم إنشاء أي جولات لهذه النسخة بعد',
               )
-              : ListView.builder(
-                padding: const EdgeInsets.all(AppTheme.spacingS),
-                itemCount: _rounds.length,
-                itemBuilder: (context, index) {
-                  final round = _rounds[index];
-                  return _buildRoundCard(round);
-                },
+              : ModernPullToRefresh(
+                onRefresh: _loadRounds,
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  itemCount: _rounds.length,
+                  separatorBuilder:
+                      (_, __) => const SizedBox(height: AppTheme.spacingM),
+                  itemBuilder:
+                      (context, index) => _buildRoundCard(_rounds[index]),
+                ),
               ),
     );
   }
 
   Widget _buildRoundCard(Round round) {
-    return ModernCard(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header du round
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppTheme.radiusM),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${round.name ?? 'الجولة ${round.number}'}',
-                        style: AppTheme.headingSmall.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'رقم الجولة: ${round.number}',
-                        style: AppTheme.bodySmall.copyWith(
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingXS,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        round.resultIsPublished
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  ),
-                  child: Text(
-                    round.resultIsPublished ? 'منشور' : 'غير منشور',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    final published = round.resultIsPublished;
 
-          // Contenu du round
-          Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return AppSection(
+      icon: Icons.flag_rounded,
+      color: published ? AppTheme.successColor : AppTheme.primaryColor,
+      title: round.name ?? 'الجولة ${round.number}',
+      subtitle: 'الجولة رقم ${round.number}',
+      trailing: AppTag(
+        text: published ? 'النتائج منشورة' : 'غير منشورة',
+        color: published ? AppTheme.successColor : AppTheme.warningColor,
+        icon: published ? Icons.public_rounded : Icons.public_off_rounded,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (round.startDate != null || round.endDate != null) ...[
+            Wrap(
+              spacing: AppTheme.spacingXS,
+              runSpacing: AppTheme.spacingXS,
               children: [
                 if (round.startDate != null)
-                  _buildInfoRow(
-                    Icons.calendar_today,
-                    'تاريخ البداية',
-                    '${round.startDate!.day}/${round.startDate!.month}/${round.startDate!.year}',
+                  AppTag(
+                    text: 'من ${_formatDate(round.startDate!)}',
+                    color: AppTheme.textSecondaryColor,
+                    icon: Icons.calendar_today_rounded,
                   ),
                 if (round.endDate != null)
-                  _buildInfoRow(
-                    Icons.event,
-                    'تاريخ النهاية',
-                    '${round.endDate!.day}/${round.endDate!.month}/${round.endDate!.year}',
+                  AppTag(
+                    text: 'إلى ${_formatDate(round.endDate!)}',
+                    color: AppTheme.textSecondaryColor,
+                    icon: Icons.event_rounded,
                   ),
-                const SizedBox(height: AppTheme.spacingL),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed:
-                            round.resultIsPublished
-                                ? null
-                                : () => _calculateResults(round.id),
-                        icon: const Icon(Icons.calculate),
-                        label: const Text('حساب النتائج'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: AppTheme.textDisabledColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          context.push(
-                            '/admin/version_result/${round.id}',
-                            extra: {'version': widget.version, 'round': round},
-                          );
-                        },
-                        icon: const Icon(Icons.visibility),
-                        label: const Text('عرض النتائج'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.primaryColor,
-                          side: const BorderSide(color: AppTheme.primaryColor),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.spacingS),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppTheme.textSecondaryColor),
-          const SizedBox(width: AppTheme.spacingS),
-          Text(
-            '$label: ',
-            style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-          Text(
-            value,
-            style: AppTheme.bodyMedium.copyWith(
-              color: AppTheme.textPrimaryColor,
-              fontWeight: FontWeight.w500,
-            ),
+            const SizedBox(height: AppTheme.spacingM),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed:
+                      published ? null : () => _calculateResults(round.id),
+                  style: AppButtonStyles.filled(AppTheme.primaryColor),
+                  icon: const Icon(Icons.calculate_rounded, size: 18),
+                  label: const FittedBox(child: Text('حساب النتائج')),
+                ),
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      () => context.push(
+                        '/admin/version_result/${round.id}',
+                        extra: {'version': widget.version, 'round': round},
+                      ),
+                  style: AppButtonStyles.outlined(AppTheme.primaryColor),
+                  icon: const Icon(Icons.visibility_rounded, size: 18),
+                  label: const FittedBox(child: Text('عرض النتائج')),
+                ),
+              ),
+            ],
           ),
         ],
       ),

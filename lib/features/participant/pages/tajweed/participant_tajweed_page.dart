@@ -6,6 +6,7 @@ import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
 import 'package:quranic_competition/models/tajweed_rule.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
@@ -22,12 +23,11 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
+  /// Toutes les règles actives : la recherche et le filtre par type portent
+  /// ainsi sur l'ensemble des règles, et pas seulement sur une page chargée.
   List<TajweedRule> _allRules = [];
   List<TajweedRule> _filteredRules = [];
   bool _isLoading = false;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
-  int _currentPage = 0;
   String _searchQuery = '';
   TajweedType? _selectedType;
   Timer? _debounceTimer;
@@ -35,8 +35,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
-    _loadRules(reset: true);
+    _loadRules();
   }
 
   @override
@@ -49,106 +48,53 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
 
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
-    setState(() {
-      _searchQuery = value;
-      _applyFilters();
-    });
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      _applyFilters();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        _searchQuery = value;
+        _applyFilters();
+      });
     });
   }
 
+  /// Recalcule la liste affichée (à appeler dans un setState)
   void _applyFilters() {
-    setState(() {
-      _filteredRules =
-          _allRules.where((rule) {
-            // Filtrage par recherche
-            if (_searchQuery.isNotEmpty) {
-              final searchLower = _searchQuery.toLowerCase();
-              if (!rule.title.toLowerCase().contains(searchLower) &&
-                  !rule.content.toLowerCase().contains(searchLower)) {
-                return false;
-              }
-            }
-
-            // Filtrage par type
-            if (_selectedType != null) {
-              if (rule.type != _selectedType) {
-                return false;
-              }
-            }
-
-            return true;
-          }).toList();
-    });
+    final searchLower = _searchQuery.trim().toLowerCase();
+    _filteredRules =
+        _allRules.where((rule) {
+          if (_selectedType != null && rule.type != _selectedType) {
+            return false;
+          }
+          if (searchLower.isEmpty) return true;
+          return rule.title.toLowerCase().contains(searchLower) ||
+              rule.content.toLowerCase().contains(searchLower);
+        }).toList();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      if (_hasMore && !_isLoadingMore) {
-        _loadMoreRules();
-      }
-    }
-  }
-
-  Future<void> _loadRules({bool reset = true}) async {
+  Future<void> _loadRules() async {
     if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-      if (reset) {
-        _currentPage = 0;
-        _hasMore = true;
-      }
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final result = await _ruleService.getActiveRulesWithPagination(
-        searchQuery: '', // Toujours charger toutes les règles
-        typeFilter: null, // Pas de filtre côté serveur
-        page: _currentPage,
-        limit: 20,
-      );
-
+      final rules = await _ruleService.getActiveRules();
+      if (!mounted) return;
       setState(() {
-        if (reset) {
-          _allRules = result['rules'] as List<TajweedRule>;
-        } else {
-          _allRules.addAll(result['rules'] as List<TajweedRule>);
-        }
-        _hasMore = result['hasMore'] as bool;
-        _isLoading = false;
-        _isLoadingMore = false;
-
-        // Appliquer les filtres après le chargement
+        _allRules = rules;
         _applyFilters();
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
+      debugPrint('Erreur lors du chargement des règles: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل أحكام التجويد: $e'),
-            backgroundColor: Colors.red,
+          const SnackBar(
+            content: Text('تعذر تحميل أحكام التجويد. حاول مجدداً.'),
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _loadMoreRules() async {
-    if (_isLoadingMore || !_hasMore) return;
-
-    setState(() {
-      _isLoadingMore = true;
-      _currentPage++;
-    });
-
-    await _loadRules(reset: false);
   }
 
   Future<void> _launchVideo(String url) async {
@@ -171,7 +117,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('لا يمكن فتح رابط الفيديو'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -181,7 +127,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في فتح الفيديو: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -264,369 +210,184 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
   }
 
   Widget _buildSearchAndFilters() {
-    return Column(
-      children: [
-        // Barre de recherche
-        ModernCard(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child: Icon(
-                        Icons.search,
-                        color: AppTheme.primaryColor,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Text(
-                      'البحث في أحكام التجويد',
-                      style: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-                ModernSearchBar(
-                  controller: _searchController,
-                  hintText: 'ابحث في أحكام التجويد...',
-                  onChanged: _onSearchChanged,
-                  onClear: () => _onSearchChanged(''),
-                ),
-              ],
-            ),
+    Widget chip(String label, IconData icon, TajweedType? type) {
+      final selected = _selectedType == type;
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(end: AppTheme.spacingXS),
+        child: ChoiceChip(
+          avatar: Icon(
+            icon,
+            size: 16,
+            color:
+                selected ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
           ),
+          label: Text(label),
+          selected: selected,
+          showCheckmark: false,
+          onSelected:
+              (_) => setState(() {
+                // Un second appui sur le filtre actif revient à « الكل »
+                _selectedType = selected && type != null ? null : type;
+                _applyFilters();
+              }),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ModernSearchBar(
+          controller: _searchController,
+          hintText: 'ابحث في أحكام التجويد...',
+          margin: EdgeInsets.zero,
+          onChanged: _onSearchChanged,
+          onClear: () => _onSearchChanged(''),
         ),
         const SizedBox(height: AppTheme.spacingS),
-        // Filtres de type
-        ModernCard(
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child: Icon(
-                        Icons.filter_list,
-                        color: AppTheme.warningColor,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Text(
-                      'تصفية المحتوى',
-                      style: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildFilterChip(
-                        'الكل',
-                        _selectedType == null,
-                        () {
-                          setState(() {
-                            _selectedType = null;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Expanded(
-                      child: _buildFilterChip(
-                        'منشورات',
-                        _selectedType == TajweedType.post,
-                        () {
-                          setState(() {
-                            _selectedType =
-                                _selectedType == TajweedType.post
-                                    ? null
-                                    : TajweedType.post;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Expanded(
-                      child: _buildFilterChip(
-                        'فيديوهات',
-                        _selectedType == TajweedType.video,
-                        () {
-                          setState(() {
-                            _selectedType =
-                                _selectedType == TajweedType.video
-                                    ? null
-                                    : TajweedType.video;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        Wrap(
+          children: [
+            chip('الكل', Icons.apps_rounded, null),
+            chip('منشورات', Icons.article_rounded, TajweedType.post),
+            chip('فيديوهات', Icons.play_circle_rounded, TajweedType.video),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildFilterChip(String label, bool selected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingS,
-          vertical: AppTheme.spacingS,
-        ),
-        decoration: BoxDecoration(
-          color:
-              selected
-                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                  : AppTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          border: Border.all(
-            color: selected ? AppTheme.primaryColor : AppTheme.dividerColor,
-            width: selected ? 2 : 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: AppTheme.labelMedium.copyWith(
-              color:
-                  selected ? AppTheme.primaryColor : AppTheme.textPrimaryColor,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildRuleCard(TajweedRule rule) {
+    final isVideo = rule.type == TajweedType.video;
+    final hasVideo = isVideo && (rule.videoUrl?.isNotEmpty ?? false);
+    final hasImage = rule.imageUrl != null && rule.imageUrl!.isNotEmpty;
+
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: 4,
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusL),
+        boxShadow: AppTheme.shadowM,
       ),
-      child: ModernCard(
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            context.push('/participant/tajweed/detail', extra: rule);
-          },
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          onTap: () => context.push('/participant/tajweed/detail', extra: rule),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Vidéo : miniature avec bouton lecture ; sinon image éventuelle
+              if (hasVideo)
+                GestureDetector(
+                  onTap: () => _launchVideo(rule.videoUrl!),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      _buildVideoThumbnail(rule.videoUrl!),
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingS),
+                        decoration: const BoxDecoration(
+                          color: Colors.black45,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (hasImage)
+                Image.network(
+                  rule.imageUrl!,
+                  height: 150,
+                  fit: BoxFit.cover,
+                  errorBuilder:
+                      (context, error, stackTrace) => const SizedBox.shrink(),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(AppTheme.spacingM),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        rule.title,
-                        style: AppTheme.labelLarge.copyWith(
-                          fontWeight: FontWeight.bold,
+                    Row(
+                      children: [
+                        AppIconBadge(
+                          icon:
+                              isVideo
+                                  ? Icons.play_circle_rounded
+                                  : Icons.record_voice_over_rounded,
+                          color:
+                              isVideo
+                                  ? AppTheme.accentColor
+                                  : AppTheme.primaryColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          child: Text(
+                            rule.title,
+                            style: AppTheme.bodyLarge.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryDarkColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        AppTag(
+                          text: rule.type.displayName,
+                          color:
+                              isVideo
+                                  ? AppTheme.accentColor
+                                  : AppTheme.primaryColor,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      rule.content,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.textPrimaryColor.withValues(
+                          alpha: 0.75,
+                        ),
+                        height: 1.8,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    const Divider(),
+                    const SizedBox(height: AppTheme.spacingXS),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        Text(
+                          'عرض التفاصيل',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_back_rounded,
+                          size: 18,
                           color: AppTheme.primaryColor,
                         ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingS,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            rule.type == TajweedType.post
-                                ? AppTheme.primaryColor
-                                : AppTheme.errorColor,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child: Text(
-                        rule.type.displayName,
-                        style: AppTheme.labelSmall.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: AppTheme.spacingS),
-
-                if (rule.imageUrl != null && rule.imageUrl!.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    child: Image.network(
-                      rule.imageUrl!,
-                      width: double.infinity,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 150,
-                          color: AppTheme.backgroundColor,
-                          child: const Center(
-                            child: Icon(Icons.image_not_supported, size: 50),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingS),
-                ],
-
-                if (rule.type == TajweedType.video &&
-                    rule.videoUrl != null &&
-                    rule.videoUrl!.isNotEmpty) ...[
-                  GestureDetector(
-                    onTap: () => _launchVideo(rule.videoUrl!),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          _buildVideoThumbnail(rule.videoUrl!),
-                          Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: Icon(
-                              Icons.play_circle_filled,
-                              color: Colors.white.withOpacity(0.7),
-                              size: 50,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingS),
-                ],
-
-                Text(
-                  rule.content,
-                  style: AppTheme.labelMedium.copyWith(
-                    height: 1.5,
-                    color: AppTheme.textPrimaryColor,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-
-                // Message pour indiquer que c'est cliquable
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.touch_app,
-                        size: 14,
-                        color: AppTheme.primaryColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'اضغط للتفاصيل',
-                        style: AppTheme.labelSmall.copyWith(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    border: Border.all(color: AppTheme.dividerColor),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.person,
-                        size: 16,
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      const SizedBox(width: AppTheme.spacingS),
-                      Text(
-                        'نشر بواسطة: الإدارة',
-                        style: AppTheme.labelSmall.copyWith(
-                          color: AppTheme.textSecondaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.calendar_today,
-                        size: 16,
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatDate(rule.createdAt),
-                        style: AppTheme.labelSmall.copyWith(
-                          color: AppTheme.textSecondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _buildVideoThumbnail(String videoUrl) {
@@ -639,7 +400,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
         color: AppTheme.backgroundColor,
         child: const Center(
           child: Icon(
-            Icons.video_library,
+            Icons.video_library_rounded,
             size: 50,
             color: AppTheme.textSecondaryColor,
           ),
@@ -685,7 +446,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
               color: AppTheme.backgroundColor,
               child: const Center(
                 child: Icon(
-                  Icons.video_library,
+                  Icons.video_library_rounded,
                   size: 50,
                   color: AppTheme.textSecondaryColor,
                 ),
@@ -699,7 +460,7 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
 
   Widget _buildEmptyState() {
     return EmptyState(
-      icon: Icons.auto_stories,
+      icon: Icons.auto_stories_rounded,
       title:
           _searchQuery.isNotEmpty || _selectedType != null
               ? 'لا توجد أحكام تجويد تطابق البحث'
@@ -718,72 +479,57 @@ class _ParticipantTajweedPageState extends State<ParticipantTajweedPage> {
         title: 'أحكام التجويد',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _loadRules(reset: true),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'تحديث',
+            onPressed: _isLoading ? null : _loadRules,
           ),
         ],
       ),
       body:
-          _isLoading
-              ? const LoadingOverlay(child: SizedBox())
+          _isLoading && _allRules.isEmpty
+              ? const ModernLoadingIndicator()
               : ModernPullToRefresh(
-                onRefresh: () => _loadRules(reset: true),
+                onRefresh: _loadRules,
                 child: CustomScrollView(
                   controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _buildSearchAndFilters(),
-                        ]),
+                    const SliverToBoxAdapter(
+                      child: AppGradientHeader(
+                        icon: Icons.record_voice_over_rounded,
+                        title: 'أحكام التجويد',
+                        subtitle: 'تعلّم أحكام التلاوة بالشرح والأمثلة',
                       ),
                     ),
-                    if (_filteredRules.isEmpty && !_isLoading)
-                      SliverFillRemaining(child: _buildEmptyState())
+                    SliverPadding(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildSearchAndFilters(),
+                      ),
+                    ),
+                    if (_filteredRules.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _buildEmptyState(),
+                      )
                     else
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingS,
+                          horizontal: AppTheme.spacingM,
                         ),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              if (index < _filteredRules.length) {
-                                return _buildRuleCard(_filteredRules[index]);
-                              }
-                              // Bouton "تحميل المزيد" pour les règles non filtrées
-                              if (_hasMore &&
-                                  _allRules.length < (_currentPage + 1) * 20) {
-                                return _isLoadingMore
-                                    ? const Padding(
-                                      padding: EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    )
-                                    : Padding(
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      child: SizedBox(
-                                        width: double.infinity,
-                                        child: SecondaryButton(
-                                          onPressed: _loadMoreRules,
-                                          text: 'تحميل المزيد',
-                                        ),
-                                      ),
-                                    );
-                              }
-                              return const SizedBox.shrink();
-                            },
-                            childCount:
-                                _filteredRules.length + (_hasMore ? 1 : 0),
+                            (context, index) =>
+                                _buildRuleCard(_filteredRules[index]),
+                            childCount: _filteredRules.length,
                           ),
                         ),
                       ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: AppTheme.spacingL),
+                    ),
                   ],
                 ),
               ),

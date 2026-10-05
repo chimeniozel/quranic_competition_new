@@ -73,7 +73,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل المستوى: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -140,7 +140,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
             content: Text(
               _isEditing ? 'تم تحديث المستوى بنجاح' : 'تم إنشاء المستوى بنجاح',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
         context.pop();
@@ -150,7 +150,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في حفظ المستوى: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -199,7 +199,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
                           decoration: const InputDecoration(
                             labelText: 'اسم المستوى',
                             hintText: 'مثال: مبتدئ، متوسط، متقدم',
-                            prefixIcon: Icon(Icons.quiz),
+                            prefixIcon: Icon(Icons.quiz_rounded),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -240,7 +240,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
                           decoration: const InputDecoration(
                             labelText: 'ترتيب المستوى',
                             hintText: '1، 2، 3...',
-                            prefixIcon: Icon(Icons.sort),
+                            prefixIcon: Icon(Icons.sort_rounded),
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
@@ -264,7 +264,7 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
                         child: Row(
                           children: [
                             Icon(
-                              Icons.info,
+                              Icons.info_rounded,
                               color: AppTheme.infoColor,
                               size: 20,
                             ),
@@ -289,7 +289,8 @@ class _QuizLevelFormPageState extends State<QuizLevelFormPage> {
                           Expanded(
                             child: SecondaryButton(
                               text: 'إلغاء',
-                              onPressed: _isLoading ? null : () => context.pop(),
+                              onPressed:
+                                  _isLoading ? null : () => context.pop(),
                               fullWidth: true,
                             ),
                           ),

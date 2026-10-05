@@ -1,9 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:quranic_competition/models/round.dart';
 import 'package:quranic_competition/models/participant.dart';
 import 'package:quranic_competition/models/round_result.dart';
+import 'package:quranic_competition/core/utils/search_utils.dart';
 
 class RoundResultsService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -774,33 +773,31 @@ class RoundResultsService {
 
   /// Construit le filtre PostgREST appliqué à la table `participants`.
   ///
-  /// - nom complet : correspondance partielle (ilike), seulement si
-  ///   [includeName] est vrai (certains écrans cherchent par numéro seul)
-  /// - numéro d'inscription : la colonne étant numérique, on cherche les
-  ///   numéros qui commencent par les chiffres saisis (ex: "40" trouve 40,
-  ///   404, 4012...) à l'aide d'intervalles.
+  /// - numéro d'inscription : correspondance exacte (ex: "4" trouve
+  ///   uniquement le n°4, pas 14, 40 ou 404)
+  /// - nom complet : correspondance partielle (ilike), seulement si la
+  ///   saisie n'est pas un nombre et que [includeName] est vrai (certains
+  ///   écrans cherchent par numéro seul)
   String _buildParticipantSearchFilter(
     String search, {
     bool includeName = true,
   }) {
     // Les virgules et parenthèses sont des séparateurs de la syntaxe `or`.
-    final sanitized = search.replaceAll(RegExp(r'[,()."*]'), ' ').trim();
+    final sanitized =
+        SearchUtils.normalizeDigits(
+          search,
+        ).replaceAll(RegExp(r'[,()."*]'), ' ').trim();
     if (sanitized.isEmpty) return '';
 
-    final filters = <String>[if (includeName) 'full_name.ilike.*$sanitized*'];
-
-    final digits = sanitized.replaceAll(RegExp(r'\D'), '');
-    if (digits.isNotEmpty && digits.length <= 9) {
-      final prefix = int.parse(digits);
-      for (var extraDigits = 0; extraDigits <= 3; extraDigits++) {
-        final factor = math.pow(10, extraDigits).toInt();
-        final start = prefix * factor;
-        filters.add(
-          'and(registration_number.gte.$start,'
-          'registration_number.lt.${start + factor})',
-        );
-      }
-    }
+    final numeric = SearchUtils.numericQuery(sanitized);
+    final digits = numeric ?? sanitized.replaceAll(RegExp(r'\D'), '');
+    final filters = <String>[
+      if (numeric == null && includeName) 'full_name.ilike.*$sanitized*',
+      if ((numeric != null || !includeName) &&
+          digits.isNotEmpty &&
+          digits.length <= 9)
+        'registration_number.eq.${int.parse(digits)}',
+    ];
 
     return filters.join(',');
   }

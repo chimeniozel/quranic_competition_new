@@ -168,13 +168,13 @@ class _RoleInfoWidgetState extends State<RoleInfoWidget> {
   IconData _getRoleIcon(UserRole role) {
     switch (role) {
       case UserRole.superAdmin:
-        return Icons.admin_panel_settings;
+        return Icons.admin_panel_settings_rounded;
       case UserRole.admin:
-        return Icons.manage_accounts;
+        return Icons.manage_accounts_rounded;
       case UserRole.jury:
-        return Icons.gavel;
+        return Icons.gavel_rounded;
       case UserRole.member:
-        return Icons.person;
+        return Icons.person_rounded;
     }
   }
 

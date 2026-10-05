@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
@@ -150,7 +151,8 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
     final confirmed = await ModernDialog.showConfirm(
       context,
       title: 'تأكيد الحذف',
-      message: 'هل أنت متأكد من حذف الفائدة القرآنية "${benefit.title}"؟ لا يمكن التراجع عن هذه العملية.',
+      message:
+          'هل أنت متأكد من حذف الفائدة القرآنية "${benefit.title}"؟ لا يمكن التراجع عن هذه العملية.',
       confirmText: 'حذف',
       confirmColor: AppTheme.errorColor,
     );
@@ -244,159 +246,145 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
   }
 
   Widget _buildBenefitCard(QuranicBenefit benefit) {
+    final statusColor =
+        benefit.isActive ? AppTheme.successColor : AppTheme.textSecondaryColor;
+
     return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingM,
-        vertical: AppTheme.spacingS,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingM),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    benefit.title,
-                    style: AppTheme.headingSmall.copyWith(
-                      fontWeight: FontWeight.bold,
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppIconBadge(icon: Icons.menu_book_rounded, color: statusColor),
+              const SizedBox(width: AppTheme.spacingS),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      benefit.title,
+                      style: AppTheme.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'edit':
-                        _checkPermissionAndEdit(benefit);
-                        break;
-                      case 'toggle_status':
-                        _toggleBenefitStatus(benefit);
-                        break;
-                      case 'delete':
-                        _deleteBenefit(benefit);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) {
-                    final items = <PopupMenuEntry<String>>[];
-                    final permissionService = PermissionService();
-
-                    // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
-                    if (permissionService.canModifySync()) {
-                      items.add(
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit),
-                              SizedBox(width: 8),
-                              Text('تعديل'),
-                            ],
-                          ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: AppTheme.spacingXS,
+                      runSpacing: AppTheme.spacingXS,
+                      children: [
+                        AppTag(
+                          text: benefit.isActive ? 'منشورة' : 'غير منشورة',
+                          color: statusColor,
+                          icon:
+                              benefit.isActive
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
                         ),
-                      );
-                    }
-
-                    // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
-                    if (permissionService.canModifySync()) {
-                      items.add(
-                        PopupMenuItem(
-                          value: 'toggle_status',
-                          child: Row(
-                            children: [
-                              Icon(
-                                benefit.isActive
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                benefit.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                              ),
-                            ],
-                          ),
+                        AppTag(
+                          text: _formatDate(benefit.createdAt),
+                          color: AppTheme.textSecondaryColor,
+                          icon: Icons.calendar_today_rounded,
                         ),
-                      );
-                    }
-
-                    // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
-                    if (permissionService.canDeleteSync()) {
-                      items.add(
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, color: AppTheme.errorColor),
-                              SizedBox(width: 8),
-                              Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
-                            ],
+                        if (benefit.authorName.isNotEmpty)
+                          AppTag(
+                            text: benefit.authorName,
+                            color: AppTheme.textSecondaryColor,
+                            icon: Icons.person_rounded,
                           ),
-                        ),
-                      );
-                    }
-
-                    return items;
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              benefit.content,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingM),
-            Row(
-              children: [
-                Icon(
-                  Icons.person,
-                  size: 16,
-                  color: AppTheme.textSecondaryColor,
-                ),
-                const SizedBox(width: AppTheme.spacingXS),
-                Text(
-                  benefit.authorName,
-                  style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingXS,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        benefit.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.errorColor,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  child: Text(
-                    benefit.isActive ? 'مفعل' : 'غير مفعل',
-                    style: AppTheme.labelSmall.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                      ],
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              'تاريخ الإنشاء: ${_formatDate(benefit.createdAt)}',
-              style: AppTheme.bodySmall.copyWith(
-                color: AppTheme.textDisabledColor,
               ),
-            ),
-          ],
-        ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  switch (value) {
+                    case 'edit':
+                      _checkPermissionAndEdit(benefit);
+                      break;
+                    case 'toggle_status':
+                      _toggleBenefitStatus(benefit);
+                      break;
+                    case 'delete':
+                      _deleteBenefit(benefit);
+                      break;
+                  }
+                },
+                itemBuilder: (context) {
+                  final items = <PopupMenuEntry<String>>[];
+                  final permissionService = PermissionService();
+
+                  // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canModifySync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_rounded),
+                            SizedBox(width: 8),
+                            Text('تعديل'),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canModifySync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'toggle_status',
+                        child: Row(
+                          children: [
+                            Icon(
+                              benefit.isActive
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(benefit.isActive ? 'إلغاء التفعيل' : 'تفعيل'),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canDeleteSync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_rounded, color: AppTheme.errorColor),
+                            SizedBox(width: 8),
+                            Text(
+                              'حذف',
+                              style: TextStyle(color: AppTheme.errorColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return items;
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.spacingS),
+          Text(
+            benefit.content,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: AppTheme.bodyMedium.copyWith(height: 1.6),
+          ),
+        ],
       ),
     );
   }
@@ -422,12 +410,9 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
               ),
           ],
         ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () => _loadBenefits(reset: true),
             tooltip: 'تحديث',
           ),
@@ -442,12 +427,18 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
                 child:
                     _benefits.isEmpty && !_isLoading
                         ? EmptyState(
-                          icon: Icons.menu_book,
+                          icon: Icons.menu_book_rounded,
                           title: 'لا توجد فوائد قرآنية',
                           subtitle: 'لم يتم إضافة أي فوائد قرآنية بعد',
                         )
                         : ListView.builder(
                           controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(
+                            AppTheme.spacingM,
+                            0,
+                            AppTheme.spacingM,
+                            80,
+                          ),
                           itemCount: _benefits.length + (_hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (index == _benefits.length) {
@@ -479,13 +470,10 @@ class _QuranicBenefitsPageState extends State<QuranicBenefitsPage> {
         ],
       ),
       floatingActionButton: CanModifyGuard(
-        child: FloatingActionButton(
-          onPressed: () {
-            context.push('/admin/quranic-benefits/add');
-          },
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          child: const Icon(Icons.add),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/admin/quranic-benefits/add'),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('فائدة جديدة'),
         ),
       ),
     );

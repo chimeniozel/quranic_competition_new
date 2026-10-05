@@ -85,7 +85,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل المستويات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -141,7 +141,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل السؤال: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -197,7 +197,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في اختيار الصورة: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -286,7 +286,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                         _optionControllers.length > 2
                             ? IconButton(
                               icon: const Icon(
-                                Icons.delete,
+                                Icons.delete_rounded,
                                 color: AppTheme.errorColor,
                               ),
                               onPressed: () => _removeOption(index),
@@ -310,7 +310,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
 
   Future<void> _saveQuestion() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     // Vérifier الصلاحيات
     final canModify = await _permissionCheckService.canModify();
     if (!canModify) {
@@ -322,12 +322,12 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
       );
       return;
     }
-    
+
     if (_selectedLevel == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار مستوى'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -338,7 +338,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى إضافة على الأقل خيارين'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -350,7 +350,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('يرجى ملء الخيار ${i + 1}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
         return;
@@ -439,7 +439,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
             content: Text(
               _isEditing ? 'تم تحديث السؤال بنجاح' : 'تم إنشاء السؤال بنجاح',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
         context.pop();
@@ -449,7 +449,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في حفظ السؤال: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -497,7 +497,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                           value: _selectedLevel,
                           decoration: InputDecoration(
                             labelText: 'المستوى',
-                            prefixIcon: const Icon(Icons.quiz),
+                            prefixIcon: const Icon(Icons.quiz_rounded),
                             filled: true,
                             fillColor: AppTheme.surfaceColor,
                           ),
@@ -594,7 +594,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                                               return Container(
                                                 color: AppTheme.surfaceColor,
                                                 child: Icon(
-                                                  Icons.image_not_supported,
+                                                  Icons.image_not_supported_rounded,
                                                   size: 50,
                                                   color:
                                                       AppTheme
@@ -633,7 +633,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                                   Expanded(
                                     child: SecondaryButton(
                                       text: 'تغيير الصورة',
-                                      icon: Icons.edit,
+                                      icon: Icons.edit_rounded,
                                       onPressed: _pickImage,
                                       fullWidth: true,
                                     ),
@@ -642,7 +642,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                                   Expanded(
                                     child: SecondaryButton(
                                       text: 'حذف',
-                                      icon: Icons.delete,
+                                      icon: Icons.delete_rounded,
                                       onPressed: _removeSelectedImage,
                                       fullWidth: true,
                                       textColor: AppTheme.errorColor,
@@ -661,7 +661,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                                 _imageUrlController.text.trim().isEmpty)
                               PrimaryButton(
                                 text: 'اختيار صورة من المعرض',
-                                icon: Icons.photo_library,
+                                icon: Icons.photo_library_rounded,
                                 onPressed: _pickImage,
                                 fullWidth: true,
                                 backgroundColor: AppTheme.infoColor,
@@ -678,7 +678,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                           controller: _pointsController,
                           decoration: const InputDecoration(
                             labelText: 'النقاط',
-                            prefixIcon: Icon(Icons.stars),
+                            prefixIcon: Icon(Icons.stars_rounded),
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
@@ -707,7 +707,7 @@ class _QuizQuestionFormPageState extends State<QuizQuestionFormPage> {
                           if (_optionControllers.length < 6)
                             SecondaryButton(
                               text: 'إضافة خيار',
-                              icon: Icons.add,
+                              icon: Icons.add_rounded,
                               onPressed: _addOption,
                               fullWidth: true,
                             ),

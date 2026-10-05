@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/round.dart';
@@ -355,7 +356,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.public, color: Colors.white),
+                const Icon(Icons.public_rounded, color: Colors.white),
                 const SizedBox(width: AppTheme.spacingS),
                 Text(
                   isRepublish
@@ -439,7 +440,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
           SnackBar(
             content: Row(
               children: const [
-                Icon(Icons.undo, color: Colors.white),
+                Icon(Icons.undo_rounded, color: Colors.white),
                 SizedBox(width: AppTheme.spacingS),
                 Text('تم إلغاء نشر النتائج'),
               ],
@@ -681,15 +682,10 @@ class _VersionResultPageState extends State<VersionResultPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(
           'نتائج ${widget.round.name ?? 'الجولة ${widget.round.number}'}',
         ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [],
       ),
       body:
           _isLoading
@@ -700,49 +696,15 @@ class _VersionResultPageState extends State<VersionResultPage> {
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingL),
+                    padding: const EdgeInsets.all(AppTheme.spacingM),
                     child: Column(
                       children: [
                         _buildRoundInfo(),
-                        const SizedBox(height: AppTheme.spacingXL),
-                        ModernCard(
-                          child: Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingXL),
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(
-                                    AppTheme.spacingL,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.emoji_events_outlined,
-                                    size: 64,
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.spacingL),
-                                Text(
-                                  'لا توجد نتائج متاحة',
-                                  style: AppTheme.headingMedium.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimaryColor,
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-                                Text(
-                                  'لم يتم حساب نتائج هذه الجولة بعد',
-                                  style: AppTheme.bodyMedium.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
+                        const SizedBox(height: AppTheme.spacingL),
+                        const EmptyState(
+                          icon: Icons.emoji_events_rounded,
+                          title: 'لا توجد نتائج متاحة',
+                          subtitle: 'لم يتم حساب نتائج هذه الجولة بعد',
                         ),
                       ],
                     ),
@@ -756,9 +718,12 @@ class _VersionResultPageState extends State<VersionResultPage> {
                       onRefresh: () => _loadResults(reset: true),
                       child: CustomScrollView(
                         controller: _scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         slivers: [
                           SliverPadding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
+                            padding: const EdgeInsets.all(AppTheme.spacingM),
                             sliver: SliverList(
                               delegate: SliverChildListDelegate([
                                 _buildRoundInfo(),
@@ -768,6 +733,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
                                 if (_isLockedByNextRound)
                                   const SizedBox(height: AppTheme.spacingS),
                                 _buildAgeGroupSelector(),
+                                const SizedBox(height: AppTheme.spacingS),
                                 _buildSearchBar(),
                               ]),
                             ),
@@ -789,201 +755,59 @@ class _VersionResultPageState extends State<VersionResultPage> {
   }
 
   Widget _buildRoundInfo() {
-    return ModernCard(
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.primaryColor.withOpacity(0.05),
-              Colors.transparent,
-            ],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppTheme.spacingS),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryColor,
-                    AppTheme.primaryColor.withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.emoji_events,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: AppTheme.spacingS),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${widget.round.name ?? 'الجولة ${widget.round.number}'}',
-                    style: AppTheme.headingSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${widget.version.name} - ${widget.version.year}',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                  if (widget.round.startDate != null)
-                    Text(
-                      'تاريخ البداية: ${widget.round.startDate!.day}/${widget.round.startDate!.month}/${widget.round.startDate!.year}',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppTheme.spacingS,
-                vertical: AppTheme.spacingXS,
-              ),
-              decoration: BoxDecoration(
-                color:
-                    _published ? AppTheme.successColor : AppTheme.warningColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusS),
-              ),
-              child: Text(
-                _published ? 'منشور' : 'غير منشور',
-                style: AppTheme.bodySmall.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
+    final round = widget.round;
+    final start = round.startDate;
+
+    return AppGradientHeader(
+      shape: AppHeaderShape.card,
+      compact: true,
+      icon: Icons.emoji_events_rounded,
+      title: round.name ?? 'الجولة ${round.number}',
+      subtitle:
+          '${widget.version.name} · ${widget.version.year}'
+          '${start != null ? ' · ${start.day}/${start.month}/${start.year}' : ''}',
+      trailing: AppHeaderBadge(
+        icon: _published ? Icons.public_rounded : Icons.public_off_rounded,
+        text: _published ? 'منشور' : 'غير منشور',
       ),
     );
   }
 
+  void _selectAgeGroup(String group) {
+    if (group == _selectedAgeGroup) return;
+    setState(() => _selectedAgeGroup = group);
+    _filterResultsByAgeGroup();
+    // La recherche en cours porte sur le groupe d'âge sélectionné.
+    if (_searchQuery.isNotEmpty) _runSearch();
+  }
+
   Widget _buildAgeGroupSelector() {
-    return ModernCard(
-      child: Row(
-        children: [
-          Icon(Icons.groups, color: AppTheme.warningColor, size: 24),
-          const SizedBox(width: AppTheme.spacingS),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildAgeGroupButton(
-                    'كبار',
-                    _selectedAgeGroup == 'كبار',
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: _buildAgeGroupButton(
-                    'صغار',
-                    _selectedAgeGroup == 'صغار',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return SegmentedButton<String>(
+      segments: const [
+        ButtonSegment(
+          value: 'كبار',
+          label: Text('الكبار'),
+          icon: Icon(Icons.person_rounded),
+        ),
+        ButtonSegment(
+          value: 'صغار',
+          label: Text('الصغار'),
+          icon: Icon(Icons.child_care_rounded),
+        ),
+      ],
+      selected: {_selectedAgeGroup},
+      showSelectedIcon: false,
+      onSelectionChanged: (value) => _selectAgeGroup(value.first),
     );
   }
 
   Widget _buildLockedNoticeCard() {
-    return ModernCard(
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        decoration: BoxDecoration(
-          color: AppTheme.warningColor.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.lock, color: AppTheme.warningColor, size: 24),
-            const SizedBox(width: AppTheme.spacingS),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'لا يمكن تعديل نتائج هذه الجولة',
-                    style: AppTheme.labelLarge.copyWith(
-                      color: AppTheme.warningColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingXS),
-                  Text(
-                    'تم نشر نتائج الجولة التالية، لذلك تم إيقاف إمكانية النشر أو الإلغاء لهذه الجولة للحفاظ على التسلسل.',
-                    style: AppTheme.bodySmall.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAgeGroupButton(String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        if (label != _selectedAgeGroup) {
-          setState(() {
-            _selectedAgeGroup = label;
-          });
-          _filterResultsByAgeGroup();
-          // La recherche en cours porte sur le groupe d'âge sélectionné.
-          if (_searchQuery.isNotEmpty) _runSearch();
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppTheme.spacingS,
-          horizontal: AppTheme.spacingS,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor : AppTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: AppTheme.labelMedium.copyWith(
-            color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+    return const AppNotice(
+      text:
+          'لا يمكن تعديل نتائج هذه الجولة: تم نشر نتائج الجولة التالية، '
+          'لذلك تم إيقاف النشر أو الإلغاء للحفاظ على التسلسل.',
+      color: AppTheme.warningColor,
+      icon: Icons.lock_outline_rounded,
     );
   }
 
@@ -1017,12 +841,12 @@ class _VersionResultPageState extends State<VersionResultPage> {
         child:
             _searchQuery.isNotEmpty
                 ? const EmptyState(
-                  icon: Icons.search_off,
+                  icon: Icons.search_off_rounded,
                   title: 'لا توجد نتائج',
                   subtitle: 'لم يتم العثور على نتائج تطابق البحث',
                 )
                 : const EmptyState(
-                  icon: Icons.emoji_events_outlined,
+                  icon: Icons.emoji_events_rounded,
                   title: 'لا توجد نتائج لهذه الجولة',
                   subtitle: 'لم يتم العثور على نتائج للجولة المحددة',
                 ),
@@ -1032,7 +856,7 @@ class _VersionResultPageState extends State<VersionResultPage> {
     final showLoadMore = _searchHasMore || _isSearchingMore;
 
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           if (index >= filteredResults.length) {
@@ -1054,252 +878,114 @@ class _VersionResultPageState extends State<VersionResultPage> {
   }
 
   Widget _buildResultCard(RoundResult result, int rank) {
-    Color medalColor;
-    IconData? medalIcon;
+    // Or, argent, bronze pour les trois premiers
+    final medalColor = switch (rank) {
+      1 => const Color(0xFFD4A84B),
+      2 => const Color(0xFF94A3B8),
+      3 => const Color(0xFFB45309),
+      _ => AppTheme.primaryColor,
+    };
+    final statusColor =
+        result.passed ? AppTheme.successColor : AppTheme.errorColor;
 
-    if (rank == 1) {
-      medalColor = AppTheme.warningColor;
-      medalIcon = Icons.emoji_events;
-    } else if (rank == 2) {
-      medalColor = AppTheme.textSecondaryColor;
-      medalIcon = Icons.emoji_events;
-    } else if (rank == 3) {
-      medalColor = Colors.brown;
-      medalIcon = Icons.emoji_events;
-    } else {
-      medalColor = AppTheme.primaryColor;
-      medalIcon = null;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
-      child: ModernCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Row(
-            children: [
-              // Position et médaille
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color:
-                      rank <= 3
-                          ? medalColor.withOpacity(0.1)
-                          : AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  border: Border.all(
-                    color: rank <= 3 ? medalColor : AppTheme.dividerColor,
-                    width: 2,
-                  ),
-                ),
-                child: Center(
-                  child:
-                      medalIcon != null
-                          ? Icon(medalIcon, color: medalColor, size: 20)
-                          : Text(
-                            '$rank',
-                            style: AppTheme.labelLarge.copyWith(
-                              color: medalColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-
-              // Informations du participant
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.participant.fullName,
-                      style: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: AppTheme.spacingXS),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.badge,
-                          color: AppTheme.textSecondaryColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: AppTheme.spacingXS),
-                        Text(
-                          'رقم التسجيل: ${result.participant.registrationNumber ?? '؟'}',
-                          style: AppTheme.bodySmall.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.spacingXS),
-                    Row(
-                      children: [
-                        Icon(
-                          result.passed ? Icons.check_circle : Icons.cancel,
-                          color:
-                              result.passed
-                                  ? AppTheme.successColor
-                                  : AppTheme.errorColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: AppTheme.spacingXS),
-                        Text(
-                          result.passed ? 'نجح' : 'لم ينجح',
-                          style: AppTheme.bodySmall.copyWith(
-                            color:
-                                result.passed
-                                    ? AppTheme.successColor
-                                    : AppTheme.errorColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Score
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTheme.spacingS,
-                  vertical: AppTheme.spacingS,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      result.passed
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  border: Border.all(
-                    color:
-                        result.passed
-                            ? AppTheme.successColor
-                            : AppTheme.errorColor,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      result.score.toStringAsFixed(1),
-                      style: AppTheme.headingSmall.copyWith(
-                        color:
-                            result.passed
-                                ? AppTheme.successColor
-                                : AppTheme.errorColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'المعدل',
-                      style: AppTheme.bodySmall.copyWith(
-                        color:
-                            result.passed
-                                ? AppTheme.successColor
-                                : AppTheme.errorColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return AppListCard(
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: medalColor.withValues(alpha: rank <= 3 ? 0.15 : 0.08),
+          shape: BoxShape.circle,
         ),
+        child: Center(
+          child:
+              rank <= 3
+                  ? Icon(Icons.emoji_events_rounded, color: medalColor, size: 22)
+                  : Text(
+                    '$rank',
+                    style: AppTheme.bodyLarge.copyWith(
+                      color: medalColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+        ),
+      ),
+      title: result.participant.fullName,
+      tags: [
+        AppTag(
+          text: 'رقم ${result.participant.registrationNumber ?? '؟'}',
+          color: AppTheme.textSecondaryColor,
+          icon: Icons.badge_rounded,
+        ),
+        AppTag(
+          text: result.passed ? 'ناجح' : 'لم ينجح',
+          color: statusColor,
+          icon: result.passed ? Icons.check_circle_rounded : Icons.cancel_rounded,
+        ),
+        if (rank <= 3)
+          AppTag(text: 'المركز $rank', color: medalColor, icon: Icons.star_rounded),
+      ],
+      trailing: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            result.score.toStringAsFixed(1),
+            style: AppTheme.headingSmall.copyWith(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text('المعدل', style: AppTheme.labelSmall),
+        ],
       ),
     );
   }
 
   Widget _buildBottomActions() {
+    final canPublish = widget.version.isActive && _hasResults;
+    final locked = _isPublishing || _isLockedByNextRound;
+
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingS),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppTheme.backgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Color(0x14000000),
             blurRadius: 8,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
         child: Row(
           children: [
-            // Bouton d'exportation vers Excel
             Expanded(
-              child: ElevatedButton.icon(
+              child: OutlinedButton.icon(
                 onPressed: _isExporting ? null : _exportResultsToExcel,
+                style: AppButtonStyles.outlined(AppTheme.infoColor),
                 icon:
                     _isExporting
-                        ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                        : const Icon(Icons.file_download, color: Colors.white),
-                label: const Text('تصدير النتائج'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.infoColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: AppTheme.spacingS,
-                  ),
-                  minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  elevation: AppTheme.elevationS,
-                ),
+                        ? const AppButtonLoader(color: AppTheme.infoColor)
+                        : const Icon(Icons.file_download_rounded, size: 18),
+                label: const FittedBox(child: Text('تصدير')),
               ),
             ),
-            if (widget.version.isActive && _hasResults) ...[
+            if (canPublish) ...[
               const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed:
-                      _isPublishing || _isLockedByNextRound
-                          ? null
-                          : () => _publishResults(force: _published),
+                      locked ? null : () => _publishResults(force: _published),
+                  style: AppButtonStyles.filled(AppTheme.successColor),
                   icon:
                       _isPublishing
-                          ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
+                          ? const AppButtonLoader()
                           : Icon(
-                            _published ? Icons.refresh : Icons.publish,
-                            color: Colors.white,
+                            _published ? Icons.refresh_rounded : Icons.publish_rounded,
+                            size: 18,
                           ),
-                  label: Text(_published ? 'إعادة النشر' : 'نشر النتائج'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.successColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingS,
-                      vertical: AppTheme.spacingS,
-                    ),
-                    minimumSize: const Size(0, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    ),
-                    elevation: AppTheme.elevationS,
+                  label: FittedBox(
+                    child: Text(_published ? 'إعادة النشر' : 'نشر النتائج'),
                   ),
                 ),
               ),
@@ -1307,31 +993,10 @@ class _VersionResultPageState extends State<VersionResultPage> {
                 const SizedBox(width: AppTheme.spacingS),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed:
-                        _isPublishing || _isLockedByNextRound
-                            ? null
-                            : _unpublishResults,
-                    icon:
-                        _isPublishing
-                            ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : const Icon(Icons.undo),
-                    label: const Text('إلغاء النشر'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.warningColor,
-                      side: const BorderSide(color: AppTheme.warningColor),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spacingS,
-                        vertical: AppTheme.spacingS,
-                      ),
-                      minimumSize: const Size(0, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                    ),
+                    onPressed: locked ? null : _unpublishResults,
+                    style: AppButtonStyles.outlined(AppTheme.warningColor),
+                    icon: const Icon(Icons.undo_rounded, size: 18),
+                    label: const FittedBox(child: Text('إلغاء النشر')),
                   ),
                 ),
               ],

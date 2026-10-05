@@ -34,8 +34,9 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Text(
         title,
         style: TextStyle(
+          fontFamily: 'Tajawal',
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: foregroundColor ?? Colors.white,
         ),
       ),
@@ -45,19 +46,9 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: backgroundColor ?? AppTheme.primaryColor,
       foregroundColor: foregroundColor ?? Colors.white,
       elevation: elevation,
-      automaticallyImplyLeading: leading != null ? false : automaticallyImplyLeading,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              backgroundColor ?? AppTheme.primaryColor,
-              (backgroundColor ?? AppTheme.primaryColor).withOpacity(0.8),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
+      automaticallyImplyLeading:
+          leading != null ? false : automaticallyImplyLeading,
+      surfaceTintColor: Colors.transparent,
     );
   }
 
@@ -155,7 +146,7 @@ class ProfileMenuButton extends StatelessWidget {
             PopupMenuItem(
               value: 'profile',
               child: const ListTile(
-                leading: Icon(Icons.person, size: 20),
+                leading: Icon(Icons.person_rounded, size: 20),
                 title: Text('الملف الشخصي'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -164,7 +155,7 @@ class ProfileMenuButton extends StatelessWidget {
               PopupMenuItem(
                 value: 'settings',
                 child: const ListTile(
-                  leading: Icon(Icons.settings, size: 20),
+                  leading: Icon(Icons.settings_rounded, size: 20),
                   title: Text('الإعدادات'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -174,7 +165,7 @@ class ProfileMenuButton extends StatelessWidget {
               value: 'logout',
               child: ListTile(
                 leading: Icon(
-                  Icons.logout,
+                  Icons.logout_rounded,
                   size: 20,
                   color: AppTheme.errorColor,
                 ),
@@ -193,7 +184,7 @@ class ProfileMenuButton extends StatelessWidget {
           children: [
             CustomAvatar(imageUrl: userImage, initials: userName, size: 28),
             const SizedBox(width: AppTheme.spacingS),
-            Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
+            Icon(Icons.arrow_drop_down_rounded, color: Colors.white, size: 20),
           ],
         ),
       ),

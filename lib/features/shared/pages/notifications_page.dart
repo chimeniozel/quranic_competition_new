@@ -114,14 +114,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: ModernAppBar(
         title: 'الإشعارات',
         actions: [
           if (_hasUnread)
             IconButton(
               tooltip: 'تعليم الكل كمقروء',
-              icon: const Icon(Icons.done_all),
+              icon: const Icon(Icons.done_all_rounded),
               onPressed: _markAllAsRead,
             ),
         ],
@@ -138,7 +137,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           children: [
                             const SizedBox(height: 120),
                             EmptyState(
-                              icon: Icons.wifi_off,
+                              icon: Icons.wifi_off_rounded,
                               title: 'تعذّر تحميل الإشعارات',
                               subtitle: _errorMessage,
                               iconColor: AppTheme.errorColor,
@@ -155,7 +154,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           children: const [
                             SizedBox(height: 120),
                             EmptyState(
-                              icon: Icons.notifications_off_outlined,
+                              icon: Icons.notifications_off_rounded,
                               title: 'لا توجد إشعارات',
                               subtitle: 'ستظهر هنا آخر إشعارات التطبيق',
                             ),
@@ -271,13 +270,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
   IconData _iconForType(String type) {
     switch (type) {
       case 'error':
-        return Icons.error_outline;
+        return Icons.error_outline_rounded;
       case 'warning':
         return Icons.warning_amber_rounded;
       case 'success':
-        return Icons.check_circle_outline;
+        return Icons.check_circle_outline_rounded;
       default:
-        return Icons.notifications_none;
+        return Icons.notifications_none_rounded;
     }
   }
 

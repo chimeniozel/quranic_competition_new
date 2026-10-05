@@ -18,6 +18,8 @@ import 'package:quranic_competition/features/participant/pages/home/participant_
 import 'package:quranic_competition/features/participant/pages/home/participant_result_page.dart';
 import 'package:quranic_competition/features/participant/pages/home/participant_results_versions_page.dart';
 import 'package:quranic_competition/features/participant/pages/benefits/participant_benefits_page.dart';
+import 'package:quranic_competition/features/participant/pages/benefits/benefit_detail_page.dart';
+import 'package:quranic_competition/models/quranic_benefit.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/features/participant/pages/participants/participants_list_page.dart';
@@ -176,6 +178,7 @@ final GoRouter appRouter = GoRouter(
           '/ui-showcase',
         ].contains(path) ||
         path.startsWith('/participant/quiz/level/') ||
+        path.startsWith('/participant/benefits/') ||
         path.startsWith('/participant/archives/competition/') ||
         path.startsWith('/participant/list/') ||
         path.startsWith('/participant/detail/') ||
@@ -325,6 +328,18 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/participant/benefits',
       builder: (context, state) => const ParticipantBenefitsPage(),
+    ),
+    // Détail d'une فائدة : depuis la liste (فائدة passée en extra) ou depuis
+    // une notification (identifiant seul, la فائدة est alors chargée)
+    GoRoute(
+      path: '/participant/benefits/:benefitId',
+      builder: (context, state) {
+        final benefit = state.extra as QuranicBenefit?;
+        return BenefitDetailPage(
+          benefitId: state.pathParameters['benefitId']!,
+          benefit: benefit,
+        );
+      },
     ),
     GoRoute(
       path: '/participant/about-us',

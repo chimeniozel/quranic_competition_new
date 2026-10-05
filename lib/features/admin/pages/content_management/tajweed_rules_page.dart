@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/tajweed_rule_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
@@ -31,7 +32,6 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
   String _searchQuery = '';
   TajweedType? _selectedType;
   Timer? _debounceTimer;
-  String _searchText = '';
 
   @override
   void initState() {
@@ -247,232 +247,121 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
   }
 
   Widget _buildRuleCard(TajweedRule rule) {
-    return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
-      ),
-      padding: const EdgeInsets.all(AppTheme.spacingS),
+    final isVideo = rule.type == TajweedType.video;
+    final typeColor = isVideo ? AppTheme.accentColor : AppTheme.infoColor;
+
+    return AppListCard(
       onTap: () => context.push('/admin/tajweed-rules/edit/${rule.id}'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color:
-                      rule.type == TajweedType.post
-                          ? AppTheme.infoColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                ),
-                child: Icon(
-                  rule.type == TajweedType.post
-                      ? Icons.auto_stories
-                      : Icons.warning,
-                  color:
-                      rule.type == TajweedType.post
-                          ? AppTheme.infoColor
-                          : AppTheme.errorColor,
-                  size: 24,
+      leading: AppIconBadge(
+        icon: isVideo ? Icons.play_circle_outline_rounded : Icons.auto_stories_rounded,
+        color: typeColor,
+        size: 24,
+      ),
+      title: rule.title,
+      subtitle: rule.content,
+      tags: [
+        AppTag(
+          text: rule.type.displayName,
+          color: typeColor,
+          icon: isVideo ? Icons.videocam_rounded : Icons.article_rounded,
+        ),
+        AppTag(
+          text: rule.isActive ? 'منشور' : 'غير منشور',
+          color:
+              rule.isActive
+                  ? AppTheme.successColor
+                  : AppTheme.textSecondaryColor,
+          icon: rule.isActive ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+        ),
+        AppTag(
+          text: _formatDate(rule.createdAt),
+          color: AppTheme.textSecondaryColor,
+          icon: Icons.calendar_today_rounded,
+        ),
+      ],
+      trailing: PopupMenuButton<String>(
+        onSelected: (value) {
+          switch (value) {
+            case 'edit':
+              _checkPermissionAndEdit(rule);
+              break;
+            case 'toggle':
+              _toggleRuleStatus(rule);
+              break;
+            case 'delete':
+              _deleteRule(rule);
+              break;
+          }
+        },
+        itemBuilder: (context) {
+          final items = <PopupMenuEntry<String>>[];
+          final permissionService = PermissionService();
+
+          // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+          if (permissionService.canModifySync()) {
+            items.add(
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_rounded, size: 16, color: AppTheme.primaryColor),
+                    SizedBox(width: 8),
+                    Text('تعديل'),
+                  ],
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingS),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            );
+          }
+
+          // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
+          if (permissionService.canModifySync()) {
+            items.add(
+              PopupMenuItem(
+                value: 'toggle',
+                child: Row(
                   children: [
-                    Text(
-                      rule.title,
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Icon(
+                      rule.isActive ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      size: 16,
+                      color:
+                          rule.isActive
+                              ? AppTheme.warningColor
+                              : AppTheme.successColor,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(width: 8),
                     Text(
-                      rule.content,
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
+                      rule.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                      style: TextStyle(
+                        color:
+                            rule.isActive
+                                ? AppTheme.warningColor
+                                : AppTheme.successColor,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      rule.type == TajweedType.post
-                          ? AppTheme.infoColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        rule.type == TajweedType.post
-                            ? AppTheme.infoColor
-                            : AppTheme.errorColor,
-                  ),
-                ),
-                child: Text(
-                  rule.type.displayName,
-                  style: TextStyle(
-                    color:
-                        rule.type == TajweedType.post
-                            ? AppTheme.infoColor
-                            : AppTheme.errorColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+            );
+          }
+
+          // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+          if (permissionService.canDeleteSync()) {
+            items.add(
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_rounded, size: 16, color: AppTheme.errorColor),
+                    SizedBox(width: 8),
+                    Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppTheme.spacingS),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      rule.isActive
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.warningColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        rule.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                  ),
-                ),
-                child: Text(
-                  rule.isActive ? 'نشط' : 'غير نشط',
-                  style: TextStyle(
-                    color:
-                        rule.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'تم الإنشاء: ${_formatDate(rule.createdAt)}',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'edit':
-                      _checkPermissionAndEdit(rule);
-                      break;
-                    case 'toggle':
-                      _toggleRuleStatus(rule);
-                      break;
-                    case 'delete':
-                      _deleteRule(rule);
-                      break;
-                  }
-                },
-                itemBuilder: (context) {
-                  final items = <PopupMenuEntry<String>>[];
-                  final permissionService = PermissionService();
+            );
+          }
 
-                  // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
-                  if (permissionService.canModifySync()) {
-                    items.add(
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit,
-                              size: 16,
-                              color: AppTheme.primaryColor,
-                            ),
-                            SizedBox(width: 8),
-                            Text('تعديل'),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
-                  if (permissionService.canModifySync()) {
-                    items.add(
-                      PopupMenuItem(
-                        value: 'toggle',
-                        child: Row(
-                          children: [
-                            Icon(
-                              rule.isActive
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              size: 16,
-                              color:
-                                  rule.isActive
-                                      ? AppTheme.warningColor
-                                      : AppTheme.successColor,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              rule.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                              style: TextStyle(
-                                color:
-                                    rule.isActive
-                                        ? AppTheme.warningColor
-                                        : AppTheme.successColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
-                  if (permissionService.canDeleteSync()) {
-                    items.add(
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete,
-                              size: 16,
-                              color: AppTheme.errorColor,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'حذف',
-                              style: TextStyle(color: AppTheme.errorColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return items;
-                },
-              ),
-            ],
-          ),
-        ],
+          return items;
+        },
       ),
     );
   }
@@ -482,36 +371,16 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.auto_stories, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isNotEmpty
-                  ? 'لا توجد أحكام تجويد تطابق البحث'
-                  : 'لا توجد أحكام تجويد متاحة حالياً',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _searchQuery.isNotEmpty
-                  ? 'جرب البحث بكلمات مختلفة'
-                  : 'ابدأ بإضافة أحكام جديدة',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.auto_stories_rounded,
+      title:
+          _searchQuery.isNotEmpty
+              ? 'لا توجد أحكام تجويد تطابق البحث'
+              : 'لا توجد أحكام تجويد حالياً',
+      subtitle:
+          _searchQuery.isNotEmpty
+              ? 'جرب البحث بكلمات مختلفة'
+              : 'ابدأ بإضافة أحكام جديدة',
     );
   }
 
@@ -522,16 +391,17 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
         title: 'أحكام التجويد',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () => _loadRules(reset: true),
             tooltip: 'تحديث',
           ),
         ],
       ),
       floatingActionButton: CanModifyGuard(
-        child: ModernFAB(
+        child: FloatingActionButton.extended(
           onPressed: () => context.push('/admin/tajweed-rules/add'),
-          icon: Icons.add,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('حكم جديد'),
         ),
       ),
       body:
@@ -540,7 +410,13 @@ class _TajweedRulesPageState extends State<TajweedRulesPage> {
               : ModernPullToRefresh(
                 onRefresh: () => _loadRules(reset: true),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.spacingM,
+                    AppTheme.spacingS,
+                    AppTheme.spacingM,
+                    80,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

@@ -503,46 +503,43 @@ class CompetitionVersionService {
   /// Récupère les statistiques des éléments liés à une version
   Future<Map<String, int>> getVersionRelatedCounts(String versionId) async {
     try {
-      // Compter les participants
-      final participantsResponse = await _supabase
-          .from('participants')
-          .select('id')
-          .eq('competition_id', versionId);
-      final participantsCount = participantsResponse.length;
-
-      // Compter les rounds
-      final roundsResponse = await _supabase
+      // Comptages côté serveur, lancés en parallèle : on ne rapatrie plus
+      // toutes les lignes juste pour en mesurer la longueur.
+      final roundsFuture = _supabase
           .from('rounds')
           .select('id')
           .eq('version_id', versionId);
-      final roundsCount = roundsResponse.length;
-
-      // Compter les évaluations (via les rounds)
-      int evaluationsCount = 0;
-      if (roundsCount > 0) {
-        final evaluationsResponse = await _supabase
-            .from('evaluations')
-            .select('id')
-            .inFilter('round_id', roundsResponse.map((r) => r['id']).toList());
-        evaluationsCount = evaluationsResponse.length;
-      }
-
-      // Compter les assignations de jurys (via les rounds)
-      int juryAssignmentsCount = 0;
-      if (roundsCount > 0) {
-        final juryAssignmentsResponse = await _supabase
-            .from('round_jury_assignments')
-            .select('user_id')
-            .inFilter('round_id', roundsResponse.map((r) => r['id']).toList());
-        juryAssignmentsCount = juryAssignmentsResponse.length;
-      }
-
-      // Compter les résultats
-      final resultsResponse = await _supabase
+      final participantsFuture = _supabase
+          .from('participants')
+          .count(CountOption.exact)
+          .eq('competition_id', versionId);
+      final resultsFuture = _supabase
           .from('round_results')
-          .select('id')
+          .count(CountOption.exact)
           .eq('version_id', versionId);
-      final resultsCount = resultsResponse.length;
+
+      final roundIds = (await roundsFuture).map((r) => r['id']).toList();
+      final roundsCount = roundIds.length;
+
+      // Évaluations et assignations de jurys sont liées aux rounds
+      final roundCounts =
+          roundIds.isEmpty
+              ? const [0, 0]
+              : await Future.wait([
+                _supabase
+                    .from('evaluations')
+                    .count(CountOption.exact)
+                    .inFilter('round_id', roundIds),
+                _supabase
+                    .from('round_jury_assignments')
+                    .count(CountOption.exact)
+                    .inFilter('round_id', roundIds),
+              ]);
+      final evaluationsCount = roundCounts[0];
+      final juryAssignmentsCount = roundCounts[1];
+
+      final participantsCount = await participantsFuture;
+      final resultsCount = await resultsFuture;
 
       return {
         'participants': participantsCount,
@@ -580,16 +577,7 @@ class CompetitionVersionService {
         );
       }
 
-      // Récupérer les statistiques avant suppression
-      final counts = await getVersionRelatedCounts(versionId);
-
       print('🗑️ Suppression de la version $versionId');
-      print('📊 Éléments qui seront supprimés:');
-      print('   - Participants: ${counts['participants']}');
-      print('   - Rounds: ${counts['rounds']}');
-      print('   - Évaluations: ${counts['evaluations']}');
-      print('   - Assignations jurys: ${counts['juryAssignments']}');
-      print('   - Résultats: ${counts['results']}');
 
       // Supprimer la version (la suppression en cascade s'occupera du reste)
       final response =

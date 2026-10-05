@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/theme/app_theme.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
@@ -62,7 +64,7 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('لم يتم العثور على الفائدة القرآنية'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
           context.pop();
@@ -73,7 +75,7 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل الفائدة: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
         context.pop();
@@ -92,7 +94,7 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('ليس لديك صلاحية تعديل المحتوى'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -122,7 +124,7 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم تحديث الفائدة القرآنية بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.successColor,
             ),
           );
         }
@@ -147,7 +149,7 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم إنشاء الفائدة القرآنية بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.successColor,
             ),
           );
         }
@@ -161,7 +163,7 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في حفظ الفائدة: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -227,52 +229,62 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildFormField(
-                        label: 'عنوان الفائدة',
-                        controller: _titleController,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال عنوان الفائدة';
-                          }
-                          if (value.trim().length < 3) {
-                            return 'يجب أن يكون العنوان 3 أحرف على الأقل';
-                          }
-                          return null;
-                        },
-                        hintText: 'مثال: فضل قراءة القرآن',
+                      AppSection(
+                        icon: Icons.menu_book_rounded,
+                        title: 'محتوى الفائدة',
+                        subtitle: 'العنوان والنص الذي سيظهر للمشاركين',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildFormField(
+                              label: 'عنوان الفائدة',
+                              controller: _titleController,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'يرجى إدخال عنوان الفائدة';
+                                }
+                                if (value.trim().length < 3) {
+                                  return 'يجب أن يكون العنوان 3 أحرف على الأقل';
+                                }
+                                return null;
+                              },
+                              hintText: 'مثال: فضل قراءة القرآن',
+                            ),
+                            _buildFormField(
+                              label: 'محتوى الفائدة',
+                              controller: _contentController,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'يرجى إدخال محتوى الفائدة';
+                                }
+                                if (value.trim().length < 10) {
+                                  return 'يجب أن يكون المحتوى 10 أحرف على الأقل';
+                                }
+                                return null;
+                              },
+                              maxLines: 8,
+                              hintText: 'اكتب هنا محتوى الفائدة القرآنية...',
+                            ),
+                            _buildFormField(
+                              label: 'رابط الصورة (اختياري)',
+                              controller: _imageUrlController,
+                              validator: (value) {
+                                if (value != null && value.trim().isNotEmpty) {
+                                  final uri = Uri.tryParse(value.trim());
+                                  if (uri == null ||
+                                      (!uri.hasScheme || !uri.hasAuthority)) {
+                                    return 'يرجى إدخال رابط صورة صحيح';
+                                  }
+                                }
+                                return null;
+                              },
+                              keyboardType: TextInputType.url,
+                              hintText: 'https://example.com/image.jpg',
+                            ),
+                          ],
+                        ),
                       ),
-                      _buildFormField(
-                        label: 'محتوى الفائدة',
-                        controller: _contentController,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'يرجى إدخال محتوى الفائدة';
-                          }
-                          if (value.trim().length < 10) {
-                            return 'يجب أن يكون المحتوى 10 أحرف على الأقل';
-                          }
-                          return null;
-                        },
-                        maxLines: 8,
-                        hintText: 'اكتب هنا محتوى الفائدة القرآنية...',
-                      ),
-                      _buildFormField(
-                        label: 'رابط الصورة (اختياري)',
-                        controller: _imageUrlController,
-                        validator: (value) {
-                          if (value != null && value.trim().isNotEmpty) {
-                            final uri = Uri.tryParse(value.trim());
-                            if (uri == null ||
-                                (!uri.hasScheme || !uri.hasAuthority)) {
-                              return 'يرجى إدخال رابط صورة صحيح';
-                            }
-                          }
-                          return null;
-                        },
-                        keyboardType: TextInputType.url,
-                        hintText: 'https://example.com/image.jpg',
-                      ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppTheme.spacingM),
                       Row(
                         children: [
                           Expanded(
@@ -305,79 +317,49 @@ class _QuranicBenefitFormPageState extends State<QuranicBenefitFormPage> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      if (_isEditing && _existingBenefit != null) ...[
-                        const Divider(),
-                        const SizedBox(height: 8),
-                        Text(
-                          'معلومات إضافية',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.person, size: 16),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'الكاتب: ${_existingBenefit!.authorName}',
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.calendar_today, size: 16),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'تاريخ الإنشاء: ${_formatDate(_existingBenefit!.createdAt)}',
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.update, size: 16),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'آخر تحديث: ${_formatDate(_existingBenefit!.updatedAt)}',
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      _existingBenefit!.isActive
-                                          ? Icons.check_circle
-                                          : Icons.cancel,
-                                      size: 16,
-                                      color:
-                                          _existingBenefit!.isActive
-                                              ? Colors.green
-                                              : Colors.red,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'الحالة: ${_existingBenefit!.isActive ? "مفعل" : "غير مفعل"}',
-                                      style: TextStyle(
-                                        color:
-                                            _existingBenefit!.isActive
-                                                ? Colors.green
-                                                : Colors.red,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                      if (_isEditing && _existingBenefit != null)
+                        AppSection(
+                          icon: Icons.info_outline_rounded,
+                          color: AppTheme.infoColor,
+                          title: 'معلومات إضافية',
+                          child: Wrap(
+                            spacing: AppTheme.spacingXS,
+                            runSpacing: AppTheme.spacingXS,
+                            children: [
+                              AppTag(
+                                text: _existingBenefit!.authorName,
+                                color: AppTheme.textSecondaryColor,
+                                icon: Icons.person_rounded,
+                              ),
+                              AppTag(
+                                text:
+                                    'أنشئت ${_formatDate(_existingBenefit!.createdAt)}',
+                                color: AppTheme.textSecondaryColor,
+                                icon: Icons.calendar_today_rounded,
+                              ),
+                              AppTag(
+                                text:
+                                    'حُدّثت ${_formatDate(_existingBenefit!.updatedAt)}',
+                                color: AppTheme.textSecondaryColor,
+                                icon: Icons.update_rounded,
+                              ),
+                              AppTag(
+                                text:
+                                    _existingBenefit!.isActive
+                                        ? 'منشورة'
+                                        : 'غير منشورة',
+                                color:
+                                    _existingBenefit!.isActive
+                                        ? AppTheme.successColor
+                                        : AppTheme.textSecondaryColor,
+                                icon:
+                                    _existingBenefit!.isActive
+                                        ? Icons.visibility_rounded
+                                        : Icons.visibility_off_rounded,
+                              ),
+                            ],
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ),

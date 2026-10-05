@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/auth_initializer.dart';
 import 'package:quranic_competition/core/config/supabase_config.dart';
 import 'package:quranic_competition/core/services/notification_service.dart';
@@ -183,24 +184,8 @@ class _MyAppState extends State<MyApp> {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        theme: ThemeData(
-          useMaterial3: true,
-          fontFamily: null, // Ne pas affecter les icônes
-          cardTheme: CardThemeData(color: Colors.white),
-          textTheme: ThemeData.light().textTheme.apply(
-            fontFamily: "Tajawal",
-          ), // Texte en Tajawal
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          scaffoldBackgroundColor: Colors.white,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.deepPurple,
-            foregroundColor: Colors.white,
-          ),
-          floatingActionButtonTheme: FloatingActionButtonThemeData(
-            backgroundColor: Colors.deepPurple,
-            foregroundColor: Colors.white,
-          ),
-        ),
+        // Thème unique de l'application (lib/core/theme/app_theme.dart)
+        theme: AppTheme.lightTheme,
         builder: (context, child) {
           // إذا كان child null، عرض loading indicator بدلاً من صفحة سوداء
           if (child == null) {

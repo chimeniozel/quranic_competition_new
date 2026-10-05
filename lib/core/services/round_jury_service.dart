@@ -128,9 +128,10 @@ class RoundJuryService {
         return [];
       }
 
-      final roundIds = roundsForVersion
-          .map<String>((round) => round['id'] as String)
-          .toList();
+      final roundIds =
+          roundsForVersion
+              .map<String>((round) => round['id'] as String)
+              .toList();
 
       print('📋 ${roundIds.length} rounds trouvés pour la version');
 
@@ -146,12 +147,15 @@ class RoundJuryService {
         return [];
       }
 
-      final assignedRoundIds = assignmentsResponse
-          .map<String>((item) => item['round_id'] as String)
-          .toSet()
-          .toList();
+      final assignedRoundIds =
+          assignmentsResponse
+              .map<String>((item) => item['round_id'] as String)
+              .toSet()
+              .toList();
 
-      print('📋 ${assignedRoundIds.length} rounds assignés trouvés pour ce jury');
+      print(
+        '📋 ${assignedRoundIds.length} rounds assignés trouvés pour ce jury',
+      );
 
       // 3. Récupérer les détails complets des rounds assignés depuis la table rounds
       final roundsResponse = await _supabase
@@ -161,11 +165,11 @@ class RoundJuryService {
           .eq('version_id', versionId)
           .order('number');
 
-      print('✅ ${roundsResponse.length} rounds récupérés avec détails complets');
+      print(
+        '✅ ${roundsResponse.length} rounds récupérés avec détails complets',
+      );
 
-      return roundsResponse
-          .map<Round>((item) => Round.fromMap(item))
-          .toList();
+      return roundsResponse.map<Round>((item) => Round.fromMap(item)).toList();
     } catch (e) {
       print('❌ Erreur lors de la récupération des rounds du jury: $e');
       print('❌ Stack trace: ${StackTrace.current}');
@@ -179,14 +183,17 @@ class RoundJuryService {
       print('➕ Assignation du jury $juryId au round $roundId');
 
       // Vérifier que l'utilisateur existe dans profiles et a le rôle محكم
-      final userProfile = await _supabase
-          .from('profiles')
-          .select('id, role, is_validated')
-          .eq('id', juryId)
-          .maybeSingle();
+      final userProfile =
+          await _supabase
+              .from('profiles')
+              .select('id, role, is_validated')
+              .eq('id', juryId)
+              .maybeSingle();
 
       if (userProfile == null) {
-        print('❌ L\'utilisateur avec l\'ID $juryId n\'existe pas dans profiles');
+        print(
+          '❌ L\'utilisateur avec l\'ID $juryId n\'existe pas dans profiles',
+        );
         throw Exception('المستخدم غير موجود في قاعدة البيانات');
       }
 
@@ -194,7 +201,8 @@ class RoundJuryService {
       final isVerified = userProfile['is_validated'] as bool? ?? false;
 
       // Vérifier que le rôle est محكم (jury)
-      final isJuryRole = userRole.trim().toLowerCase() == 'jury' ||
+      final isJuryRole =
+          userRole.trim().toLowerCase() == 'jury' ||
           userRole.trim().toLowerCase().contains('jury');
 
       if (!isJuryRole) {
@@ -295,6 +303,17 @@ class RoundJuryService {
   }
 
   /// Vérifie si un jury est assigné à un round spécifique
+  /// Vrai si le محكم est affecté à au moins une جولة, toutes versions
+  /// confondues (une seule requête).
+  Future<bool> isJuryAssignedToAnyRound(String juryId) async {
+    final response = await _supabase
+        .from('round_jury_assignments')
+        .select('round_id')
+        .eq('user_id', juryId)
+        .limit(1);
+    return response.isNotEmpty;
+  }
+
   Future<bool> isJuryAssignedToRound(String juryId, String roundId) async {
     try {
       final response =

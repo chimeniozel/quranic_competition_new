@@ -7,9 +7,9 @@ import 'package:quranic_competition/core/services/archive_media_service.dart';
 import 'package:quranic_competition/models/archive_media.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
-import '../../../../core/widgets/ui_components.dart';
 
 class ParticipantCompetitionArchivesPage extends StatefulWidget {
   final String versionId;
@@ -43,38 +43,35 @@ class _ParticipantCompetitionArchivesPageState
 
   Future<void> _loadCompetitionArchives() async {
     try {
-      // Charger la version de la compétition
-      final versions = await _versionService.fetchVersions();
-      final version = versions.firstWhere(
-        (v) => v.id == widget.versionId,
-        orElse: () => throw Exception('Version non trouvée'),
-      );
+      // Version et médias chargés en parallèle ; seule la version demandée
+      // est récupérée (et non plus la liste complète des versions).
+      final versionFuture = _versionService.getVersionById(widget.versionId);
+      final mediaFuture = _mediaService.getMediaByVersionId(widget.versionId);
+      final version = await versionFuture;
+      final media = await mediaFuture;
+      if (version == null) throw Exception('Version non trouvée');
 
-      // Charger tous les médias pour cette version
-      final media = await _mediaService.getMediaByVersionId(widget.versionId);
-
-      // Filtrer pour ne garder que les médias actifs
-      final activeMedia = media.where((media) => media.isActive).toList();
+      // Seulement les médias actifs
+      final activeMedia = media.where((m) => m.isActive).toList();
+      if (!mounted) return;
 
       setState(() {
         _competitionName = version.name;
-        _allMedia = activeMedia; // Seulement les médias actifs
-        _filteredMedia = activeMedia; // Seulement les médias actifs
+        _allMedia = activeMedia;
         _isLoading = false;
+        _applyFilter();
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        context.pop();
-      }
+      debugPrint('Erreur lors du chargement des archives: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر تحميل الأرشيف. تحقق من الاتصال وحاول مجدداً.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      context.pop();
     }
   }
 
@@ -142,7 +139,7 @@ class _ParticipantCompetitionArchivesPageState
         color: AppTheme.errorColor,
         child: const Center(
           child: Icon(
-            Icons.video_library,
+            Icons.video_library_rounded,
             size: 50,
             color: Colors.white,
           ),
@@ -188,7 +185,7 @@ class _ParticipantCompetitionArchivesPageState
               color: AppTheme.errorColor,
               child: const Center(
                 child: Icon(
-                  Icons.video_library,
+                  Icons.video_library_rounded,
                   size: 50,
                   color: Colors.white,
                 ),
@@ -217,7 +214,7 @@ class _ParticipantCompetitionArchivesPageState
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('لا يمكن فتح الفيديو'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -227,7 +224,7 @@ class _ParticipantCompetitionArchivesPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في فتح الفيديو: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -272,14 +269,7 @@ class _ParticipantCompetitionArchivesPageState
                       vertical: AppTheme.spacingS,
                     ),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primaryColor,
-                          AppTheme.primaryColor.withValues(alpha: 0.85),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
+                      gradient: AppTheme.primaryGradient,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -299,7 +289,10 @@ class _ParticipantCompetitionArchivesPageState
                         ),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -332,10 +325,10 @@ class _ParticipantCompetitionArchivesPageState
                             },
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                color: Colors.grey[200],
+                                color: AppTheme.dividerColor,
                                 child: const Center(
                                   child: Icon(
-                                    Icons.image_not_supported,
+                                    Icons.image_not_supported_rounded,
                                     size: 64,
                                   ),
                                 ),
@@ -366,7 +359,7 @@ class _ParticipantCompetitionArchivesPageState
                         TextButton.icon(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(
-                            Icons.close,
+                            Icons.close_rounded,
                             color: AppTheme.textPrimaryColor,
                           ),
                           label: Text(
@@ -411,7 +404,7 @@ class _ParticipantCompetitionArchivesPageState
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('خطأ: رابط الفيديو غير متوفر'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppTheme.errorColor,
                   ),
                 );
               }
@@ -431,7 +424,7 @@ class _ParticipantCompetitionArchivesPageState
                         child: Container(
                           padding: const EdgeInsets.all(AppTheme.spacingS),
                           child: Icon(
-                            Icons.play_circle_filled,
+                            Icons.play_circle_filled_rounded,
                             color: Colors.white.withOpacity(0.7),
                             size: 64,
                           ),
@@ -473,7 +466,10 @@ class _ParticipantCompetitionArchivesPageState
                         height: double.infinity,
                         color: AppTheme.backgroundColor,
                         child: const Center(
-                          child: Icon(Icons.image_not_supported, size: 32),
+                          child: Icon(
+                            Icons.image_not_supported_rounded,
+                            size: 32,
+                          ),
                         ),
                       );
                     },
@@ -483,317 +479,147 @@ class _ParticipantCompetitionArchivesPageState
     );
   }
 
-  void _applyFilter(String filter) {
+  void _selectFilter(String filter) {
     setState(() {
       _selectedFilter = filter;
-      switch (filter) {
-        case 'video':
-          _filteredMedia =
-              _allMedia
-                  .where((media) => media.type == MediaType.video)
-                  .toList();
-          break;
-        case 'image':
-          _filteredMedia =
-              _allMedia
-                  .where((media) => media.type == MediaType.image)
-                  .toList();
-          break;
-        default:
-          _filteredMedia = _allMedia;
-          break;
-      }
+      _applyFilter();
     });
   }
 
-  Widget _buildFilterButton(String filter, String label, int count) {
-    final isSelected = _selectedFilter == filter;
-    return GestureDetector(
-      onTap: () => _applyFilter(filter),
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                  : AppTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.dividerColor,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              '$count',
-              style: AppTheme.labelLarge.copyWith(
-                color:
-                    isSelected
-                        ? AppTheme.primaryColor
-                        : AppTheme.textPrimaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: AppTheme.labelSmall.copyWith(
-                color:
-                    isSelected
-                        ? AppTheme.primaryColor
-                        : AppTheme.textSecondaryColor,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
+  /// Recalcule la liste affichée selon le filtre sélectionné
+  void _applyFilter() {
+    switch (_selectedFilter) {
+      case 'video':
+        _filteredMedia =
+            _allMedia.where((media) => media.type == MediaType.video).toList();
+        break;
+      case 'image':
+        _filteredMedia =
+            _allMedia.where((media) => media.type == MediaType.image).toList();
+        break;
+      default:
+        _filteredMedia = _allMedia;
+        break;
+    }
+  }
+
+  Widget _buildFilterButton(
+    String filter,
+    String label,
+    int count,
+    IconData icon,
+    Color color,
+  ) {
+    return AppStatTile(
+      label: label,
+      value: '$count',
+      icon: icon,
+      color: color,
+      selected: _selectedFilter == filter,
+      onTap: () => _selectFilter(filter),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = _competitionName ?? 'الأرشيف';
+
     if (_isLoading) {
       return Scaffold(
-        appBar: ModernAppBar(title: _competitionName ?? 'النسخة'),
-        body: const LoadingOverlay(child: SizedBox()),
+        appBar: ModernAppBar(title: title),
+        body: const ModernLoadingIndicator(),
       );
     }
 
-    if (_allMedia.isEmpty) {
-      return Scaffold(
-        appBar: ModernAppBar(title: _competitionName ?? 'النسخة'),
-        body: EmptyState(
-          icon: Icons.archive_outlined,
-          title: 'لا توجد أرشيفات',
-          subtitle: 'لا توجد أرشيفات متاحة لهذه النسخة',
-        ),
-      );
-    }
+    final videoCount = _allMedia.where((m) => m.type == MediaType.video).length;
+    final imageCount = _allMedia.where((m) => m.type == MediaType.image).length;
 
     return Scaffold(
-      appBar: ModernAppBar(title: _competitionName ?? 'النسخة'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppTheme.spacingS),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // En-tête avec statistiques
-            ModernCard(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTheme.spacingS),
-                child: Column(
-                  children: [
-                    Row(
+      appBar: ModernAppBar(title: 'أرشيف المسابقات'),
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          AppGradientHeader(
+            icon: Icons.photo_library_rounded,
+            title: title,
+            subtitle:
+                _allMedia.isEmpty
+                    ? 'لا توجد وسائط بعد'
+                    : '${_allMedia.length} صورة وفيديو',
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            child:
+                _allMedia.isEmpty
+                    ? const EmptyState(
+                      icon: Icons.photo_library_rounded,
+                      title: 'لا توجد أرشيفات',
+                      subtitle: 'لا توجد أرشيفات متاحة لهذه النسخة',
+                    )
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          decoration: BoxDecoration(
-                            color: AppTheme.successColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusM,
+                        // Filtres : un appui affiche le type choisi
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFilterButton(
+                                'all',
+                                'الكل',
+                                _allMedia.length,
+                                Icons.apps_rounded,
+                                AppTheme.primaryColor,
+                              ),
                             ),
-                          ),
-                          child: Icon(
-                            Icons.archive,
-                            color: AppTheme.successColor,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: AppTheme.spacingS),
-                        Expanded(
-                          child: Text(
-                            _competitionName!,
-                            style: AppTheme.labelLarge.copyWith(
-                              fontWeight: FontWeight.w600,
+                            const SizedBox(width: AppTheme.spacingS),
+                            Expanded(
+                              child: _buildFilterButton(
+                                'image',
+                                'صور',
+                                imageCount,
+                                Icons.image_rounded,
+                                AppTheme.secondaryColor,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: AppTheme.spacingS),
+                            Expanded(
+                              child: _buildFilterButton(
+                                'video',
+                                'فيديو',
+                                videoCount,
+                                Icons.videocam_rounded,
+                                AppTheme.accentColor,
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: AppTheme.spacingM),
+                        if (_filteredMedia.isEmpty)
+                          const EmptyState(
+                            icon: Icons.filter_alt_off_rounded,
+                            title: 'لا توجد عناصر',
+                            subtitle: 'لا توجد عناصر للعرض بالفلتر المحدد',
+                          )
+                        else
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: AppTheme.spacingS,
+                                  mainAxisSpacing: AppTheme.spacingS,
+                                  childAspectRatio: 1.1,
+                                ),
+                            itemCount: _filteredMedia.length,
+                            itemBuilder:
+                                (context, index) =>
+                                    _buildMediaCard(_filteredMedia[index]),
+                          ),
                       ],
                     ),
-                    const SizedBox(height: AppTheme.spacingS),
-                    Container(
-                      padding: const EdgeInsets.all(AppTheme.spacingS),
-                      decoration: BoxDecoration(
-                        color: AppTheme.successColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                '${_allMedia.length}',
-                                style: AppTheme.labelLarge.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.successColor,
-                                  fontSize: 24,
-                                ),
-                              ),
-                              Text(
-                                'أرشيف متاحة',
-                                style: AppTheme.labelMedium.copyWith(
-                                  color: AppTheme.successColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-
-            // Boutons de filtre
-            if (_allMedia.isNotEmpty) ...[
-              ModernCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.filter_list,
-                              color: AppTheme.primaryColor,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Text(
-                            'تصفية الأرشيف',
-                            style: AppTheme.labelLarge.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildFilterButton(
-                              'all',
-                              'الكل',
-                              _allMedia.length,
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: _buildFilterButton(
-                              'video',
-                              'فيديو',
-                              _allMedia
-                                  .where((m) => m.type == MediaType.video)
-                                  .length,
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: _buildFilterButton(
-                              'image',
-                              'صور',
-                              _allMedia
-                                  .where((m) => m.type == MediaType.image)
-                                  .length,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-            ],
-
-            // Grille des médias filtrés
-            if (_filteredMedia.isNotEmpty) ...[
-              ModernCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            decoration: BoxDecoration(
-                              color: AppTheme.warningColor.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.grid_view,
-                              color: AppTheme.warningColor,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spacingS),
-                          Expanded(
-                            child: Text(
-                              _selectedFilter == 'all'
-                                  ? 'جميع الأرشيف (${_filteredMedia.length})'
-                                  : _selectedFilter == 'video'
-                                  ? 'الفيديوهات (${_filteredMedia.length})'
-                                  : 'الصور (${_filteredMedia.length})',
-                              style: AppTheme.labelLarge.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: AppTheme.spacingS,
-                              mainAxisSpacing: AppTheme.spacingS,
-                              childAspectRatio: 1.1,
-                            ),
-                        itemCount: _filteredMedia.length,
-                        itemBuilder: (context, index) {
-                          final mediaItem = _filteredMedia[index];
-                          return _buildMediaCard(mediaItem);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ] else if (_allMedia.isNotEmpty) ...[
-              EmptyState(
-                icon: Icons.filter_alt_off,
-                title: 'لا توجد عناصر',
-                subtitle: 'لا توجد عناصر للعرض بالفلتر المحدد',
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

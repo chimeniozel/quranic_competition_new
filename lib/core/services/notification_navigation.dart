@@ -45,7 +45,11 @@ class NotificationNavigation {
             : '/participant/archives';
 
       case 'benefit_created':
-        return '/participant/benefits';
+        // Les anciennes notifications n'ont pas d'identifiant : liste
+        final benefitId = data['benefit_id'] as String?;
+        return benefitId != null
+            ? '/participant/benefits/$benefitId'
+            : '/participant/benefits';
 
       case 'tajweed_rule_created':
         return '/participant/tajweed';

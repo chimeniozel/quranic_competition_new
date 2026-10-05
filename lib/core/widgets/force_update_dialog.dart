@@ -36,7 +36,7 @@ class ForceUpdateDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Icône d'alerte
-              Icon(Icons.system_update, size: 64, color: AppTheme.errorColor),
+              Icon(Icons.system_update_rounded, size: 64, color: AppTheme.errorColor),
               SizedBox(height: AppTheme.spacingM),
 
               // Titre
@@ -68,7 +68,7 @@ class ForceUpdateDialog extends StatelessWidget {
                 child: PrimaryButton(
                   onPressed: _openStore,
                   text: 'تحديث الآن',
-                  icon: Icons.download,
+                  icon: Icons.download_rounded,
                 ),
               ),
             ],

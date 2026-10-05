@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/error_service.dart';
 import '../../../core/services/password_validation_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_ui.dart';
 import '../../../core/widgets/password_field_widget.dart';
 import '../../../core/widgets/ui_components.dart';
 
@@ -67,6 +70,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         throw Exception('كلمة المرور الجديدة يجب أن تكون مختلفة عن الحالية');
       }
 
+      // Vérifier réellement le mot de passe actuel (il n'était jamais
+      // contrôlé : toute session ouverte pouvait changer le mot de passe)
+      final email = currentUser.email;
+      if (email == null || email.isEmpty) {
+        throw Exception('تعذر التحقق من الحساب');
+      }
+      try {
+        await _supabase.auth.signInWithPassword(
+          email: email,
+          password: _currentPasswordController.text,
+        );
+      } on AuthException {
+        throw Exception('كلمة المرور الحالية غير صحيحة');
+      }
+
       // Vérifier l'historique des mots de passe
       final validationResult = _passwordService.validatePasswordWithHistory(
         _newPasswordController.text,
@@ -85,11 +103,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       // Mettre à jour l'historique (simulation)
       _passwordHistory.add(_currentPasswordController.text);
 
+      if (!mounted) return;
       _showSuccessDialog();
     } catch (e) {
-      _showErrorDialog(_errorService.analyzeException(e));
+      if (!mounted) return;
+      final message = e.toString().replaceAll('Exception: ', '').trim();
+      _showErrorDialog(
+        e is Exception && !message.contains('AuthException')
+            ? message
+            : _errorService.analyzeException(e),
+      );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -100,9 +125,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       message:
           'تم تغيير كلمة المرور بنجاح!\n\n'
           'ستحتاج إلى تسجيل الدخول مرة أخرى بكلمة المرور الجديدة.',
-      onConfirm: () {
+      onConfirm: () async {
         Navigator.of(context).pop();
-        context.go('/login');
+        // Déconnexion réelle : sinon /login renvoyait aussitôt vers l'accueil
+        await AuthService().signOut();
+        if (mounted) context.go('/login');
       },
     );
   }
@@ -118,151 +145,102 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تغيير كلمة المرور'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header avec icône
-              Icon(
-                Icons.lock_reset,
-                size: 80,
-                color: Colors.deepPurple.shade300,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'تغيير كلمة المرور',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'أدخل كلمة المرور الحالية والجديدة',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-
-              // Mot de passe actuel
-              TextFormField(
-                controller: _currentPasswordController,
-                obscureText: _obscureCurrentPassword,
-                decoration: InputDecoration(
-                  labelText: 'كلمة المرور الحالية',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureCurrentPassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureCurrentPassword = !_obscureCurrentPassword;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return _errorService.getErrorMessage('VALIDATION_REQUIRED');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Nouveau mot de passe avec validation avancée
-              PasswordFieldWidget(
-                controller: _newPasswordController,
-                labelText: 'كلمة المرور الجديدة',
-                showStrengthIndicator: true,
-                showSuggestions: true,
-                passwordHistory: _passwordHistory,
-              ),
-              const SizedBox(height: 16),
-
-              // Confirmation du nouveau mot de passe
-              ConfirmPasswordFieldWidget(
-                controller: _confirmPasswordController,
-                passwordController: _newPasswordController,
-                labelText: 'تأكيد كلمة المرور الجديدة',
-              ),
-              const SizedBox(height: 32),
-
-              // Bouton de changement
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                    onPressed: _changePassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'تغيير كلمة المرور',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-              const SizedBox(height: 16),
-
-              // Informations de sécurité
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  border: Border.all(color: Colors.blue.shade200),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+      appBar: AppBar(title: const Text('تغيير كلمة المرور')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const AppGradientHeader(
+              icon: Icons.lock_reset_rounded,
+              title: 'تغيير كلمة المرور',
+              subtitle: 'أدخل كلمة المرور الحالية ثم الجديدة',
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingM),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppSection(
+                    icon: Icons.password_rounded,
+                    title: 'كلمة المرور',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(Icons.security, color: Colors.blue.shade700),
-                        const SizedBox(width: 8),
-                        Text(
-                          'نصائح الأمان:',
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
+                        TextFormField(
+                          controller: _currentPasswordController,
+                          obscureText: _obscureCurrentPassword,
+                          decoration: InputDecoration(
+                            labelText: 'كلمة المرور الحالية',
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureCurrentPassword
+                                    ? Icons.visibility_rounded
+                                    : Icons.visibility_off_rounded,
+                              ),
+                              onPressed:
+                                  () => setState(
+                                    () =>
+                                        _obscureCurrentPassword =
+                                            !_obscureCurrentPassword,
+                                  ),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return _errorService.getErrorMessage(
+                                'VALIDATION_REQUIRED',
+                              );
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppTheme.spacingM),
+                        PasswordFieldWidget(
+                          controller: _newPasswordController,
+                          labelText: 'كلمة المرور الجديدة',
+                          showStrengthIndicator: true,
+                          showSuggestions: true,
+                          passwordHistory: _passwordHistory,
+                        ),
+                        const SizedBox(height: AppTheme.spacingM),
+                        ConfirmPasswordFieldWidget(
+                          controller: _confirmPasswordController,
+                          passwordController: _newPasswordController,
+                          labelText: 'تأكيد كلمة المرور الجديدة',
+                        ),
+                        const SizedBox(height: AppTheme.spacingM),
+                        ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _changePassword,
+                          style: AppButtonStyles.filled(AppTheme.primaryColor),
+                          icon:
+                              _isLoading
+                                  ? const AppButtonLoader()
+                                  : const Icon(Icons.check_rounded),
+                          label: Text(
+                            _isLoading
+                                ? 'جاري التغيير...'
+                                : 'تغيير كلمة المرور',
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '• استخدم كلمة مرور قوية ومختلفة عن الحسابات الأخرى\n'
-                      '• تجنب استخدام المعلومات الشخصية\n'
-                      '• لا تشارك كلمة المرور مع أي شخص\n'
-                      '• قم بتغيير كلمة المرور بانتظام',
-                      style: TextStyle(fontSize: 12, color: Colors.blue),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingM),
+                  const AppNotice(
+                    icon: Icons.tips_and_updates_rounded,
+                    text:
+                        'نصائح الأمان:\n'
+                        '• استخدم كلمة مرور قوية ومختلفة عن حساباتك الأخرى\n'
+                        '• تجنب استخدام المعلومات الشخصية\n'
+                        '• لا تشارك كلمة المرور مع أي شخص',
+                  ),
+                  const SizedBox(height: AppTheme.spacingL),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

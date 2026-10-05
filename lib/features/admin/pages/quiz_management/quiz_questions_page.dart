@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
@@ -87,7 +88,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -99,11 +100,11 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
   }
 
   Future<void> _deleteQuestion(QuizQuestion question) async {
-    
     final confirmed = await ModernDialog.showConfirm(
       context,
       title: 'تأكيد الحذف',
-      message: 'هل أنت متأكد من حذف السؤال "${question.question.length > 50 ? '${question.question.substring(0, 50)}...' : question.question}"؟',
+      message:
+          'هل أنت متأكد من حذف السؤال "${question.question.length > 50 ? '${question.question.substring(0, 50)}...' : question.question}"؟',
       confirmText: 'حذف',
       confirmColor: AppTheme.errorColor,
     );
@@ -116,7 +117,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف السؤال بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.successColor,
             ),
           );
         }
@@ -125,7 +126,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('خطأ في حذف السؤال: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -169,10 +170,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
 
   Widget _buildQuestionCard(QuizQuestion question) {
     return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingXS,
-      ),
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingS),
       padding: const EdgeInsets.all(AppTheme.spacingS),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,8 +178,8 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
           Row(
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: AppTheme.successColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusM),
@@ -210,20 +208,19 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppTheme.spacingXS),
-                    Row(
+                    Wrap(
+                      spacing: AppTheme.spacingXS,
+                      runSpacing: AppTheme.spacingXS,
                       children: [
-                        Icon(
-                          Icons.stars,
-                          size: 16,
+                        AppTag(
+                          text: '${question.points} نقطة',
                           color: AppTheme.warningColor,
+                          icon: Icons.stars_rounded,
                         ),
-                        const SizedBox(width: AppTheme.spacingXS),
-                        Text(
-                          '${question.points} نقطة',
-                          style: AppTheme.bodySmall.copyWith(
-                            color: AppTheme.warningColor,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        AppTag(
+                          text: 'تحديث ${_formatDate(question.updatedAt)}',
+                          color: AppTheme.textSecondaryColor,
+                          icon: Icons.update_rounded,
                         ),
                       ],
                     ),
@@ -241,45 +238,44 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                       break;
                   }
                 },
-                itemBuilder:
-                    (context) {
-                      final items = <PopupMenuEntry<String>>[];
-                      final permissionService = PermissionService();
-                      
-                      // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
-                      if (permissionService.canModifySync()) {
-                        items.add(
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 16),
-                                SizedBox(width: 8),
-                                Text('تعديل'),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      
-                      // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
-                      if (permissionService.canDeleteSync()) {
-                        items.add(
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, size: 16, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('حذف', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      
-                      return items;
-                    },
+                itemBuilder: (context) {
+                  final items = <PopupMenuEntry<String>>[];
+                  final permissionService = PermissionService();
+
+                  // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canModifySync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_rounded, size: 16),
+                            SizedBox(width: 8),
+                            Text('تعديل'),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+                  if (permissionService.canDeleteSync()) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_rounded, size: 16, color: AppTheme.errorColor),
+                            SizedBox(width: 8),
+                            Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return items;
+                },
               ),
             ],
           ),
@@ -297,7 +293,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
                     height: 150,
                     color: AppTheme.surfaceColor,
                     child: Icon(
-                      Icons.image_not_supported,
+                      Icons.image_not_supported_rounded,
                       size: 50,
                       color: AppTheme.textSecondaryColor,
                     ),
@@ -306,32 +302,6 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
               ),
             ),
           ],
-          const SizedBox(height: AppTheme.spacingS),
-          Row(
-            children: [
-              Icon(
-                Icons.calendar_today,
-                size: 16,
-                color: AppTheme.textSecondaryColor,
-              ),
-              const SizedBox(width: AppTheme.spacingXS),
-              Text(
-                'تم الإنشاء: ${_formatDate(question.createdAt)}',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-              const Spacer(),
-              Icon(Icons.update, size: 16, color: AppTheme.textSecondaryColor),
-              const SizedBox(width: AppTheme.spacingXS),
-              Text(
-                'آخر تحديث: ${_formatDate(question.updatedAt)}',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -342,34 +312,10 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingXL),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.quiz_outlined,
-              size: 80,
-              color: AppTheme.textSecondaryColor,
-            ),
-            const SizedBox(height: AppTheme.spacingS),
-            Text(
-              'لا توجد أسئلة في هذا المستوى',
-              style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppTheme.spacingXS),
-            Text(
-              'ابدأ بإضافة سؤال جديد',
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return const EmptyState(
+      icon: Icons.quiz_rounded,
+      title: 'لا توجد أسئلة في هذا المستوى',
+      subtitle: 'ابدأ بإضافة سؤال جديد',
     );
   }
 
@@ -388,7 +334,7 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
         title: _level?.name ?? 'الأسئلة',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadData,
             tooltip: 'تحديث',
           ),
@@ -421,10 +367,11 @@ class _QuizQuestionsPageState extends State<QuizQuestionsPage> {
               ),
       floatingActionButton: CanModifyGuard(
         child: ModernFAB(
-          onPressed: () => context.push(
-            '/admin/quiz/questions/add?levelId=${widget.levelId}',
-          ),
-          icon: Icons.add,
+          onPressed:
+              () => context.push(
+                '/admin/quiz/questions/add?levelId=${widget.levelId}',
+              ),
+          icon: Icons.add_rounded,
         ),
       ),
     );

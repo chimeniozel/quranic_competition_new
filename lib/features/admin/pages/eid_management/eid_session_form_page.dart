@@ -154,9 +154,7 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: widget.session == null
-            ? 'إنشاء فسحة'
-            : 'تعديل الفسحة',
+        title: widget.session == null ? 'إنشاء فسحة' : 'تعديل الفسحة',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.spacingS),
@@ -185,7 +183,7 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                               AppTheme.radiusM,
                             ),
                           ),
-                          prefixIcon: const Icon(Icons.event),
+                          prefixIcon: const Icon(Icons.event_rounded),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -205,7 +203,7 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                               AppTheme.radiusM,
                             ),
                           ),
-                          prefixIcon: const Icon(Icons.description),
+                          prefixIcon: const Icon(Icons.description_rounded),
                         ),
                       ),
                     ],
@@ -226,20 +224,22 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                           Expanded(
                             child: SecondaryButton(
                               onPressed: () => _selectDate(context, true),
-                              text: _startDate != null
-                                  ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                                  : 'تاريخ البداية',
-                              icon: Icons.calendar_today,
+                              text:
+                                  _startDate != null
+                                      ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
+                                      : 'تاريخ البداية',
+                              icon: Icons.calendar_today_rounded,
                             ),
                           ),
                           const SizedBox(width: AppTheme.spacingS),
                           Expanded(
                             child: SecondaryButton(
                               onPressed: () => _selectDate(context, false),
-                              text: _endDate != null
-                                  ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                                  : 'تاريخ النهاية',
-                              icon: Icons.event,
+                              text:
+                                  _endDate != null
+                                      ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                                      : 'تاريخ النهاية',
+                              icon: Icons.event_rounded,
                             ),
                           ),
                         ],
@@ -269,7 +269,7 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                                 'عرض الفسحة أو الدورة على الصفحة الرئيسية',
                               ),
                               leading: Icon(
-                                Icons.visibility,
+                                Icons.visibility_rounded,
                                 color:
                                     _isActive
                                         ? AppTheme.successColor
@@ -294,7 +294,7 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                                 'السماح للمستخدمين بالتسجيل',
                               ),
                               leading: Icon(
-                                Icons.lock_open,
+                                Icons.lock_open_rounded,
                                 color:
                                     _isOpen
                                         ? AppTheme.infoColor
@@ -323,7 +323,7 @@ class _EidSessionFormPageState extends State<EidSessionFormPage> {
                       widget.session == null
                           ? 'إنشاء الفسحة أو الدورة'
                           : 'حفظ التغييرات',
-                  icon: Icons.save,
+                  icon: Icons.save_rounded,
                 ),
               ),
             ],

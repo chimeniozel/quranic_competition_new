@@ -8,6 +8,8 @@ import 'package:quranic_competition/models/quiz_question.dart';
 import 'package:quranic_competition/models/quiz_option.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
 
@@ -73,21 +75,20 @@ class _QuizPageState extends State<QuizPage> {
         shuffledQuestions.add(remainingQuestions.removeAt(randomIndex));
       }
 
-      // Charger les options pour chaque question et randomiser leur ordre
-      final options = <List<QuizOption>>[];
-      for (final question in shuffledQuestions) {
-        final questionOptions = await _quizService.getOptionsByQuestion(
-          question.id,
-        );
-        // Randomiser l'ordre des options pour chaque question avec une nouvelle graine
-        final shuffledOptions = List<QuizOption>.from(questionOptions);
-        final optionRandom = Random(
-          DateTime.now().millisecondsSinceEpoch + question.id.hashCode,
-        );
-        shuffledOptions.shuffle(optionRandom);
-        options.add(shuffledOptions);
-      }
+      // Charger les options de toutes les questions en parallèle (et non
+      // plus une requête après l'autre), puis randomiser leur ordre
+      final allOptions = await Future.wait(
+        shuffledQuestions.map((q) => _quizService.getOptionsByQuestion(q.id)),
+      );
+      final options =
+          allOptions
+              .map(
+                (questionOptions) =>
+                    List<QuizOption>.of(questionOptions)..shuffle(random),
+              )
+              .toList();
 
+      if (!mounted) return;
       setState(() {
         _level = level;
         _questions = shuffledQuestions;
@@ -95,18 +96,16 @@ class _QuizPageState extends State<QuizPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل النسخة: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        context.pop();
-      }
+      debugPrint('Erreur lors du chargement du quiz: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر تحميل الأسئلة. تحقق من الاتصال وحاول مجدداً.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      context.pop();
     }
   }
 
@@ -220,21 +219,21 @@ class _QuizPageState extends State<QuizPage> {
         answers: _answers,
       );
 
+      // Remplace le quiz terminé : le retour ne ramène plus sur un quiz
+      // bloqué en état « envoi en cours »
       if (mounted) {
-        context.push('/participant/quiz/result', extra: result);
+        context.pushReplacement('/participant/quiz/result', extra: result);
       }
     } catch (e) {
-      setState(() {
-        _isSubmitting = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في إرسال النسخة: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Erreur lors de l\'envoi du quiz: $e');
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر إرسال الإجابات. حاول مجدداً.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
@@ -248,80 +247,44 @@ class _QuizPageState extends State<QuizPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // En-tête de la question
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
+            AppGradientHeader(
+              shape: AppHeaderShape.card,
+              compact: true,
+              leading: CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Text(
+                  '${_currentQuestionIndex + 1}',
+                  style: AppTheme.bodyLarge.copyWith(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.blue[600],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${_currentQuestionIndex + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'سؤال ${_currentQuestionIndex + 1} من ${_questions.length}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.stars,
-                              size: 16,
-                              color: Colors.orange[600],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${question.points} نقطة',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              title:
+                  'السؤال ${_currentQuestionIndex + 1} من ${_questions.length}',
+              trailing: AppHeaderBadge(
+                icon: Icons.stars_rounded,
+                text: '${question.points} نقطة',
               ),
             ),
             const SizedBox(height: 16),
 
-            // Question
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            // Énoncé
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacingM),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundColor,
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                boxShadow: AppTheme.shadowS,
+              ),
+              child: Text(
+                question.question,
+                style: AppTheme.bodyLarge.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  height: 1.7,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -359,7 +322,7 @@ class _QuizPageState extends State<QuizPage> {
                         if (loadingProgress == null) return child;
                         return Container(
                           height: 200,
-                          color: Colors.grey[200],
+                          color: AppTheme.dividerColor,
                           child: Center(
                             child: CircularProgressIndicator(
                               value:
@@ -377,12 +340,15 @@ class _QuizPageState extends State<QuizPage> {
                         print('URL originale: ${question.imageUrl}');
                         return Container(
                           height: 200,
-                          color: Colors.grey[200],
+                          color: AppTheme.dividerColor,
                           child: const Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.image_not_supported, size: 50),
+                                Icon(
+                                  Icons.image_not_supported_rounded,
+                                  size: 50,
+                                ),
                                 SizedBox(height: 8),
                                 Text('تعذر تحميل الصورة'),
                               ],
@@ -417,22 +383,22 @@ class _QuizPageState extends State<QuizPage> {
               IconData? markerIcon;
 
               if (showAsCorrect) {
-                backgroundColor = Colors.green[50]!;
-                borderColor = Colors.green[400]!;
-                textColor = Colors.green[800]!;
-                markerColor = Colors.green[600]!;
-                markerIcon = Icons.check;
+                backgroundColor = AppTheme.successColor.withValues(alpha: 0.08);
+                borderColor = AppTheme.successColor;
+                textColor = AppTheme.successColor;
+                markerColor = AppTheme.successColor;
+                markerIcon = Icons.check_rounded;
               } else if (showAsWrong) {
-                backgroundColor = Colors.red[50]!;
-                borderColor = Colors.red[400]!;
-                textColor = Colors.red[800]!;
-                markerColor = Colors.red[600]!;
-                markerIcon = Icons.close;
+                backgroundColor = AppTheme.errorColor.withValues(alpha: 0.08);
+                borderColor = AppTheme.errorColor;
+                textColor = AppTheme.errorColor;
+                markerColor = AppTheme.errorColor;
+                markerIcon = Icons.close_rounded;
               } else {
-                backgroundColor = Colors.grey[50]!;
-                borderColor = Colors.grey[300]!;
-                textColor = Colors.black87;
-                markerColor = Colors.grey[400]!;
+                backgroundColor = AppTheme.backgroundColor;
+                borderColor = AppTheme.dividerColor;
+                textColor = AppTheme.textPrimaryColor;
+                markerColor = AppTheme.textDisabledColor;
                 markerIcon = null;
               }
 
@@ -444,12 +410,12 @@ class _QuizPageState extends State<QuizPage> {
                       hasAnswered
                           ? null
                           : () => _selectAnswer(question.id, option.id),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppTheme.spacingM),
                     decoration: BoxDecoration(
                       color: backgroundColor,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
                       border: Border.all(
                         color: borderColor,
                         width: isHighlighted ? 2 : 1,
@@ -521,21 +487,24 @@ class _QuizPageState extends State<QuizPage> {
     final correctOption = _correctOption(options);
     final isCorrect = correctOption != null && correctOption.id == selectedId;
 
-    final color = isCorrect ? Colors.green[700]! : Colors.red[700]!;
+    final color = isCorrect ? AppTheme.successColor : AppTheme.errorColor;
 
     return Container(
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: (isCorrect ? Colors.green[50] : Colors.red[50]),
-        borderRadius: BorderRadius.circular(8),
+        color:
+            (isCorrect
+                ? AppTheme.successColor.withValues(alpha: 0.08)
+                : AppTheme.errorColor.withValues(alpha: 0.08)),
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
         border: Border.all(color: color, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isCorrect ? Icons.check_circle : Icons.cancel,
+            isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
             color: color,
             size: 24,
           ),
@@ -556,7 +525,10 @@ class _QuizPageState extends State<QuizPage> {
                   const SizedBox(height: 4),
                   Text(
                     'الإجابة الصحيحة: ${correctOption.text}',
-                    style: TextStyle(fontSize: 14, color: Colors.green[800]),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.successColor,
+                    ),
                   ),
                 ],
               ],
@@ -568,39 +540,33 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   Widget _buildProgressIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
+    final progress = (_currentQuestionIndex + 1) / _questions.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.spacingM,
+        AppTheme.spacingS,
+        AppTheme.spacingM,
+        0,
       ),
-      child: ModernProgressIndicator(
-        value: (_currentQuestionIndex + 1) / _questions.length,
-        label: 'السؤال ${_currentQuestionIndex + 1} من ${_questions.length}',
-      ),
-    );
-  }
-
-  Widget _buildNavigationButtons() {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingS),
       child: Row(
         children: [
-          if (_currentQuestionIndex > 0)
-            Expanded(
-              child: SecondaryButton(
-                onPressed: _previousQuestion,
-                text: 'السابق',
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                color: AppTheme.primaryColor,
+                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
               ),
             ),
-          if (_currentQuestionIndex > 0)
-            const SizedBox(width: AppTheme.spacingS),
-          Expanded(
-            child: PrimaryButton(
-              onPressed: _nextQuestion,
-              text:
-                  _currentQuestionIndex == _questions.length - 1
-                      ? 'إرسال'
-                      : 'التالي',
+          ),
+          const SizedBox(width: AppTheme.spacingS),
+          Text(
+            '${_currentQuestionIndex + 1}/${_questions.length}',
+            style: AppTheme.bodyMedium.copyWith(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -608,8 +574,85 @@ class _QuizPageState extends State<QuizPage> {
     );
   }
 
+  Widget _buildNavigationButtons() {
+    final isLast = _currentQuestionIndex == _questions.length - 1;
+
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      decoration: const BoxDecoration(
+        color: AppTheme.backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 8,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            if (_currentQuestionIndex > 0) ...[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _previousQuestion,
+                  style: AppButtonStyles.outlined(AppTheme.primaryColor),
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('السابق'),
+                ),
+              ),
+              const SizedBox(width: AppTheme.spacingS),
+            ],
+            Expanded(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: _isSubmitting ? null : _nextQuestion,
+                style: AppButtonStyles.filled(
+                  isLast ? AppTheme.secondaryColor : AppTheme.primaryColor,
+                ),
+                icon:
+                    _isSubmitting
+                        ? const AppButtonLoader()
+                        : Icon(
+                          isLast
+                              ? Icons.send_rounded
+                              : Icons.arrow_back_rounded,
+                        ),
+                label: Text(isLast ? 'إرسال الإجابات' : 'التالي'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Quitter en plein quiz perdait les réponses sans prévenir
+  Future<void> _confirmExit() async {
+    final leave = await ModernDialog.showConfirm(
+      context,
+      title: 'مغادرة الاختبار',
+      message: 'ستفقد إجاباتك الحالية. هل تريد المغادرة؟',
+      cancelText: 'متابعة الاختبار',
+      confirmText: 'مغادرة',
+      confirmColor: AppTheme.errorColor,
+    );
+    if (leave == true && mounted) context.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _answers.isEmpty || _isSubmitting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmExit();
+      },
+      child: _buildScaffold(),
+    );
+  }
+
+  Widget _buildScaffold() {
     return Scaffold(
       appBar: ModernAppBar(
         title: _level?.name ?? 'النسخة',
@@ -628,6 +671,14 @@ class _QuizPageState extends State<QuizPage> {
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
+              : _questions.isEmpty
+              ? const Center(
+                child: EmptyState(
+                  icon: Icons.quiz_rounded,
+                  title: 'لا توجد أسئلة في هذا المستوى',
+                  subtitle: 'سيتم إضافة الأسئلة قريباً',
+                ),
+              )
               : Column(
                 children: [
                   _buildProgressIndicator(),
@@ -726,19 +777,11 @@ class _EncouragementDialogState extends State<_EncouragementDialog>
                 backgroundColor: Colors.transparent,
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.amber.shade400,
-                        Colors.orange.shade400,
-                        Colors.deepOrange.shade400,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: AppTheme.primaryGradient,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.5),
+                        color: AppTheme.warningColor.withOpacity(0.5),
                         blurRadius: 20,
                         spreadRadius: 5,
                       ),
@@ -756,7 +799,7 @@ class _EncouragementDialogState extends State<_EncouragementDialog>
                           return Transform.scale(
                             scale: value,
                             child: Icon(
-                              Icons.stars,
+                              Icons.stars_rounded,
                               size: 80,
                               color: Colors.white,
                             ),

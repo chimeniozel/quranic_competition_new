@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../models/participant.dart';
 import '../../../../models/competition_version.dart';
@@ -148,7 +149,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                       ),
                     )
                     : Icon(
-                      _isEditing ? Icons.close : Icons.edit,
+                      _isEditing ? Icons.close_rounded : Icons.edit_rounded,
                       color: AppTheme.surfaceColor,
                     ),
             onPressed:
@@ -190,7 +191,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                         : 'التعديل غير متاح'),
           ),
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: AppTheme.surfaceColor),
+            icon: Icon(Icons.more_vert_rounded, color: AppTheme.surfaceColor),
             onSelected: (value) {
               switch (value) {
                 case 'delete':
@@ -207,7 +208,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                     value: 'reject',
                     child: Row(
                       children: [
-                        Icon(Icons.cancel, color: AppTheme.warningColor),
+                        Icon(Icons.cancel_rounded, color: AppTheme.warningColor),
                         const SizedBox(width: AppTheme.spacingS),
                         const Text('إلغاء المشاركة'),
                       ],
@@ -217,7 +218,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete, color: AppTheme.errorColor),
+                        Icon(Icons.delete_rounded, color: AppTheme.errorColor),
                         const SizedBox(width: AppTheme.spacingS),
                         const Text('حذف'),
                       ],
@@ -230,282 +231,24 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
       body:
           _isLoading
               ? const LoadingOverlay(child: SizedBox())
-              : ModernPullToRefresh(
-                onRefresh: () async {
-                  // Recharger les données du participant
-                },
+              : Container(
+                // Le « tirer pour actualiser » ne rechargeait rien : retiré
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
                   child: Column(
                     children: [
-                      // Header avec photo et informations principales
-                      ModernCard(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppTheme.primaryColor.withOpacity(0.1),
-                                AppTheme.primaryColor.withOpacity(0.05),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusM,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingL),
-                            child: Column(
-                              children: [
-                                // Avatar moderne avec genre
-                                Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.primaryColor
-                                            .withOpacity(0.3),
-                                        blurRadius: 15,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 50,
-                                    backgroundColor:
-                                        widget.participant.gender == 'ذكر'
-                                            ? Colors.blue.withOpacity(0.1)
-                                            : Colors.pink.withOpacity(0.1),
-                                    child: Icon(
-                                      widget.participant.gender == 'ذكر'
-                                          ? Icons.male
-                                          : Icons.female,
-                                      size: 50,
-                                      color:
-                                          widget.participant.gender == 'ذكر'
-                                              ? Colors.blue
-                                              : Colors.pink,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
+                      _buildHeaderCard(),
+                      const SizedBox(height: AppTheme.spacingM),
 
-                                // Nom complet
-                                Text(
-                                  widget.participant.fullName,
-                                  style: AppTheme.headingMedium.copyWith(
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                // Groupe d'âge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppTheme.spacingS,
-                                    vertical: AppTheme.spacingS,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        widget.participant.ageGroup == 'كبار'
-                                            ? Colors.blue.withOpacity(0.1)
-                                            : Colors.purple.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                    border: Border.all(
-                                      color:
-                                          widget.participant.ageGroup == 'كبار'
-                                              ? Colors.blue
-                                              : Colors.purple,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.people,
-                                        color:
-                                            widget.participant.ageGroup ==
-                                                    'كبار'
-                                                ? Colors.blue
-                                                : Colors.purple,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Text(
-                                        widget.participant.ageGroup == 'كبار'
-                                            ? 'فئة الكبار'
-                                            : 'فئة الصغار',
-                                        style: AppTheme.labelLarge.copyWith(
-                                          color:
-                                              widget.participant.ageGroup ==
-                                                      'كبار'
-                                                  ? Colors.blue
-                                                  : Colors.purple,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: AppTheme.spacingS),
-
-                                // Numéro d'enregistrement
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(
-                                    AppTheme.spacingS,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusM,
-                                    ),
-                                    border: Border.all(
-                                      color: AppTheme.dividerColor,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(
-                                          AppTheme.spacingS,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primaryColor,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.confirmation_number,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Text(
-                                        'رقم التسجيل',
-                                        style: AppTheme.labelMedium,
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Text(
-                                        widget.participant.registrationNumber
-                                                ?.toString() ??
-                                            'غير محدد',
-                                        style: AppTheme.headingSmall.copyWith(
-                                          color: AppTheme.primaryColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Section changement de statut (en haut) - Affichage uniquement
-                      if (!_isEditing)
-                        ModernCard(
-                          child: Container(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                                colors: [
-                                  widget.participant.isAccepted == true
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.red.withOpacity(0.1),
-                                  widget.participant.isAccepted == true
-                                      ? Colors.green.withOpacity(0.05)
-                                      : Colors.red.withOpacity(0.05),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
-                              border: Border.all(
-                                color:
-                                    widget.participant.isAccepted == true
-                                        ? Colors.green.withOpacity(0.3)
-                                        : Colors.red.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      widget.participant.isAccepted == true
-                                          ? Icons.check_circle
-                                          : Icons.cancel,
-                                      color:
-                                          widget.participant.isAccepted == true
-                                              ? Colors.green
-                                              : Colors.red,
-                                      size: 28,
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingS),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            widget.participant.isAccepted ==
-                                                    true
-                                                ? 'مقبول'
-                                                : 'مرفوض',
-                                            style: AppTheme.headingMedium
-                                                .copyWith(
-                                                  color:
-                                                      widget
-                                                                  .participant
-                                                                  .isAccepted ==
-                                                              true
-                                                          ? Colors.green[700]
-                                                          : Colors.red[700],
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                          ),
-                                          if (widget.participant.isAccepted ==
-                                                  false &&
-                                              widget
-                                                      .participant
-                                                      .rejectionReason !=
-                                                  null) ...[
-                                            const SizedBox(
-                                              height: AppTheme.spacingXS,
-                                            ),
-                                            Text(
-                                              'السبب: ${widget.participant.rejectionReason}',
-                                              style: AppTheme.bodyMedium
-                                                  .copyWith(
-                                                    color: Colors.red[600],
-                                                  ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                      // Statut affiché dans l'en-tête ; ici seulement le motif du refus
+                      if (!_isEditing &&
+                          !widget.participant.isAccepted &&
+                          (widget.participant.rejectionReason ?? '').isNotEmpty)
+                        AppNotice(
+                          text:
+                              'سبب الرفض: ${widget.participant.rejectionReason}',
+                          color: AppTheme.errorColor,
+                          icon: Icons.info_outline_rounded,
                         ),
 
                       // Section changement de statut (en mode édition)
@@ -514,26 +257,18 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                           child: Container(
                             padding: const EdgeInsets.all(AppTheme.spacingS),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                                colors: [
+                              color:
                                   widget.participant.isAccepted == true
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.red.withOpacity(0.1),
-                                  widget.participant.isAccepted == true
-                                      ? Colors.green.withOpacity(0.05)
-                                      : Colors.red.withOpacity(0.05),
-                                ],
-                              ),
+                                      ? AppTheme.successColor.withOpacity(0.1)
+                                      : AppTheme.errorColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(
                                 AppTheme.radiusM,
                               ),
                               border: Border.all(
                                 color:
                                     widget.participant.isAccepted == true
-                                        ? Colors.green.withOpacity(0.3)
-                                        : Colors.red.withOpacity(0.3),
+                                        ? AppTheme.successColor.withOpacity(0.3)
+                                        : AppTheme.errorColor.withOpacity(0.3),
                               ),
                             ),
                             child: Column(
@@ -541,11 +276,11 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                 Row(
                                   children: [
                                     Icon(
-                                      Icons.verified_user,
+                                      Icons.verified_user_rounded,
                                       color:
                                           widget.participant.isAccepted == true
-                                              ? Colors.green
-                                              : Colors.red,
+                                              ? AppTheme.successColor
+                                              : AppTheme.errorColor,
                                       size: 24,
                                     ),
                                     const SizedBox(width: AppTheme.spacingS),
@@ -555,8 +290,8 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                         color:
                                             widget.participant.isAccepted ==
                                                     true
-                                                ? Colors.green[700]
-                                                : Colors.red[700],
+                                                ? AppTheme.successColor
+                                                : AppTheme.errorColor,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -580,13 +315,13 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                                         icon:
                                             widget.participant.isAccepted ==
                                                     true
-                                                ? Icons.cancel
-                                                : Icons.check,
+                                                ? Icons.cancel_rounded
+                                                : Icons.check_rounded,
                                         backgroundColor:
                                             widget.participant.isAccepted ==
                                                     true
-                                                ? Colors.red
-                                                : Colors.green,
+                                                ? AppTheme.errorColor
+                                                : AppTheme.successColor,
                                       ),
                                     ),
                                   ],
@@ -612,7 +347,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.info_outline,
+                                  Icons.info_outline_rounded,
                                   color: AppTheme.warningColor,
                                   size: 24,
                                 ),
@@ -639,374 +374,227 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                             ),
                           ),
                         ),
-                      const SizedBox(height: AppTheme.spacingS),
+                      const SizedBox(height: AppTheme.spacingM),
 
-                      // Section informations personnelles
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingS,
-                          vertical: AppTheme.spacingS,
-                        ),
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              AppTheme.primaryColor.withOpacity(0.1),
-                              AppTheme.primaryColor.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Row(
+                      // المعلومات الشخصية
+                      AppSection(
+                        icon: Icons.person_outline_rounded,
+                        color: AppTheme.primaryColor,
+                        title: 'المعلومات الشخصية',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(AppTheme.spacingS),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor,
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusS,
+                            _isEditing && _canEditParticipant
+                                ? _buildEditableTextField(
+                                  icon: Icons.person_rounded,
+                                  label: 'الاسم الكامل',
+                                  controller: _nameController,
+                                )
+                                : _buildInfoRow(
+                                  icon: Icons.person_rounded,
+                                  label: 'الاسم الكامل',
+                                  value: widget.participant.fullName,
                                 ),
-                              ),
-                              child: const Icon(
-                                Icons.person_outline,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _buildInfoRow(
+                              icon: Icons.numbers_rounded,
+                              label: 'رقم التسجيل',
+                              value:
+                                  widget.participant.registrationNumber
+                                      ?.toString() ??
+                                  'غير محدد',
                             ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'المعلومات الشخصية',
-                              style: AppTheme.headingSmall.copyWith(
-                                color: AppTheme.primaryColor,
-                              ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _buildInfoRow(
+                              icon:
+                                  widget.participant.gender == 'ذكر'
+                                      ? Icons.male_rounded
+                                      : Icons.female_rounded,
+                              label: 'الجنس',
+                              value: widget.participant.gender,
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _buildInfoRow(
+                              icon: Icons.cake_rounded,
+                              label: 'تاريخ الميلاد',
+                              value:
+                                  '${widget.participant.birthDate.day}/${widget.participant.birthDate.month}/${widget.participant.birthDate.year}',
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _isEditing && _canEditParticipant
+                                ? _buildEditableTextField(
+                                  icon: Icons.phone_rounded,
+                                  label: 'رقم الهاتف',
+                                  controller: _phoneController,
+                                )
+                                : _buildInfoRow(
+                                  icon: Icons.phone_rounded,
+                                  label: 'رقم الهاتف',
+                                  value: widget.participant.phone,
+                                ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _isEditing && _canEditParticipant
+                                ? _buildDropdownField(
+                                  icon: Icons.location_on_rounded,
+                                  label: 'مكان الإقامة',
+                                  value:
+                                      _selectedResidence ??
+                                      widget.participant.residence,
+                                  items: const [
+                                    'خارج موريتانيا',
+                                    'داخل موريتانيا',
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedResidence = value;
+                                    });
+                                  },
+                                )
+                                : _buildInfoRow(
+                                  icon: Icons.location_on_rounded,
+                                  label: 'مكان الإقامة',
+                                  value: widget.participant.residence,
+                                ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _isEditing && _canEditParticipant
+                                ? _buildDropdownField(
+                                  icon: Icons.people_rounded,
+                                  label: 'الفئة العمرية',
+                                  value:
+                                      _selectedAgeGroup ??
+                                      widget.participant.ageGroup,
+                                  items: const ['كبار', 'صغار'],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedAgeGroup = value;
+                                    });
+                                  },
+                                )
+                                : _buildInfoRow(
+                                  icon:
+                                      widget.participant.ageGroup == 'كبار'
+                                          ? Icons.person_rounded
+                                          : Icons.person_rounded,
+                                  label: 'الفئة العمرية',
+                                  value: widget.participant.ageGroup,
+                                ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingM),
+
+                      // المعلومات القرآنية
+                      AppSection(
+                        icon: Icons.menu_book_rounded,
+                        color: AppTheme.successColor,
+                        title: 'المعلومات القرآنية',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _isEditing && _canEditParticipant
+                                ? _buildDropdownField(
+                                  icon: Icons.menu_book_rounded,
+                                  label: 'كم حفظ من القرآن',
+                                  value:
+                                      _selectedQuranMemorized ??
+                                      widget.participant.quranMemorized,
+                                  items: const [
+                                    'القرآن كاملاً',
+                                    'نصف القرآن',
+                                    'أقل من نصف',
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedQuranMemorized = value;
+                                    });
+                                  },
+                                )
+                                : _buildInfoRow(
+                                  icon: Icons.menu_book_rounded,
+                                  label: 'كم حفظ من القرآن',
+                                  value: widget.participant.quranMemorized,
+                                ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _isEditing && _canEditParticipant
+                                ? _buildDropdownField(
+                                  icon: Icons.format_list_numbered_rounded,
+                                  label: 'عدد الروايات',
+                                  value:
+                                      _selectedReadingMethods ??
+                                      widget.participant.readingMethods,
+                                  items: const ['رواية واحدة', 'أكثر من رواية'],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedReadingMethods = value;
+                                    });
+                                  },
+                                )
+                                : _buildInfoRow(
+                                  icon: Icons.format_list_numbered_rounded,
+                                  label: 'عدد الروايات',
+                                  value: widget.participant.readingMethods,
+                                ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _buildInfoRow(
+                              icon:
+                                  widget.participant.hasIjaza
+                                      ? Icons.verified_rounded
+                                      : Icons.verified_rounded,
+                              label: 'الإجازة',
+                              value:
+                                  widget.participant.hasIjaza
+                                      ? 'لديه إجازة'
+                                      : 'لا يملك إجازة',
+                              valueColor:
+                                  widget.participant.hasIjaza
+                                      ? AppTheme.successColor
+                                      : AppTheme.textSecondaryColor,
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: AppTheme.spacingM),
 
-                      // Informations personnelles détaillées
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _isEditing && _canEditParticipant
-                                  ? _buildEditableTextField(
-                                    icon: Icons.person,
-                                    label: 'الاسم الكامل',
-                                    controller: _nameController,
-                                  )
-                                  : _buildInfoRow(
-                                    icon: Icons.person,
-                                    label: 'الاسم الكامل',
-                                    value: widget.participant.fullName,
-                                  ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _buildInfoRow(
-                                icon: Icons.numbers,
-                                label: 'رقم التسجيل',
-                                value:
-                                    widget.participant.registrationNumber
-                                        ?.toString() ??
-                                    'غير محدد',
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _buildInfoRow(
-                                icon:
-                                    widget.participant.gender == 'ذكر'
-                                        ? Icons.male
-                                        : Icons.female,
-                                label: 'الجنس',
-                                value: widget.participant.gender,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _buildInfoRow(
-                                icon: Icons.cake,
-                                label: 'تاريخ الميلاد',
-                                value:
-                                    '${widget.participant.birthDate.day}/${widget.participant.birthDate.month}/${widget.participant.birthDate.year}',
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _isEditing && _canEditParticipant
-                                  ? _buildEditableTextField(
-                                    icon: Icons.phone,
-                                    label: 'رقم الهاتف',
-                                    controller: _phoneController,
-                                  )
-                                  : _buildInfoRow(
-                                    icon: Icons.phone,
-                                    label: 'رقم الهاتف',
-                                    value: widget.participant.phone,
-                                  ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _isEditing && _canEditParticipant
-                                  ? _buildDropdownField(
-                                    icon: Icons.location_on,
-                                    label: 'مكان الإقامة',
-                                    value:
-                                        _selectedResidence ??
-                                        widget.participant.residence,
-                                    items: const [
-                                      'خارج موريتانيا',
-                                      'داخل موريتانيا',
-                                    ],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedResidence = value;
-                                      });
-                                    },
-                                  )
-                                  : _buildInfoRow(
-                                    icon: Icons.location_on,
-                                    label: 'مكان الإقامة',
-                                    value: widget.participant.residence,
-                                  ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _isEditing && _canEditParticipant
-                                  ? _buildDropdownField(
-                                    icon: Icons.people,
-                                    label: 'الفئة العمرية',
-                                    value:
-                                        _selectedAgeGroup ??
-                                        widget.participant.ageGroup,
-                                    items: const ['كبار', 'صغار'],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedAgeGroup = value;
-                                      });
-                                    },
-                                  )
-                                  : _buildInfoRow(
-                                    icon:
-                                        widget.participant.ageGroup == 'كبار'
-                                            ? Icons.person
-                                            : Icons.person,
-                                    label: 'الفئة العمرية',
-                                    value: widget.participant.ageGroup,
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Section informations القرآنية
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingS,
-                          vertical: AppTheme.spacingS,
-                        ),
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              Colors.green.withOpacity(0.1),
-                              Colors.green.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          border: Border.all(
-                            color: Colors.green.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Row(
+                      // معلومات النسخة
+                      AppSection(
+                        icon: Icons.emoji_events_rounded,
+                        color: AppTheme.secondaryColor,
+                        title: 'معلومات النسخة',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(AppTheme.spacingS),
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusS,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.menu_book_outlined,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                            _buildInfoRow(
+                              icon: Icons.emoji_events_rounded,
+                              label: 'اسم النسخة',
+                              value: widget.version.name,
                             ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'المعلومات القرآنية',
-                              style: AppTheme.headingSmall.copyWith(
-                                color: Colors.green[700],
-                              ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _buildInfoRow(
+                              icon: Icons.calendar_today_rounded,
+                              label: 'السنة',
+                              value: widget.version.year.toString(),
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+
+                            _buildInfoRow(
+                              icon: Icons.calendar_today_rounded,
+                              label: 'تاريخ التسجيل',
+                              value:
+                                  '${widget.participant.createdAt.day}/${widget.participant.createdAt.month}/${widget.participant.createdAt.year}',
                             ),
                           ],
                         ),
                       ),
-
-                      // Informations القرآنية
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _isEditing && _canEditParticipant
-                                  ? _buildDropdownField(
-                                    icon: Icons.menu_book,
-                                    label: 'كم حفظ من القرآن',
-                                    value:
-                                        _selectedQuranMemorized ??
-                                        widget.participant.quranMemorized,
-                                    items: const [
-                                      'القرآن كاملاً',
-                                      'نصف القرآن',
-                                      'أقل من نصف',
-                                    ],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedQuranMemorized = value;
-                                      });
-                                    },
-                                  )
-                                  : _buildInfoRow(
-                                    icon: Icons.menu_book,
-                                    label: 'كم حفظ من القرآن',
-                                    value: widget.participant.quranMemorized,
-                                  ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _isEditing && _canEditParticipant
-                                  ? _buildDropdownField(
-                                    icon: Icons.format_list_numbered,
-                                    label: 'عدد الروايات',
-                                    value:
-                                        _selectedReadingMethods ??
-                                        widget.participant.readingMethods,
-                                    items: const [
-                                      'رواية واحدة',
-                                      'أكثر من رواية',
-                                    ],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedReadingMethods = value;
-                                      });
-                                    },
-                                  )
-                                  : _buildInfoRow(
-                                    icon: Icons.format_list_numbered,
-                                    label: 'عدد الروايات',
-                                    value: widget.participant.readingMethods,
-                                  ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _buildInfoRow(
-                                icon:
-                                    widget.participant.hasIjaza
-                                        ? Icons.verified
-                                        : Icons.verified_outlined,
-                                label: 'الإجازة',
-                                value:
-                                    widget.participant.hasIjaza
-                                        ? 'لديه إجازة'
-                                        : 'لا يملك إجازة',
-                                valueColor:
-                                    widget.participant.hasIjaza
-                                        ? AppTheme.successColor
-                                        : AppTheme.textSecondaryColor,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
-
-                      // Section معلومات المسابقة
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: AppTheme.spacingS,
-                          vertical: AppTheme.spacingS,
-                        ),
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              Colors.purple.withOpacity(0.1),
-                              Colors.purple.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                          border: Border.all(
-                            color: Colors.purple.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(AppTheme.spacingS),
-                              decoration: BoxDecoration(
-                                color: Colors.purple,
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusS,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.emoji_events,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Text(
-                              'معلومات النسخة',
-                              style: AppTheme.headingSmall.copyWith(
-                                color: Colors.purple[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Informations de la compétition
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInfoRow(
-                                icon: Icons.emoji_events,
-                                label: 'اسم النسخة',
-                                value: widget.version.name,
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _buildInfoRow(
-                                icon: Icons.calendar_today,
-                                label: 'السنة',
-                                value: widget.version.year.toString(),
-                              ),
-                              const SizedBox(height: AppTheme.spacingS),
-
-                              _buildInfoRow(
-                                icon: Icons.calendar_today,
-                                label: 'تاريخ التسجيل',
-                                value:
-                                    '${widget.participant.createdAt.day}/${widget.participant.createdAt.month}/${widget.participant.createdAt.year}',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingS),
+                      const SizedBox(height: AppTheme.spacingM),
 
                       // Actions d'édition
                       if (_isEditing) ...[
@@ -1015,7 +603,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                           child: PrimaryButton(
                             onPressed: _saveChanges,
                             text: 'حفظ التغييرات',
-                            icon: Icons.save,
+                            icon: Icons.save_rounded,
                           ),
                         ),
                         const SizedBox(height: AppTheme.spacingS),
@@ -1029,7 +617,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                               });
                             },
                             text: 'إلغاء',
-                            icon: Icons.close,
+                            icon: Icons.close_rounded,
                           ),
                         ),
                       ],
@@ -1038,6 +626,41 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
                   ),
                 ),
               ),
+    );
+  }
+
+  /// En-tête : identité du participant sur fond dégradé
+  Widget _buildHeaderCard() {
+    final p = widget.participant;
+    final isMale = p.gender == 'ذكر';
+    final isAdult = p.ageGroup == 'كبار';
+
+    return AppGradientHeader(
+      shape: AppHeaderShape.card,
+      leading: CircleAvatar(
+        radius: 36,
+        backgroundColor: Colors.white,
+        child: Icon(
+          isMale ? Icons.male_rounded : Icons.female_rounded,
+          size: 38,
+          color: isMale ? AppTheme.infoColor : AppTheme.accentColor,
+        ),
+      ),
+      title: p.fullName,
+      badges: [
+        AppHeaderBadge(
+          icon: Icons.confirmation_number_rounded,
+          text: 'رقم التسجيل ${p.registrationNumber?.toString() ?? 'غير محدد'}',
+        ),
+        AppHeaderBadge(
+          icon: Icons.people_rounded,
+          text: isAdult ? 'فئة الكبار' : 'فئة الصغار',
+        ),
+        AppHeaderBadge(
+          icon: p.isAccepted ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          text: p.isAccepted ? 'مقبول' : 'مرفوض',
+        ),
+      ],
     );
   }
 
@@ -1199,7 +822,7 @@ class _ParticipantDetailPageState extends State<ParticipantDetailPage> {
           ),
           title: Row(
             children: [
-              Icon(Icons.cancel, color: AppTheme.errorColor),
+              Icon(Icons.cancel_rounded, color: AppTheme.errorColor),
               const SizedBox(width: AppTheme.spacingS),
               Text(
                 'إلغاء المشاركة',

@@ -230,6 +230,8 @@ class QuranicBenefitService {
         type: 'info',
         payload: jsonEncode({
           'type': 'benefit_created',
+          // Permet d'ouvrir directement la فائدة depuis la notification
+          'benefit_id': id,
           'title': title,
           'created_by': benefit['author_id'],
         }),

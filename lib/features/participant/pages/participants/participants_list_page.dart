@@ -9,6 +9,7 @@ import '../../../../core/services/participant_service.dart';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../models/participant.dart';
 import '../../../../models/competition_version.dart';
+import 'package:quranic_competition/core/utils/search_utils.dart';
 
 class ParticipantsListPage extends StatefulWidget {
   final String versionId;
@@ -26,245 +27,257 @@ class ParticipantsListPage extends StatefulWidget {
 
 class _ParticipantsListPageState extends State<ParticipantsListPage> {
   final _searchController = TextEditingController();
-  final _scrollController = ScrollController();
   final _participantService = ParticipantService();
   final _competitionService = CompetitionVersionService();
   Timer? _debounceTimer;
 
+  /// Tous les participants de la version affichée. La liste est chargée en
+  /// entier pour que la recherche, les filtres et les statistiques portent
+  /// sur l'ensemble des inscrits, et pas seulement sur une page déjà chargée.
   List<Participant> _allParticipants = [];
   List<Participant> _filteredParticipants = [];
   String _searchQuery = '';
   String? _selectedAgeGroup;
-  bool _isLoading = false;
-  bool _hasMoreData = true;
-  int _currentPage = 0;
-  static const int _pageSize = 20;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // Variables pour la gestion des compétitions
-  CompetitionVersion? _activeCompetition;
-  CompetitionVersion? _lastCompetition;
-  String? _displayedVersionId;
+  CompetitionVersion? _displayedVersion;
+  bool _isActiveVersion = false;
 
   @override
   void initState() {
     super.initState();
-    print(
-      '📱 ParticipantsListPage initState - versionId: ${widget.versionId}, ageGroup: ${widget.ageGroup}',
-    );
     _selectedAgeGroup = widget.ageGroup;
-    _initializeCompetitionData();
-    _searchController.addListener(_onSearchChanged);
-    _scrollController.addListener(_onScroll);
+    _loadData();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
   }
 
-  void _onSearchChanged() {
+  void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() {
-          _searchQuery = _searchController.text;
-          _applyFilters();
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _searchQuery = value;
+        _applyFilters();
+      });
     });
   }
 
-  void _onScroll() {
-    // Détecter si l'utilisateur arrive près de la fin de la liste
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoading &&
-        _hasMoreData) {
-      print('🔄 Déclenchement de la pagination automatique');
-      _loadParticipants();
-    }
+  void _clearSearch() {
+    _debounceTimer?.cancel();
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _applyFilters();
+    });
   }
 
-  Future<void> _initializeCompetitionData() async {
-    try {
-      // Si versionId est 'default', déterminer automatiquement quelle version afficher
-      if (widget.versionId == 'default') {
-        // Récupérer les compétitions actives
-        final activeVersions =
-            await _competitionService.fetchActiveVersionsWithOpenRegistration();
-        _activeCompetition =
-            activeVersions.isNotEmpty ? activeVersions.first : null;
-
-        // Récupérer toutes les versions pour trouver la dernière
-        final allVersions = await _competitionService.fetchVersions();
-        _lastCompetition = allVersions.isNotEmpty ? allVersions.first : null;
-
-        // Déterminer quelle version afficher
-        if (_activeCompetition != null) {
-          _displayedVersionId = _activeCompetition!.id;
-          print(
-            '🏆 Affichage de la compétition active: ${_activeCompetition!.name}',
-          );
-        } else if (_lastCompetition != null) {
-          _displayedVersionId = _lastCompetition!.id;
-          print(
-            '📅 Affichage de la dernière compétition: ${_lastCompetition!.name}',
-          );
-        } else {
-          _displayedVersionId = null;
-          print('❌ Aucune compétition trouvée');
-        }
-      } else {
-        // Utiliser la version spécifiée
-        _displayedVersionId = widget.versionId;
-      }
-
-      // Charger les participants avec la version déterminée
-      _loadParticipants();
-    } catch (e) {
-      print(
-        '❌ Erreur lors de l\'initialisation des données de compétition: $e',
+  /// Détermine la version à afficher : celle demandée, sinon (versionId
+  /// 'default') la version active, sinon la dernière version.
+  Future<void> _resolveVersion() async {
+    if (widget.versionId != 'default') {
+      _displayedVersion = await _competitionService.getVersionById(
+        widget.versionId,
       );
-      _displayedVersionId = null;
-      _loadParticipants();
+      _isActiveVersion = _displayedVersion?.isActive ?? false;
+      return;
     }
+
+    final activeVersions =
+        await _competitionService.fetchActiveVersionsWithOpenRegistration();
+    if (activeVersions.isNotEmpty) {
+      _displayedVersion = activeVersions.first;
+      _isActiveVersion = true;
+      return;
+    }
+
+    final allVersions = await _competitionService.fetchVersions();
+    _displayedVersion = allVersions.isNotEmpty ? allVersions.first : null;
+    _isActiveVersion = false;
   }
 
-  void _applyFilters() {
-    List<Participant> ageGroupFiltered;
-
-    // Si un groupe d'âge est sélectionné, filtrer par groupe d'âge
-    if (_selectedAgeGroup != null) {
-      ageGroupFiltered =
-          _allParticipants.where((participant) {
-            return participant.ageGroup == _selectedAgeGroup;
-          }).toList();
-    } else {
-      // Sinon, afficher tous les participants
-      ageGroupFiltered = List.from(_allParticipants);
-    }
-
-    // Puis appliquer la recherche si nécessaire
-    if (_searchQuery.isEmpty) {
-      _filteredParticipants = List.from(ageGroupFiltered);
-    } else {
-      final query = _searchQuery.toLowerCase();
-      _filteredParticipants =
-          ageGroupFiltered.where((participant) {
-            final name = participant.fullName.toLowerCase();
-            final phone = participant.phone.toLowerCase();
-            final registrationNumber =
-                participant.registrationNumber.toString().toLowerCase();
-
-            return name.contains(query) ||
-                phone.contains(query) ||
-                registrationNumber.contains(query);
-          }).toList();
-    }
-  }
-
-  Future<void> _loadParticipants({bool reset = false}) async {
-    if (reset) {
-      setState(() {
-        _currentPage = 0;
-        _allParticipants.clear();
-        _filteredParticipants.clear();
-        _hasMoreData = true;
-      });
-    }
-
-    if (_isLoading || !_hasMoreData) return;
-
-    setState(() => _isLoading = true);
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      List<Participant> participants;
+      await _resolveVersion();
 
-      // Aucune version à afficher : on ne montre aucun participant. Chaque
-      // version possède sa propre liste, on ne mélange jamais les versions.
-      if (_displayedVersionId == null) {
-        participants = [];
-        _hasMoreData = false;
-      } else {
-        // Participants de cette version uniquement, chargés page par page
-        participants = await _participantService.getParticipantsByVersion(
-          _displayedVersionId!,
-          page: _currentPage,
-          pageSize: _pageSize,
-        );
-        _hasMoreData = participants.length == _pageSize;
-      }
+      // Chaque version possède sa propre liste : on ne mélange jamais les
+      // versions. Sans version, la liste est vide.
+      final versionId =
+          widget.versionId != 'default'
+              ? widget.versionId
+              : _displayedVersion?.id;
+      final participants =
+          versionId == null
+              ? <Participant>[]
+              : await _participantService.getAllParticipantsByVersion(
+                versionId,
+              );
 
+      // Ordre des numéros d'inscription, les participants sans numéro à la fin
+      participants.sort((a, b) {
+        final ra = a.registrationNumber;
+        final rb = b.registrationNumber;
+        if (ra == null && rb == null) return 0;
+        if (ra == null) return 1;
+        if (rb == null) return -1;
+        return ra.compareTo(rb);
+      });
+
+      if (!mounted) return;
       setState(() {
-        if (reset || _displayedVersionId == null) {
-          _allParticipants = participants;
-        } else {
-          _allParticipants.addAll(participants);
-        }
-
-        _currentPage++;
+        _allParticipants = participants;
         _isLoading = false;
-
         _applyFilters();
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل المشاركين: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('❌ Erreur lors du chargement des participants: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage =
+            'تعذر تحميل قائمة المشاركين. تحقق من الاتصال وحاول مجدداً.';
+      });
     }
   }
 
-  Widget _buildAgeGroupSelector() {
-    if (widget.ageGroup != null) {
-      // Si un groupe d'âge est spécifié dans l'URL, ne pas afficher le sélecteur
-      return const SizedBox.shrink();
+  List<Participant> get _ageGroupParticipants {
+    if (_selectedAgeGroup == null) return _allParticipants;
+    return _allParticipants
+        .where((p) => p.ageGroup == _selectedAgeGroup)
+        .toList();
+  }
+
+  void _applyFilters() {
+    final base = _ageGroupParticipants;
+    final query = _searchQuery.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      _filteredParticipants = List.of(base);
+      return;
     }
 
+    // Recherche par numéro : numéro d'inscription exact uniquement
+    final digits = SearchUtils.numericQuery(query);
+    _filteredParticipants =
+        base.where((participant) {
+          if (digits != null) {
+            return SearchUtils.numberMatches(
+              participant.registrationNumber,
+              digits,
+            );
+          }
+          return participant.fullName.toLowerCase().contains(query);
+        }).toList();
+  }
+
+  void _selectAgeGroup(String? ageGroup) {
+    setState(() {
+      _selectedAgeGroup = ageGroup;
+      _applyFilters();
+    });
+  }
+
+  int _countByAgeGroup(String? ageGroup) {
+    if (ageGroup == null) return _allParticipants.length;
+    return _allParticipants.where((p) => p.ageGroup == ageGroup).length;
+  }
+
+  // ---------------------------------------------------------------------------
+  // En-tête : version affichée + statistiques
+  // ---------------------------------------------------------------------------
+
+  Widget _buildHeader() {
+    final stats = _ageGroupParticipants;
+    final accepted = stats.where((p) => p.isAccepted).length;
+    final rejected = stats.length - accepted;
+    final versionColor = _isActiveVersion ? AppTheme.successColor : AppTheme.warningColor;
+
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
-      ),
+      margin: const EdgeInsets.all(AppTheme.spacingS),
       child: ModernCard(
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_displayedVersion != null) ...[
+                Row(
+                  children: [
+                    Icon(
+                      _isActiveVersion ? Icons.emoji_events_rounded : Icons.history_rounded,
+                      color: versionColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppTheme.spacingS),
+                    Expanded(
+                      child: Text(
+                        _displayedVersion!.name,
+                        style: AppTheme.labelLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingS,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: versionColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                      ),
+                      child: Text(
+                        _isActiveVersion ? 'نسخة نشطة' : 'آخر نسخة',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: versionColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTheme.spacingS),
+              ],
               Row(
                 children: [
-                  Icon(
-                    Icons.filter_list,
-                    color: AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Text(
-                    'فلترة حسب الفرع',
-                    style: AppTheme.labelLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
+                  Expanded(
+                    child: _buildStatItem(
+                      'إجمالي المشاركين',
+                      stats.length,
+                      Icons.people_rounded,
+                      AppTheme.infoColor,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-              Row(
-                children: [
-                  Expanded(child: _buildAgeGroupButton('الكل', Colors.grey)),
                   const SizedBox(width: AppTheme.spacingS),
-                  Expanded(child: _buildAgeGroupButton('كبار', Colors.blue)),
+                  Expanded(
+                    child: _buildStatItem(
+                      'المقبولون',
+                      accepted,
+                      Icons.check_circle_rounded,
+                      AppTheme.successColor,
+                    ),
+                  ),
                   const SizedBox(width: AppTheme.spacingS),
-                  Expanded(child: _buildAgeGroupButton('صغار', Colors.purple)),
+                  Expanded(
+                    child: _buildStatItem(
+                      'المرفوضون',
+                      rejected,
+                      Icons.cancel_rounded,
+                      AppTheme.errorColor,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -274,53 +287,81 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     );
   }
 
-  Widget _buildAgeGroupButton(String ageGroup, Color color) {
-    final bool isSelected = _selectedAgeGroup == ageGroup;
-    final bool isAllSelected = ageGroup == 'الكل' && _selectedAgeGroup == null;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedAgeGroup = ageGroup == 'الكل' ? null : ageGroup;
-          _applyFilters();
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingS,
-          vertical: AppTheme.spacingS,
-        ),
-        decoration: BoxDecoration(
-          color:
-              (isSelected || isAllSelected)
-                  ? color
-                  : Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          border: Border.all(
-            color:
-                (isSelected || isAllSelected)
-                    ? color
-                    : Colors.grey.withOpacity(0.3),
-            width: 2,
+  Widget _buildStatItem(String label, int value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppTheme.spacingS,
+        horizontal: AppTheme.spacingXS,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: AppTheme.spacingXS),
+          Text(
+            '$value',
+            style: AppTheme.labelLarge.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
-          boxShadow:
-              (isSelected || isAllSelected)
-                  ? [
-                    BoxShadow(
-                      color: color.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Center(
-          child: Text(
-            ageGroup,
-            style: AppTheme.bodyMedium.copyWith(
-              color: (isSelected || isAllSelected) ? Colors.white : color,
-              fontWeight: FontWeight.w600,
+          Text(
+            label,
+            style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondaryColor),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Filtres et recherche
+  // ---------------------------------------------------------------------------
+
+  Widget _buildAgeGroupSelector() {
+    // Un groupe d'âge imposé par l'URL : pas de sélecteur
+    if (widget.ageGroup != null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingS),
+      child: Row(
+        children: [
+          Expanded(child: _buildAgeGroupChip(null, 'الكل', AppTheme.textSecondaryColor)),
+          const SizedBox(width: AppTheme.spacingS),
+          Expanded(child: _buildAgeGroupChip('كبار', 'الكبار', AppTheme.infoColor)),
+          const SizedBox(width: AppTheme.spacingS),
+          Expanded(child: _buildAgeGroupChip('صغار', 'الصغار', AppTheme.primaryColor)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAgeGroupChip(String? ageGroup, String label, Color color) {
+    final isSelected = _selectedAgeGroup == ageGroup;
+
+    return Material(
+      color: isSelected ? color : color.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        onTap: () => _selectAgeGroup(ageGroup),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingS),
+          child: Center(
+            child: Text(
+              '$label (${_countByAgeGroup(ageGroup)})',
+              style: AppTheme.bodyMedium.copyWith(
+                color: isSelected ? Colors.white : color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -331,250 +372,120 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
   Widget _buildSearchBar() {
     return ModernSearchBar(
       controller: _searchController,
-      hintText: 'البحث بالاسم، الهاتف أو رقم التسجيل',
-      onChanged: (value) {
-        _onSearchChanged();
-      },
-      onClear: () {
-        _onSearchChanged();
-      },
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
+      hintText: 'البحث بالاسم أو رقم التسجيل',
+      onChanged: _onSearchChanged,
+      onClear: _clearSearch,
+      margin: const EdgeInsets.all(AppTheme.spacingS),
+    );
+  }
+
+  Widget _buildResultsCount() {
+    if (_searchQuery.trim().isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
+      child: Text(
+        'عدد النتائج: ${_filteredParticipants.length}',
+        style: AppTheme.bodySmall.copyWith(color: AppTheme.textSecondaryColor),
       ),
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Carte participant
+  // ---------------------------------------------------------------------------
+
   Widget _buildParticipantCard(Participant participant) {
     final isAccepted = participant.isAccepted;
-    final statusColor =
-        isAccepted == true
-            ? Colors.green
-            : isAccepted == false
-            ? Colors.red
-            : Colors.orange;
-
-    final statusText =
-        isAccepted == true
-            ? 'مقبول'
-            : isAccepted == false
-            ? 'مرفوض'
-            : 'قيد المراجعة';
-
-    final statusIcon =
-        isAccepted == true
-            ? Icons.check_circle
-            : isAccepted == false
-            ? Icons.cancel
-            : Icons.hourglass_empty;
+    final statusColor = isAccepted ? AppTheme.successColor : AppTheme.errorColor;
+    final isAdult = participant.ageGroup == 'كبار';
+    final groupColor = isAdult ? AppTheme.infoColor : AppTheme.primaryColor;
 
     return ModernCard(
       margin: const EdgeInsets.symmetric(
         horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
+        vertical: AppTheme.spacingXS,
       ),
       child: InkWell(
-        onTap: () {
-          print(
-            '🔍 Navigation vers détails: /participant/detail/${participant.id}',
-          );
-          print('🔍 Participant: ${participant.fullName}');
-          try {
-            context.push(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        onTap:
+            () => context.push(
               '/participant/detail/${participant.id}',
               extra: participant,
-            );
-            print('✅ Navigation vers détails réussie');
-          } catch (e) {
-            print('❌ Erreur navigation détails: $e');
-          }
-        },
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+            ),
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              // En-tête avec nom et statut
-              Row(
-                children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                    child: Icon(
-                      participant.gender == 'ذكر' ? Icons.male : Icons.female,
-                      color: AppTheme.primaryColor,
-                      size: 24,
+              // Numéro d'inscription, mis en avant
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'رقم',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.primaryColor,
+                        fontSize: 10,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  // Informations principales
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          participant.fullName,
+                    FittedBox(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          participant.registrationNumber?.toString() ?? '-',
                           style: AppTheme.labelLarge.copyWith(
+                            color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
                         ),
-                        const SizedBox(height: AppTheme.spacingXS),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.people,
-                              size: 16,
-                              color: AppTheme.primaryColor,
-                            ),
-                            const SizedBox(width: AppTheme.spacingXS),
-                            Text(
-                              participant.ageGroup == 'كبار'
-                                  ? 'الكبار'
-                                  : 'الصغار',
-                              style: AppTheme.bodyMedium.copyWith(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Statut avec icône
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingS,
-                      vertical: AppTheme.spacingXS,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                      border: Border.all(color: statusColor, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(statusIcon, color: statusColor, size: 16),
-                        const SizedBox(width: AppTheme.spacingXS),
-                        Text(
-                          statusText,
-                          style: AppTheme.bodySmall.copyWith(
-                            color: statusColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-              // Numéro d'enregistrement
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppTheme.spacingS),
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  border: Border.all(color: AppTheme.dividerColor),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.confirmation_number,
-                      size: 18,
-                      color: AppTheme.primaryColor,
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Text(
-                      'رقم التسجيل: ',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Text(
-                      participant.registrationNumber?.toString() ?? 'غير محدد',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatsHeader() {
-    // Calculer les statistiques basées sur le groupe d'âge sélectionné
-    List<Participant> statsParticipants;
-    if (_selectedAgeGroup != null) {
-      statsParticipants =
-          _allParticipants
-              .where((p) => p.ageGroup == _selectedAgeGroup)
-              .toList();
-    } else {
-      statsParticipants = _allParticipants;
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(AppTheme.spacingS),
-      child: ModernCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.analytics, color: AppTheme.primaryColor, size: 20),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Text(
-                    'إحصائيات المشاركين',
-                    style: AppTheme.labelLarge.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
+              const SizedBox(width: AppTheme.spacingS),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      participant.fullName,
+                      style: AppTheme.labelLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: AppTheme.spacingXS),
+                    Wrap(
+                      spacing: AppTheme.spacingXS,
+                      runSpacing: AppTheme.spacingXS,
+                      children: [
+                        _buildTag(
+                          isAdult ? 'الكبار' : 'الصغار',
+                          Icons.people_rounded,
+                          groupColor,
+                        ),
+                        _buildTag(
+                          isAccepted ? 'مقبول' : 'مرفوض',
+                          isAccepted ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                          statusColor,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppTheme.spacingS),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem(
-                    'إجمالي المشاركين',
-                    statsParticipants.length.toString(),
-                    Icons.people,
-                    Colors.blue,
-                  ),
-                  _buildStatItem(
-                    'المقبولون',
-                    statsParticipants
-                        .where((p) => p.isAccepted == true)
-                        .length
-                        .toString(),
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                  _buildStatItem(
-                    'المرفوضون',
-                    statsParticipants
-                        .where((p) => p.isAccepted == false)
-                        .length
-                        .toString(),
-                    Icons.cancel,
-                    Colors.red,
-                  ),
-                ],
-              ),
+              Icon(Icons.chevron_left_rounded, color: AppTheme.textDisabledColor),
             ],
           ),
         ),
@@ -582,256 +493,128 @@ class _ParticipantsListPageState extends State<ParticipantsListPage> {
     );
   }
 
-  Widget _buildStatItem(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildTag(String text, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingS),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingS,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(AppTheme.radiusS),
       ),
-      child: Column(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(height: AppTheme.spacingS),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
           Text(
-            value,
-            style: AppTheme.labelLarge.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacingXS),
-          Text(
-            label,
+            text,
             style: AppTheme.bodySmall.copyWith(
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCompetitionIndicator() {
-    if (_activeCompetition != null) {
-      return Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingS,
-          vertical: AppTheme.spacingS,
-        ),
-        child: ModernCard(
-          child: Container(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.green.withOpacity(0.1),
-                  Colors.green.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'نسخة نشطة',
-                        style: AppTheme.labelLarge.copyWith(
-                          color: Colors.green[700],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingXS),
-                      Text(
-                        _activeCompetition!.name,
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: Colors.green[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else if (_lastCompetition != null) {
-      return Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingS,
-          vertical: AppTheme.spacingS,
-        ),
-        child: ModernCard(
-          child: Container(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.orange.withOpacity(0.1),
-                  Colors.orange.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              border: Border.all(color: Colors.orange.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.history,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingS),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'آخر نسخة نشطة',
-                        style: AppTheme.labelLarge.copyWith(
-                          color: Colors.orange[700],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingXS),
-                      Text(
-                        _lastCompetition!.name,
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: Colors.orange[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+  // ---------------------------------------------------------------------------
+  // États vides / erreur
+  // ---------------------------------------------------------------------------
+
+  Widget _buildEmptyState() {
+    final String title;
+    final String subtitle;
+    if (_searchQuery.trim().isNotEmpty) {
+      title = 'لا توجد نتائج للبحث';
+      subtitle = 'تحقق من الاسم أو من رقم التسجيل';
+    } else if (_allParticipants.isEmpty) {
+      title = 'لا يوجد مشاركون بعد';
+      subtitle = 'سيظهر المشاركون هنا عند التسجيل';
     } else {
-      return const SizedBox.shrink();
+      title = 'لا يوجد مشاركون في هذا الفرع';
+      subtitle = 'جميع المشاركين المسجلين في فروع أخرى';
     }
+
+    return EmptyState(
+      title: title,
+      subtitle: subtitle,
+      icon:
+          _searchQuery.trim().isNotEmpty
+              ? Icons.search_off_rounded
+              : Icons.people_outline_rounded,
+    );
+  }
+
+  Widget _buildErrorState() {
+    return EmptyState(
+      title: 'حدث خطأ',
+      subtitle: _errorMessage,
+      icon: Icons.wifi_off_rounded,
+      iconColor: AppTheme.errorColor,
+      action: PrimaryButton(
+        text: 'إعادة المحاولة',
+        icon: Icons.refresh_rounded,
+        onPressed: _loadData,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title:
-            _activeCompetition?.name ??
-            _lastCompetition?.name ??
-            'قائمة المشاركين',
+        title: 'قائمة المشاركين',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'تحديث',
-            onPressed: () => _initializeCompetitionData(),
+            onPressed: _isLoading ? null : _loadData,
           ),
         ],
       ),
-      body:
-          _isLoading && _allParticipants.isEmpty
-              ? const LoadingOverlay(child: SizedBox())
-              : CustomScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // Header des statistiques
-                  SliverToBoxAdapter(child: _buildStatsHeader()),
+      body: _buildBody(),
+    );
+  }
 
-                  // Indicateur de compétition
-                  SliverToBoxAdapter(child: _buildCompetitionIndicator()),
+  Widget _buildBody() {
+    if (_isLoading && _allParticipants.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                  // Sélecteur de groupe d'âge
-                  SliverToBoxAdapter(child: _buildAgeGroupSelector()),
+    if (_errorMessage != null && _allParticipants.isEmpty) {
+      return Center(child: SingleChildScrollView(child: _buildErrorState()));
+    }
 
-                  // Barre de recherche
-                  SliverToBoxAdapter(child: _buildSearchBar()),
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          SliverToBoxAdapter(child: _buildAgeGroupSelector()),
+          SliverToBoxAdapter(child: _buildSearchBar()),
+          SliverToBoxAdapter(child: _buildResultsCount()),
 
-                  // Liste des participants ou état vide
-                  _filteredParticipants.isEmpty && !_isLoading
-                      ? SliverToBoxAdapter(
-                        child: EmptyState(
-                          title:
-                              _searchQuery.isNotEmpty
-                                  ? 'لا توجد نتائج للبحث'
-                                  : _allParticipants.isEmpty
-                                  ? 'لا يوجد مشاركون بعد'
-                                  : 'لا يوجد مشاركون في فئة ${widget.ageGroup}',
-                          subtitle:
-                              _searchQuery.isNotEmpty
-                                  ? 'جرب البحث بكلمات أخرى'
-                                  : _allParticipants.isEmpty
-                                  ? 'سيظهر المشاركون هنا عند التسجيل'
-                                  : 'جميع المشاركين المسجلين في فئات أخرى',
-                          icon: Icons.people_outline,
-                        ),
-                      )
-                      : SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final participant = _filteredParticipants[index];
-                          return _buildParticipantCard(participant);
-                        }, childCount: _filteredParticipants.length),
-                      ),
-
-                  // Indicateur de chargement en bas si on charge plus de données
-                  if (_isLoading && _filteredParticipants.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: const EdgeInsets.all(AppTheme.spacingS),
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                    ),
-
-                  // Espace en bas pour éviter que le contenu soit caché
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: AppTheme.spacingXL),
-                  ),
-                ],
+          if (_filteredParticipants.isEmpty)
+            SliverToBoxAdapter(child: _buildEmptyState())
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) =>
+                    _buildParticipantCard(_filteredParticipants[index]),
+                childCount: _filteredParticipants.length,
               ),
-      bottomNavigationBar: null, // Pas de navigation bottom pour cette page
+            ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingXL)),
+        ],
+      ),
     );
   }
 }

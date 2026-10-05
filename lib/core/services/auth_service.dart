@@ -5,10 +5,46 @@ import 'package:quranic_competition/models/app_user.dart';
 import 'package:quranic_competition/models/user_role.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/core/services/error_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  // Dernier email utilisé, gardé sur l'appareil pour pré-remplir la connexion
+  static const _lastEmailKey = 'last_login_email';
+
+  /// Email du dernier compte connecté sur cet appareil (null si aucun).
+  static Future<String?> getLastEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString(_lastEmailKey);
+      return (email == null || email.isEmpty) ? null : email;
+    } catch (e) {
+      debugPrint('Erreur lecture du dernier email: $e');
+      return null;
+    }
+  }
+
+  static Future<void> _saveLastEmail(String? email) async {
+    if (email == null || email.trim().isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastEmailKey, email.trim());
+    } catch (e) {
+      debugPrint('Erreur sauvegarde du dernier email: $e');
+    }
+  }
+
+  static Future<void> _clearLastEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_lastEmailKey);
+    } catch (e) {
+      debugPrint('Erreur suppression du dernier email: $e');
+    }
+  }
+
   final ErrorService _errorService = ErrorService();
 
   /// Inscription d'un nouvel utilisateur avec téléphone, mot de passe, nom complet et rôle.
@@ -119,6 +155,7 @@ class AuthService {
 
       // Initialiser les permissions après la connexion
       await _initializeUserPermissions(res.user!.id);
+      await _saveLastEmail(res.user!.email ?? email);
 
       return null; // Succès
     } catch (e) {
@@ -129,9 +166,38 @@ class AuthService {
 
   /// Déconnexion de l'utilisateur.
   Future<void> signOut() async {
+    // Garder l'email pour pré-remplir la prochaine connexion
+    await _saveLastEmail(_supabase.auth.currentUser?.email);
     // Nettoyer les permissions avant la déconnexion
     PermissionService().clearPermissions();
     await Supabase.instance.client.auth.signOut();
+  }
+
+  /// Suppression définitive du compte de l'utilisateur connecté.
+  /// Retourne null en cas de succès, sinon un message d'erreur.
+  Future<String?> deleteAccount() async {
+    try {
+      await _supabase.rpc('delete_own_account');
+    } on PostgrestException catch (e) {
+      debugPrint('Erreur deleteAccount: $e');
+      if (e.message.contains('LAST_SUPER_ADMIN')) {
+        return 'لا يمكن حذف حساب المدير العام الوحيد. قم بتعيين مدير عام آخر أولاً.';
+      }
+      return _errorService.analyzeException(e);
+    } catch (e) {
+      debugPrint('Erreur deleteAccount: $e');
+      return _errorService.analyzeException(e);
+    }
+
+    // Le compte n'existe plus : la session locale doit être fermée
+    try {
+      await signOut();
+    } catch (e) {
+      debugPrint('Erreur signOut après suppression du compte: $e');
+    }
+    // Compte supprimé : on ne garde pas son email sur l'appareil
+    await _clearLastEmail();
+    return null;
   }
 
   /// Initialiser les permissions de l'utilisateur après la connexion

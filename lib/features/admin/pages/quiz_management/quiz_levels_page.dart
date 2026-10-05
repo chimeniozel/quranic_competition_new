@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/core/services/permission_service.dart';
 import 'package:quranic_competition/core/widgets/role_guard.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 import 'package:quranic_competition/core/widgets/modern_navigation.dart';
-import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:quranic_competition/core/widgets/modern_dashboard.dart';
@@ -47,7 +47,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل المستويات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -64,7 +64,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
             content: Text(
               level.isActive ? 'تم إلغاء تفعيل المستوى' : 'تم تفعيل المستوى',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
       }
@@ -73,7 +73,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تغيير حالة المستوى: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -100,7 +100,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('حذف', style: TextStyle(color: Colors.red)),
+                child: const Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
               ),
             ],
           ),
@@ -114,7 +114,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف المستوى بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppTheme.successColor,
             ),
           );
         }
@@ -123,7 +123,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('خطأ في حذف المستوى: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppTheme.errorColor,
             ),
           );
         }
@@ -132,236 +132,145 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
   }
 
   Widget _buildLevelCard(QuizLevel level) {
-    return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
-      ),
-      padding: const EdgeInsets.all(AppTheme.spacingS),
+    final color =
+        level.isActive ? AppTheme.primaryColor : AppTheme.textSecondaryColor;
+
+    return AppListCard(
       onTap: () => context.push('/admin/quiz/levels/${level.id}/questions'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // Level Order Icon
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color:
-                      level.isActive
-                          ? AppTheme.primaryColor.withOpacity(0.1)
-                          : AppTheme.textSecondaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                ),
-                child: Center(
-                  child: Text(
-                    '${level.order}',
-                    style: TextStyle(
-                      color:
-                          level.isActive
-                              ? AppTheme.primaryColor
-                              : AppTheme.textSecondaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
+      leading: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        ),
+        child: Center(
+          child: Text(
+            '${level.order}',
+            style: AppTheme.headingSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      title: level.name,
+      subtitle: level.description,
+      tags: [
+        AppTag(
+          text: level.isActive ? 'منشور' : 'غير منشور',
+          color:
+              level.isActive
+                  ? AppTheme.successColor
+                  : AppTheme.textSecondaryColor,
+          icon: level.isActive ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+        ),
+        AppTag(
+          text: 'الترتيب ${level.order}',
+          color: AppTheme.textSecondaryColor,
+          icon: Icons.sort_rounded,
+        ),
+      ],
+      trailing: PopupMenuButton<String>(
+        onSelected: (value) {
+          switch (value) {
+            case 'edit':
+              _checkPermissionAndEdit(level);
+              break;
+            case 'questions':
+              context.push('/admin/quiz/levels/${level.id}/questions');
+              break;
+            case 'toggle':
+              _toggleLevelStatus(level);
+              break;
+            case 'delete':
+              _deleteLevel(level);
+              break;
+          }
+        },
+        itemBuilder: (context) {
+          final items = <PopupMenuEntry<String>>[];
+          final permissionService = PermissionService();
+
+          // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
+          if (permissionService.canModifySync()) {
+            items.add(
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_rounded, size: 16, color: AppTheme.primaryColor),
+                    SizedBox(width: 8),
+                    Text('تعديل'),
+                  ],
                 ),
               ),
-              const SizedBox(width: AppTheme.spacingS),
+            );
+          }
 
-              // Level Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // عنصر الأسئلة متاح للجميع (للقراءة فقط)
+          items.add(
+            PopupMenuItem(
+              value: 'questions',
+              child: Row(
+                children: [
+                  Icon(Icons.quiz_rounded, size: 16, color: AppTheme.successColor),
+                  SizedBox(width: 8),
+                  Text('إدارة الأسئلة'),
+                ],
+              ),
+            ),
+          );
+
+          // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
+          if (permissionService.canModifySync()) {
+            items.add(
+              PopupMenuItem(
+                value: 'toggle',
+                child: Row(
                   children: [
-                    Text(
-                      level.name,
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Icon(
+                      level.isActive ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                      size: 16,
+                      color:
+                          level.isActive
+                              ? AppTheme.warningColor
+                              : AppTheme.successColor,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(width: 8),
                     Text(
-                      level.description,
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.textSecondaryColor,
+                      level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
+                      style: TextStyle(
+                        color:
+                            level.isActive
+                                ? AppTheme.warningColor
+                                : AppTheme.successColor,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+            );
+          }
 
-              // Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      level.isActive
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.warningColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        level.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                  ),
-                ),
-                child: Text(
-                  level.isActive ? 'نشط' : 'غير نشط',
-                  style: TextStyle(
-                    color:
-                        level.isActive
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+          // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
+          if (permissionService.canDeleteSync()) {
+            items.add(
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_rounded, size: 16, color: AppTheme.errorColor),
+                    SizedBox(width: 8),
+                    Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          }
 
-          const SizedBox(height: AppTheme.spacingS),
-
-          // Actions and Info
-          Row(
-            children: [
-              Text(
-                'ترتيب: ${level.order}',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-              const Spacer(),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'edit':
-                      _checkPermissionAndEdit(level);
-                      break;
-                    case 'questions':
-                      context.push('/admin/quiz/levels/${level.id}/questions');
-                      break;
-                    case 'toggle':
-                      _toggleLevelStatus(level);
-                      break;
-                    case 'delete':
-                      _deleteLevel(level);
-                      break;
-                  }
-                },
-                itemBuilder: (context) {
-                  final items = <PopupMenuEntry<String>>[];
-                  final permissionService = PermissionService();
-
-                  // إضافة عنصر التعديل فقط إذا كانت الصلاحية متوفرة
-                  if (permissionService.canModifySync()) {
-                    items.add(
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit,
-                              size: 16,
-                              color: AppTheme.primaryColor,
-                            ),
-                            SizedBox(width: 8),
-                            Text('تعديل'),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  // عنصر الأسئلة متاح للجميع (للقراءة فقط)
-                  items.add(
-                    PopupMenuItem(
-                      value: 'questions',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.quiz,
-                            size: 16,
-                            color: AppTheme.successColor,
-                          ),
-                          SizedBox(width: 8),
-                          Text('إدارة الأسئلة'),
-                        ],
-                      ),
-                    ),
-                  );
-
-                  // إضافة عنصر التفعيل/إلغاء التفعيل فقط إذا كانت الصلاحية متوفرة
-                  if (permissionService.canModifySync()) {
-                    items.add(
-                      PopupMenuItem(
-                        value: 'toggle',
-                        child: Row(
-                          children: [
-                            Icon(
-                              level.isActive
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              size: 16,
-                              color:
-                                  level.isActive
-                                      ? AppTheme.warningColor
-                                      : AppTheme.successColor,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              level.isActive ? 'إلغاء التفعيل' : 'تفعيل',
-                              style: TextStyle(
-                                color:
-                                    level.isActive
-                                        ? AppTheme.warningColor
-                                        : AppTheme.successColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  // إضافة عنصر الحذف فقط إذا كانت الصلاحية متوفرة
-                  if (permissionService.canDeleteSync()) {
-                    items.add(
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete,
-                              size: 16,
-                              color: AppTheme.errorColor,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'حذف',
-                              style: TextStyle(color: AppTheme.errorColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return items;
-                },
-              ),
-            ],
-          ),
-        ],
+          return items;
+        },
       ),
     );
   }
@@ -373,16 +282,17 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
         title: 'أسئلة و أجوبة في القرآن',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadLevels,
             tooltip: 'تحديث',
           ),
         ],
       ),
       floatingActionButton: CanModifyGuard(
-        child: ModernFAB(
+        child: FloatingActionButton.extended(
           onPressed: () => context.push('/admin/quiz/levels/add'),
-          icon: Icons.add,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('مستوى جديد'),
         ),
       ),
       body:
@@ -391,7 +301,13 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
               : ModernPullToRefresh(
                 onRefresh: _loadLevels,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.spacingM,
+                    AppTheme.spacingS,
+                    AppTheme.spacingM,
+                    80,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -405,7 +321,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                               child: StatCard(
                                 title: 'إجمالي المستويات',
                                 value: '${_levels.length}',
-                                icon: Icons.quiz,
+                                icon: Icons.quiz_rounded,
                                 color: AppTheme.primaryColor,
                               ),
                             ),
@@ -415,7 +331,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                                 title: 'المستويات النشطة',
                                 value:
                                     '${_levels.where((l) => l.isActive).length}',
-                                icon: Icons.check_circle,
+                                icon: Icons.check_circle_rounded,
                                 color: AppTheme.successColor,
                               ),
                             ),
@@ -439,7 +355,7 @@ class _QuizLevelsPageState extends State<QuizLevelsPage> {
                                           MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          Icons.quiz_outlined,
+                                          Icons.quiz_rounded,
                                           size: 64,
                                           color: AppTheme.textSecondaryColor,
                                         ),

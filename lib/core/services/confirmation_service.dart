@@ -18,7 +18,7 @@ class ConfirmationService {
               title: Row(
                 children: [
                   Icon(
-                    Icons.warning,
+                    Icons.warning_rounded,
                     color: isDestructive ? Colors.red : Colors.orange,
                     size: 28,
                   ),
@@ -93,7 +93,7 @@ class ConfirmationService {
               title: Row(
                 children: [
                   Icon(
-                    Icons.admin_panel_settings,
+                    Icons.admin_panel_settings_rounded,
                     color: Colors.red[600],
                     size: 32,
                   ),
@@ -119,7 +119,7 @@ class ConfirmationService {
                     child: Row(
                       children: [
                         Icon(
-                          Icons.info_outline,
+                          Icons.info_outline_rounded,
                           color: Colors.red[600],
                           size: 20,
                         ),
@@ -181,7 +181,7 @@ class ConfirmationService {
             return AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.publish, color: Colors.green[600], size: 28),
+                  Icon(Icons.publish_rounded, color: Colors.green[600], size: 28),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text('تأكيد النشر'),

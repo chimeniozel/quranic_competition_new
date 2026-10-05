@@ -29,69 +29,57 @@ class StatCard extends StatelessWidget {
 
     return ModernCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(8),
-      child: Container(
-        height: 80,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppTheme.spacingS),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Container(
+              padding: const EdgeInsets.all(AppTheme.spacingS),
+              decoration: BoxDecoration(
+                color: cardColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              ),
+              child: Icon(icon, color: cardColor, size: 22),
+            ),
+            const SizedBox(width: AppTheme.spacingS),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: cardColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Icon(icon, color: cardColor, size: 14),
+                Text(
+                  value,
+                  style: AppTheme.headingSmall.copyWith(
+                    color: cardColor,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 4),
-                ],
-                const Spacer(),
-                if (onTap != null)
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 10,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  title,
+                  style: AppTheme.bodySmall.copyWith(
                     color: AppTheme.textSecondaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: AppTheme.labelSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: AppTheme.bodyMedium.copyWith(
-                color: cardColor,
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 1),
-            Text(
-              title,
-              style: AppTheme.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 1),
-              Text(
-                subtitle!,
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 8,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ],
-        ),
+          ),
+          if (onTap != null)
+            const Icon(Icons.chevron_left_rounded, color: AppTheme.textSecondaryColor),
+        ],
       ),
     );
   }
@@ -117,26 +105,45 @@ class DashboardSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: padding ?? const EdgeInsets.all(AppTheme.spacingS),
+          padding:
+              padding ??
+              const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingXS,
+                vertical: AppTheme.spacingS,
+              ),
           child: Row(
             children: [
+              // Petit trait de couleur devant le titre
+              Container(
+                width: 4,
+                height: subtitle != null ? 34 : 20,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: AppTheme.spacingS),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AppTheme.headingSmall),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: AppTheme.spacingS),
+                    Text(
+                      title,
+                      style: AppTheme.bodyLarge.copyWith(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: AppTheme.bodyMedium.copyWith(
+                        style: AppTheme.bodySmall.copyWith(
                           color: AppTheme.textSecondaryColor,
                         ),
                       ),
-                    ],
                   ],
                 ),
               ),
@@ -205,7 +212,7 @@ class ModernListTile extends StatelessWidget {
               trailing ??
               (onTap != null
                   ? Icon(
-                    Icons.arrow_forward_ios,
+                    Icons.arrow_forward_ios_rounded,
                     size: 16,
                     color: AppTheme.textSecondaryColor,
                   )
@@ -401,7 +408,7 @@ class ModernNotificationCard extends StatelessWidget {
           ),
           if (onTap != null)
             Icon(
-              Icons.arrow_forward_ios,
+              Icons.arrow_forward_ios_rounded,
               size: 16,
               color: AppTheme.textSecondaryColor,
             ),
@@ -430,11 +437,14 @@ class ModernNotificationCard extends StatelessWidget {
 class QuickActionGrid extends StatelessWidget {
   final List<QuickAction> actions;
   final int crossAxisCount;
+  // Largeur / hauteur des tuiles (plus petit = tuiles plus hautes)
+  final double childAspectRatio;
 
   const QuickActionGrid({
     super.key,
     required this.actions,
     this.crossAxisCount = 4,
+    this.childAspectRatio = 1.2,
   });
 
   @override
@@ -446,68 +456,68 @@ class QuickActionGrid extends StatelessWidget {
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: AppTheme.spacingS,
         mainAxisSpacing: AppTheme.spacingS,
-        childAspectRatio: 1.2,
+        childAspectRatio: childAspectRatio,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
         final action = actions[index];
-        return SizedBox(
-          height: 100,
-          child: ModernCard(
+        // Tuile teintée de la couleur de l'action : ressort sur fond blanc
+        return Material(
+          color: action.color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          child: InkWell(
             onTap: action.onTap,
-            padding: const EdgeInsets.all(AppTheme.spacingM),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-              if (action.imagePath != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  child: Image.asset(
-                    action.imagePath!,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.contain,
-                    cacheWidth: 80,
-                    cacheHeight: 80,
-                    errorBuilder: (context, error, stackTrace) {
-                      print('❌ Error loading image: ${action.imagePath} - $error');
-                      return Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: action.color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                        ),
-                        child: action.icon != null
-                            ? Icon(action.icon, color: action.color, size: 20)
-                            : const SizedBox.shrink(),
-                      );
-                    },
-                  ),
-                )
-              else if (action.icon != null)
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: action.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  ),
-                  child: Icon(action.icon, color: action.color, size: 20),
-                ),
-              const SizedBox(height: AppTheme.spacingS),
-              Text(
-                action.title,
-                style: AppTheme.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimaryColor,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+            child: Container(
+              padding: const EdgeInsets.all(AppTheme.spacingS),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                border: Border.all(color: action.color.withValues(alpha: 0.18)),
               ),
-              ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                      boxShadow: AppTheme.shadowS,
+                    ),
+                    child:
+                        action.imagePath != null
+                            ? Image.asset(
+                              action.imagePath!,
+                              fit: BoxFit.contain,
+                              cacheWidth: 96,
+                              cacheHeight: 96,
+                              errorBuilder:
+                                  (context, error, stackTrace) => Icon(
+                                    action.icon ?? Icons.apps_rounded,
+                                    color: action.color,
+                                  ),
+                            )
+                            : Icon(
+                              action.icon ?? Icons.apps_rounded,
+                              color: action.color,
+                              size: 26,
+                            ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingS),
+                  Text(
+                    action.title,
+                    style: AppTheme.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
         );

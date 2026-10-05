@@ -230,7 +230,7 @@ class FilePermissionService {
               SnackBar(
                 content: Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.white),
+                    Icon(Icons.check_circle_rounded, color: Colors.white),
                     const SizedBox(width: AppTheme.spacingS),
                     Text('تم منح الإذن بنجاح'),
                   ],

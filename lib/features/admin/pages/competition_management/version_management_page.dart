@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'dart:convert';
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../core/services/push_notification_service.dart';
@@ -10,7 +11,6 @@ import 'package:quranic_competition/core/widgets/modern_navigation.dart';
 import 'package:quranic_competition/core/widgets/ui_components.dart';
 import 'package:quranic_competition/core/widgets/loading_states.dart';
 import 'package:quranic_competition/core/theme/app_theme.dart';
-import 'package:quranic_competition/core/widgets/modern_dashboard.dart';
 
 class VersionManagementPage extends StatefulWidget {
   const VersionManagementPage({super.key});
@@ -93,9 +93,33 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
   }
 
   Future<void> _loadVersions() async {
-    setState(() => _isLoading = true);
-    _versions = await _service.fetchVersions();
-    setState(() => _isLoading = false);
+    // Au rafraîchissement, la liste reste affichée pendant le chargement
+    setState(() => _isLoading = _versions.isEmpty);
+    try {
+      final versions = await _service.fetchVersions();
+      if (!mounted) return;
+      setState(() => _versions = versions);
+    } catch (e) {
+      debugPrint('Erreur lors du chargement des versions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر تحميل النسخ. حاول مجدداً.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _openSettings(CompetitionVersion version) async {
+    final result = await context.push<bool>(
+      '/admin/version_update',
+      extra: version,
+    );
+    if (result == true) await _loadVersions();
   }
 
   Future<void> _submitNewVersion() async {
@@ -298,7 +322,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           controller: _nameController,
                           decoration: InputDecoration(
                             labelText: 'اسم النسخة',
-                            prefixIcon: const Icon(Icons.title),
+                            prefixIcon: const Icon(Icons.title_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
                                 AppTheme.radiusM,
@@ -312,7 +336,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
                             labelText: 'الحد الأقصى للكبار',
-                            prefixIcon: const Icon(Icons.people),
+                            prefixIcon: const Icon(Icons.people_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
                                 AppTheme.radiusM,
@@ -326,7 +350,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
                             labelText: 'الحد الأقصى للصغار',
-                            prefixIcon: const Icon(Icons.person),
+                            prefixIcon: const Icon(Icons.person_rounded),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(
                                 AppTheme.radiusM,
@@ -353,7 +377,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                 decoration: InputDecoration(
                                   labelText: 'متوسط النجاح للكبار (%)',
                                   hintText: '85.0',
-                                  prefixIcon: const Icon(Icons.trending_up),
+                                  prefixIcon: const Icon(Icons.trending_up_rounded),
                                   suffixText: '%',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(
@@ -371,7 +395,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                                 decoration: InputDecoration(
                                   labelText: 'متوسط النجاح للصغار (%)',
                                   hintText: '14.0',
-                                  prefixIcon: const Icon(Icons.trending_up),
+                                  prefixIcon: const Icon(Icons.trending_up_rounded),
                                   suffixText: '%',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(
@@ -400,7 +424,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           child: Row(
                             children: [
                               Icon(
-                                Icons.info_outline,
+                                Icons.info_outline_rounded,
                                 color: AppTheme.infoColor,
                                 size: 16,
                               ),
@@ -422,8 +446,8 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                           children: [
                             Icon(
                               _isRegistrationOpen
-                                  ? Icons.lock_open
-                                  : Icons.lock,
+                                  ? Icons.lock_open_rounded
+                                  : Icons.lock_rounded,
                               color:
                                   _isRegistrationOpen
                                       ? AppTheme.successColor
@@ -465,207 +489,72 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
 
   Widget _buildVersionCard(CompetitionVersion version) {
     final isActive = version.isActive;
-    final statusColor = isActive ? Colors.green : Colors.red;
-    final statusText = isActive ? 'نشطة' : 'منتهية';
-    final statusIcon = isActive ? Icons.check_circle : Icons.cancel;
+    final statusColor =
+        isActive ? AppTheme.successColor : AppTheme.textSecondaryColor;
 
-    return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
+    return AppListCard(
+      highlightColor: isActive ? AppTheme.successColor : null,
+      onTap: () => context.push('/admin/version_detail', extra: version),
+      leading: CircleAvatar(
+        radius: 24,
+        backgroundColor: statusColor.withOpacity(0.12),
+        child: Icon(Icons.emoji_events_rounded, color: statusColor),
       ),
-      child: InkWell(
-        onTap: () {
-          context.push('/admin/version_detail', extra: version);
-        },
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // En-tête avec nom et statut
-              Row(
-                children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: statusColor.withOpacity(0.1),
-                    child: Icon(
-                      Icons.emoji_events,
-                      color: statusColor,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  // Informations principales
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          version.name,
-                          style: AppTheme.labelLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: AppTheme.spacingXS),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 16,
-                              color: AppTheme.primaryColor,
-                            ),
-                            const SizedBox(width: AppTheme.spacingXS),
-                            Text(
-                              'السنة: ${version.year}',
-                              style: AppTheme.bodyMedium.copyWith(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Statut avec icône
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingS,
-                      vertical: AppTheme.spacingXS,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                      border: Border.all(color: statusColor, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(statusIcon, color: statusColor, size: 16),
-                        const SizedBox(width: AppTheme.spacingXS),
-                        Text(
-                          statusText,
-                          style: AppTheme.bodySmall.copyWith(
-                            color: statusColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Informations détaillées
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppTheme.spacingS),
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  border: Border.all(color: AppTheme.dividerColor),
-                ),
-                child: Column(
-                  children: [
-                    // Limites de participants
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.people,
-                          size: 18,
-                          color: AppTheme.primaryColor,
-                        ),
-                        const SizedBox(width: AppTheme.spacingS),
-                        Text(
-                          'الحد الأقصى: ',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          'كبار ${version.maxAdults}',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text(' - '),
-                        Text(
-                          'صغار ${version.maxChildren}',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.spacingXS),
-                    // Statut d'inscription
-                    Row(
-                      children: [
-                        Icon(
-                          version.isRegistrationOpen
-                              ? Icons.lock_open
-                              : Icons.lock,
-                          size: 18,
-                          color:
-                              version.isRegistrationOpen
-                                  ? Colors.green
-                                  : Colors.red,
-                        ),
-                        const SizedBox(width: AppTheme.spacingS),
-                        Text(
-                          'التسجيل: ',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          version.isRegistrationOpen ? 'مفتوح' : 'مغلق',
-                          style: AppTheme.bodyMedium.copyWith(
-                            color:
-                                version.isRegistrationOpen
-                                    ? Colors.green
-                                    : Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Bouton d'action
-              CanModifyVersionsGuard(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SecondaryButton(
-                    onPressed: () async {
-                      final result = await context.push<bool>(
-                        '/admin/version_update',
-                        extra: version,
-                      );
-
-                      if (result == true) {
-                        await _loadVersions();
-                        setState(() {});
-                      }
-                    },
-                    text: 'الإعدادات',
-                    icon: Icons.settings,
-                  ),
-                ),
-              ),
-            ],
-          ),
+      title: version.name,
+      subtitle: 'السنة ${version.year}',
+      tags: [
+        AppTag(
+          text: isActive ? 'نشطة' : 'منتهية',
+          color: statusColor,
+          icon: isActive ? Icons.check_circle_rounded : Icons.history_rounded,
         ),
+        AppTag(
+          text: version.isRegistrationOpen ? 'التسجيل مفتوح' : 'التسجيل مغلق',
+          color:
+              version.isRegistrationOpen
+                  ? AppTheme.infoColor
+                  : AppTheme.errorColor,
+          icon: version.isRegistrationOpen ? Icons.lock_open_rounded : Icons.lock_rounded,
+        ),
+        AppTag(
+          text: 'كبار ${version.maxAdults} · صغار ${version.maxChildren}',
+          color: AppTheme.secondaryColor,
+          icon: Icons.groups_rounded,
+        ),
+      ],
+      trailing: CanModifyVersionsGuard(
+        child: IconButton(
+          tooltip: 'الإعدادات',
+          icon: const Icon(Icons.settings_rounded),
+          color: AppTheme.primaryColor,
+          onPressed: () => _openSettings(version),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingXL),
+      child: Column(
+        children: [
+          Icon(icon, size: 56, color: AppTheme.textDisabledColor),
+          const SizedBox(height: AppTheme.spacingS),
+          Text(
+            title,
+            style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: AppTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -678,7 +567,7 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
         actions: [
           IconButton(
             onPressed: _loadVersions,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'تحديث',
           ),
         ],
@@ -705,21 +594,14 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                               label: 'الإعدادات',
                               textColor: Colors.white,
                               onPressed: () async {
-                                final result = await context.push<bool>(
-                                  '/admin/version_update',
-                                  extra: activeVersion,
-                                );
-                                if (result == true) {
-                                  await _loadVersions();
-                                  setState(() {});
-                                }
+                                await _openSettings(activeVersion);
                               },
                             ),
                           ),
                         );
                       }
                     },
-                    icon: Icons.add,
+                    icon: Icons.add_rounded,
                   ),
                 ),
               )
@@ -729,155 +611,76 @@ class _VersionManagementPageState extends State<VersionManagementPage> {
                   await showAddDialog();
                   setState(() {});
                 },
-                icon: Icons.add,
+                icon: Icons.add_rounded,
               )
               : null,
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
+              ? const Center(child: CircularProgressIndicator())
               : ModernPullToRefresh(
                 onRefresh: _loadVersions,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingS),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Section
-                      DashboardSection(
-                        title: 'إدارة النسخ',
-                        subtitle: 'إدارة نسخ المسابقة وإعداداتها',
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: StatCard(
-                                title: 'إجمالي النسخ',
-                                value: '${_versions.length}',
-                                icon: Icons.emoji_events,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                            const SizedBox(width: AppTheme.spacingS),
-                            Expanded(
-                              child: StatCard(
-                                title: 'النسخ النشطة',
-                                value:
-                                    '${_versions.where((v) => v.isActive).length}',
-                                icon: Icons.check_circle,
-                                color: AppTheme.successColor,
-                              ),
-                            ),
-                          ],
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppTheme.spacingM),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppStatTile(
+                            label: 'إجمالي النسخ',
+                            value: '${_versions.length}',
+                            icon: Icons.emoji_events_rounded,
+                            color: AppTheme.primaryColor,
+                          ),
                         ),
-                      ),
-
-                      const SizedBox(height: AppTheme.spacingL),
-
-                      // Search Bar
-                      if (_versions.isNotEmpty)
-                        ModernSearchBar(
-                          controller: _searchController,
-                          hintText: 'البحث في النسخ...',
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                          },
-                          onClear: () {
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                          margin: EdgeInsets.zero,
+                        const SizedBox(width: AppTheme.spacingS),
+                        Expanded(
+                          child: AppStatTile(
+                            label: 'النسخ النشطة',
+                            value:
+                                '${_versions.where((v) => v.isActive).length}',
+                            icon: Icons.check_circle_outline_rounded,
+                            color: AppTheme.successColor,
+                          ),
                         ),
-
-                      if (_versions.isNotEmpty)
-                        const SizedBox(height: AppTheme.spacingS),
-
-                      // Versions List
-                      DashboardSection(
-                        title: 'قائمة النسخ',
-                        subtitle:
-                            _versions.isEmpty
-                                ? '${_versions.length} نسخة'
-                                : '${_filteredVersions.length} من ${_versions.length} نسخة',
-                        child:
-                            _versions.isEmpty
-                                ? Container(
-                                  height: 300,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.emoji_events_outlined,
-                                          size: 64,
-                                          color: AppTheme.textSecondaryColor,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'لا توجد نسخ حالياً',
-                                          style: AppTheme.bodyLarge.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'ابدأ بإضافة نسخة جديدة للمسابقة',
-                                          style: AppTheme.bodyMedium.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                : _filteredVersions.isEmpty
-                                ? Container(
-                                  height: 200,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.search_off,
-                                          size: 48,
-                                          color: AppTheme.textSecondaryColor,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'لا توجد نتائج للبحث',
-                                          style: AppTheme.bodyLarge.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'جرب تغيير كلمات البحث',
-                                          style: AppTheme.bodyMedium.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                : Column(
-                                  children: [
-                                    ..._filteredVersions.map(
-                                      (version) => _buildVersionCard(version),
-                                    ),
-                                    const SizedBox(height: AppTheme.spacingS),
-                                  ],
-                                ),
+                      ],
+                    ),
+                    if (_versions.isNotEmpty) ...[
+                      const SizedBox(height: AppTheme.spacingM),
+                      ModernSearchBar(
+                        controller: _searchController,
+                        hintText: 'البحث بالاسم أو السنة...',
+                        onChanged:
+                            (value) => setState(() => _searchQuery = value),
+                        onClear: () => setState(() => _searchQuery = ''),
+                        margin: EdgeInsets.zero,
                       ),
-
-                      const SizedBox(height: AppTheme.spacingXL),
                     ],
-                  ),
+                    const SizedBox(height: AppTheme.spacingM),
+                    Text(
+                      _searchQuery.isEmpty
+                          ? '${_versions.length} نسخة'
+                          : '${_filteredVersions.length} من ${_versions.length} نسخة',
+                      style: AppTheme.labelMedium,
+                    ),
+                    const SizedBox(height: AppTheme.spacingS),
+                    if (_versions.isEmpty)
+                      _buildEmpty(
+                        icon: Icons.emoji_events_rounded,
+                        title: 'لا توجد نسخ حالياً',
+                        subtitle: 'ابدأ بإضافة نسخة جديدة للمسابقة',
+                      )
+                    else if (_filteredVersions.isEmpty)
+                      _buildEmpty(
+                        icon: Icons.search_off_rounded,
+                        title: 'لا توجد نتائج للبحث',
+                        subtitle: 'جرب تغيير كلمات البحث',
+                      )
+                    else
+                      ..._filteredVersions.map(_buildVersionCard),
+                    // Espace pour ne pas masquer la dernière carte par le FAB
+                    const SizedBox(height: 80),
+                  ],
                 ),
               ),
     );

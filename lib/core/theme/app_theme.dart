@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 /// Design system centralisé pour l'application
 class AppTheme {
-  // Couleurs principales
-  // static const Color primaryColor = Color(0xFF6B46C1); // deepPurple
-  static const Color primaryColor = Color(0xFF4e5ae8); // deepPurple
-  static const Color secondaryColor = Color(0xFF9333EA); // purple
+  // Couleurs principales : identité du logo de la compétition
+  // (vert émeraude du mot « مسابقة » et doré du pupitre « أهل القرآن »)
+  static const Color primaryColor = Color(0xFF0F7B4F); // vert émeraude
+  static const Color primaryDarkColor = Color(0xFF0A5C3B); // vert profond
+  static const Color secondaryColor = Color(0xFFB8862B); // doré / bronze
+  static const Color goldColor = Color(0xFFD4A84B); // doré clair (liserés)
   static const Color accentColor = Color(0xFFEC4899); // pink
   static const Color successColor = Color(0xFF10B981); // emerald
   static const Color warningColor = Color(0xFFF59E0B); // amber
@@ -17,6 +19,8 @@ class AppTheme {
   static const Color backgroundColor = Color(0xFFFFFFFF);
   static const Color cardColor = Color(0xFFFFFFFF);
   static const Color dividerColor = Color(0xFFE5E7EB);
+  // Fond des pages : légèrement teinté pour faire ressortir les cartes blanches
+  static const Color pageBackgroundColor = Color(0xFFF5F6FA);
 
   // Couleurs de texte
   static const Color textPrimaryColor = Color(0xFF111827);
@@ -45,8 +49,17 @@ class AppTheme {
 
   /// Thème principal de l'application
   static ThemeData get lightTheme {
+    final baseTextTheme = ThemeData.light().textTheme.apply(
+      fontFamily: 'Tajawal',
+      bodyColor: textPrimaryColor,
+      displayColor: textPrimaryColor,
+    );
+
     return ThemeData(
       useMaterial3: true,
+      // Police appliquée au texte seulement (les icônes gardent leur police)
+      textTheme: baseTextTheme,
+      scaffoldBackgroundColor: pageBackgroundColor,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryColor,
         brightness: Brightness.light,
@@ -61,9 +74,11 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
+          fontFamily: 'Tajawal',
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: Colors.white,
         ),
       ),
@@ -71,7 +86,9 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
-          elevation: elevationS,
+          disabledBackgroundColor: dividerColor,
+          disabledForegroundColor: textDisabledColor,
+          elevation: 0,
           padding: const EdgeInsets.symmetric(
             horizontal: spacingL,
             vertical: spacingS,
@@ -79,7 +96,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusM),
           ),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontFamily: 'Tajawal',
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -111,7 +132,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceColor,
+        fillColor: backgroundColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusM),
           borderSide: const BorderSide(color: dividerColor),
@@ -133,32 +154,90 @@ class AppTheme {
           borderSide: const BorderSide(color: errorColor, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: spacingS,
-          vertical: spacingS,
+          horizontal: spacingM,
+          vertical: 14,
         ),
         labelStyle: const TextStyle(color: textSecondaryColor),
         hintStyle: const TextStyle(color: textDisabledColor),
       ),
       cardTheme: CardThemeData(
         color: cardColor,
-        elevation: elevationS,
+        // Ombre douce et sans teinte violette (Material 3)
+        elevation: 1,
+        shadowColor: const Color(0x22000000),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusM),
+          borderRadius: BorderRadius.circular(radiusL),
         ),
         margin: const EdgeInsets.all(spacingS),
       ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 2,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: backgroundColor,
+        selectedColor: primaryColor.withOpacity(0.12),
+        side: const BorderSide(color: dividerColor),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusL),
+        ),
+        labelStyle: const TextStyle(
+          fontFamily: 'Tajawal',
+          color: textPrimaryColor,
+        ),
+        checkmarkColor: primaryColor,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? Colors.white : null,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? primaryColor : null,
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: textSecondaryColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusM),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: backgroundColor,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXL)),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: backgroundColor,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusM),
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: primaryColor,
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: backgroundColor,
+        surfaceTintColor: Colors.transparent,
         elevation: elevationL,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusL),
         ),
         titleTextStyle: const TextStyle(
+          fontFamily: 'Tajawal',
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: textPrimaryColor,
         ),
         contentTextStyle: const TextStyle(
+          fontFamily: 'Tajawal',
           fontSize: 16,
           color: textSecondaryColor,
         ),
@@ -197,8 +276,9 @@ class AppTheme {
   };
 
   /// Gradients prédéfinis
+  // Dégradé des en-têtes : vert émeraude vers vert profond (logo)
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primaryColor, secondaryColor],
+    colors: [primaryColor, primaryDarkColor],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

@@ -4,9 +4,9 @@ import 'package:quranic_competition/core/services/quiz_service.dart';
 import 'package:quranic_competition/models/quiz_level.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
-import '../../../../core/widgets/ui_components.dart';
 
 class ParticipantQuizLevelsPage extends StatefulWidget {
   const ParticipantQuizLevelsPage({super.key});
@@ -34,139 +34,61 @@ class _ParticipantQuizLevelsPageState extends State<ParticipantQuizLevelsPage> {
 
     try {
       final levels = await _quizService.getActiveLevels();
+      if (!mounted) return;
       setState(() {
         _levels = levels;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل المستويات: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Erreur lors du chargement des niveaux: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر تحميل المستويات. تحقق من الاتصال وحاول مجدداً.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
   Widget _buildLevelCard(QuizLevel level) {
-    return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: 4,
-      ),
-      child: ModernCard(
-        child: InkWell(
-          onTap: () {
-            context.push('/participant/quiz/level/${level.id}');
-          },
-          borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingS),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryColor.withValues(alpha: 0.8),
-                            AppTheme.primaryColor,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${level.order}',
-                          style: AppTheme.labelLarge.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            level.name,
-                            style: AppTheme.labelLarge.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: AppTheme.spacingS),
-                          Text(
-                            level.description,
-                            style: AppTheme.labelMedium.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: AppTheme.textSecondaryColor,
-                      size: 20,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTheme.spacingS),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.spacingS,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.successColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppTheme.successColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.quiz, size: 16, color: AppTheme.successColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        'ابدأ النسخة',
-                        style: AppTheme.labelSmall.copyWith(
-                          color: AppTheme.successColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return AppListCard(
+      onTap: () => context.push('/participant/quiz/level/${level.id}'),
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: const BoxDecoration(
+          gradient: AppTheme.primaryGradient,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            '${level.order}',
+            style: AppTheme.headingSmall.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
       ),
+      title: level.name,
+      subtitle: level.description,
+      tags: const [
+        AppTag(
+          text: 'ابدأ الاختبار',
+          color: AppTheme.secondaryColor,
+          icon: Icons.play_arrow_rounded,
+        ),
+      ],
     );
   }
 
   Widget _buildEmptyState() {
-    return EmptyState(
-      icon: Icons.quiz,
-      title: 'لا توجد مسابقات متاحة حالياً',
-      subtitle: 'سيتم إضافة مسابقات جديدة قريباً',
+    return const EmptyState(
+      icon: Icons.quiz_rounded,
+      title: 'لا توجد اختبارات متاحة حالياً',
+      subtitle: 'سيتم إضافة اختبارات جديدة قريباً',
     );
   }
 
@@ -174,22 +96,39 @@ class _ParticipantQuizLevelsPageState extends State<ParticipantQuizLevelsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
-        title: 'مسابقات التجويد',
+        title: 'أسئلة وأجوبة في القرآن',
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLevels),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'تحديث',
+            onPressed: _loadLevels,
+          ),
         ],
       ),
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
-              : _levels.isEmpty
-              ? _buildEmptyState()
+              ? const ModernLoadingIndicator()
               : ModernPullToRefresh(
                 onRefresh: _loadLevels,
-                child: ListView.builder(
-                  itemCount: _levels.length,
-                  itemBuilder:
-                      (context, index) => _buildLevelCard(_levels[index]),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  children: [
+                    const AppGradientHeader(
+                      icon: Icons.quiz_rounded,
+                      title: 'أسئلة وأجوبة في القرآن',
+                      subtitle: 'اختبر معلوماتك واختر المستوى المناسب لك',
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      child:
+                          _levels.isEmpty
+                              ? _buildEmptyState()
+                              : Column(
+                                children: _levels.map(_buildLevelCard).toList(),
+                              ),
+                    ),
+                  ],
                 ),
               ),
     );

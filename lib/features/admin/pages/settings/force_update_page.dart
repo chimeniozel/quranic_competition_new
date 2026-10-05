@@ -241,14 +241,13 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: const ModernAppBar(title: 'التحديث الإجباري'),
       body:
           _isLoading
               ? const ModernLoadingIndicator(message: 'جاري تحميل الإعدادات...')
               : _errorMessage != null
               ? EmptyState(
-                icon: Icons.wifi_off,
+                icon: Icons.wifi_off_rounded,
                 title: 'تعذّر تحميل الإعدادات',
                 subtitle: _errorMessage,
                 iconColor: AppTheme.errorColor,
@@ -301,7 +300,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isOn ? Icons.lock_outline : Icons.lock_open_outlined,
+                  isOn ? Icons.lock_outline_rounded : Icons.lock_open_rounded,
                   color: color,
                 ),
               ),
@@ -341,7 +340,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
             Row(
               children: [
                 Icon(
-                  Icons.phone_iphone,
+                  Icons.phone_iphone_rounded,
                   size: 18,
                   color: AppTheme.textSecondaryColor,
                 ),
@@ -369,7 +368,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle(
-            icon: Icons.verified_outlined,
+            icon: Icons.verified_rounded,
             title: 'الحد الأدنى للنسخة',
             subtitle:
                 'كل مستخدم نسخته أقدم من هذا الرقم سيُطالَب بالتحديث. '
@@ -378,14 +377,14 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
           const SizedBox(height: AppTheme.spacingS),
           _buildPlatformRow(
             label: 'Android',
-            icon: Icons.android,
+            icon: Icons.android_rounded,
             controller: _androidVersionController,
             storeVersion: _storeVersionAndroid,
           ),
           const SizedBox(height: AppTheme.spacingM),
           _buildPlatformRow(
             label: 'iOS',
-            icon: Icons.apple,
+            icon: Icons.apple_rounded,
             controller: _iosVersionController,
             storeVersion: _storeVersionIos,
           ),
@@ -401,7 +400,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                      : const Icon(Icons.refresh, size: 18),
+                      : const Icon(Icons.refresh_rounded, size: 18),
               label: Text(
                 _isFetchingStoreVersions
                     ? 'جاري قراءة المتاجر...'
@@ -500,7 +499,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
               children: [
                 Expanded(
                   child: _buildSectionTitle(
-                    icon: Icons.tune,
+                    icon: Icons.tune_rounded,
                     title: 'إعدادات متقدمة (أرقام البناء)',
                     subtitle:
                         'تُستعمل فقط إن تُرك الحد الأدنى للنسخة فارغًا، '
@@ -508,7 +507,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
                   ),
                 ),
                 Icon(
-                  _showAdvanced ? Icons.expand_less : Icons.expand_more,
+                  _showAdvanced ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                   color: AppTheme.textSecondaryColor,
                 ),
               ],
@@ -519,7 +518,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
             _buildTextField(
               controller: _androidBuildController,
               label: 'رقم البناء المطلوب — Android',
-              icon: Icons.android,
+              icon: Icons.android_rounded,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: _validateBuild,
@@ -528,7 +527,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
             _buildTextField(
               controller: _iosBuildController,
               label: 'رقم البناء المطلوب — iOS',
-              icon: Icons.apple,
+              icon: Icons.apple_rounded,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: _validateBuild,
@@ -545,7 +544,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle(
-            icon: Icons.link,
+            icon: Icons.link_rounded,
             title: 'روابط التحميل',
             subtitle:
                 'يُفتح الرابط المناسب لمنصّة المستخدم عند الضغط على زر التحديث.',
@@ -554,7 +553,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
           _buildTextField(
             controller: _androidUrlController,
             label: 'رابط نسخة Android',
-            icon: Icons.android,
+            icon: Icons.android_rounded,
             keyboardType: TextInputType.url,
             validator: _validateUrl,
             suffixIcon: _buildCopyButton(
@@ -566,7 +565,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
           _buildTextField(
             controller: _iosUrlController,
             label: 'رابط نسخة iOS',
-            icon: Icons.apple,
+            icon: Icons.apple_rounded,
             keyboardType: TextInputType.url,
             validator: _validateUrl,
             suffixIcon: _buildCopyButton(
@@ -585,7 +584,7 @@ class _ForceUpdatePageState extends State<ForceUpdatePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle(
-            icon: Icons.message_outlined,
+            icon: Icons.message_rounded,
             title: 'رسالة التحديث',
             subtitle: 'النص الذي يظهر للمستخدم في نافذة التحديث.',
           ),

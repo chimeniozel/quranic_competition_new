@@ -7,6 +7,7 @@ import 'package:quranic_competition/models/competition_version.dart';
 import 'package:quranic_competition/models/archive_media.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
 import '../../../../core/widgets/ui_components.dart';
@@ -49,8 +50,12 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
     });
 
     try {
-      final versions = await _versionService.fetchVersions();
-      final allMedia = await _mediaService.getAllMediaSafe();
+      // Les deux requêtes sont indépendantes : on les lance en parallèle
+      final versionsFuture = _versionService.fetchVersions();
+      final mediaFuture = _mediaService.getAllMediaSafe();
+      final versions = await versionsFuture;
+      final allMedia = await mediaFuture;
+      if (!mounted) return;
 
       setState(() {
         _versions = versions;
@@ -58,17 +63,15 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      debugPrint('Erreur lors du chargement des archives: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر تحميل الأرشيف. تحقق من الاتصال وحاول مجدداً.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
@@ -79,6 +82,7 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
       setState(() {
         _searchQuery = query;
       });
@@ -102,176 +106,41 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
     }).toList();
   }
 
-  int _getActiveMediaCount(String versionId) {
-    return _getMediaForVersion(
-      versionId,
-    ).length; // Tous les médias retournés sont déjà actifs
-  }
-
-  int _getTotalMediaCount(String versionId) {
-    return _getMediaForVersion(versionId).length;
-  }
 
   Widget _buildCompetitionCard(CompetitionVersion version) {
     final mediaForVersion = _getMediaForVersion(version.id);
-    final activeMediaCount = _getActiveMediaCount(version.id);
-    final totalMediaCount = _getTotalMediaCount(version.id);
     final videoCount =
-        mediaForVersion
-            .where((m) => m.type.toString().contains('video'))
-            .length;
+        mediaForVersion.where((m) => m.type == MediaType.video).length;
     final imageCount =
-        mediaForVersion
-            .where((m) => m.type.toString().contains('image'))
-            .length;
+        mediaForVersion.where((m) => m.type == MediaType.image).length;
 
-    return GestureDetector(
+    return AppListCard(
       onTap:
           () => context.push('/participant/archives/competition/${version.id}'),
-      child: ModernCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // En-tête avec titre de la compétition
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppTheme.spacingS),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    ),
-                    child: Icon(
-                      Icons.archive,
-                      color: AppTheme.primaryColor,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          version.name,
-                          style: AppTheme.labelLarge.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'مسابقة أهل القرآن الواتسابية',
-                          style: AppTheme.labelMedium.copyWith(
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Statistiques des médias
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.perm_media,
-                      label: 'إجمالي',
-                      value: '$totalMediaCount',
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.check_circle,
-                      label: 'نشط',
-                      value: '$activeMediaCount',
-                      color: AppTheme.successColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Répartition par type
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.video_library,
-                      label: 'فيديوهات',
-                      value: '$videoCount',
-                      color: AppTheme.secondaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spacingS),
-                  Expanded(
-                    child: _buildStatItem(
-                      icon: Icons.image,
-                      label: 'صور',
-                      value: '$imageCount',
-                      color: AppTheme.warningColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-
-              // Bouton pour voir tous les détails
-              SizedBox(
-                width: double.infinity,
-                child: SecondaryButton(
-                  onPressed:
-                      () => context.push(
-                        '/participant/archives/competition/${version.id}',
-                      ),
-                  text: 'عرض جميع الأرشيف',
-                ),
-              ),
-            ],
+      leading: const AppIconBadge(
+        icon: Icons.photo_library_rounded,
+        color: AppTheme.primaryColor,
+        size: 24,
+      ),
+      title: version.name,
+      subtitle:
+          mediaForVersion.isEmpty
+              ? 'لا توجد وسائط بعد'
+              : '${mediaForVersion.length} صورة وفيديو',
+      tags: [
+        if (imageCount > 0)
+          AppTag(
+            text: '$imageCount صور',
+            color: AppTheme.secondaryColor,
+            icon: Icons.image_rounded,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingS),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: AppTheme.labelLarge.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(label, style: AppTheme.labelSmall.copyWith(color: color)),
-              ],
-            ),
+        if (videoCount > 0)
+          AppTag(
+            text: '$videoCount فيديو',
+            color: AppTheme.accentColor,
+            icon: Icons.videocam_rounded,
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -283,37 +152,43 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
         actions: [
           IconButton(
             onPressed: _refreshData,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'تحديث',
           ),
         ],
       ),
       body:
           _isLoading
-              ? const LoadingOverlay(child: SizedBox())
-              : Column(
-                children: [
-                  // Barre de recherche
-                  Padding(
-                    padding: const EdgeInsets.all(AppTheme.spacingS),
-                    child: ModernSearchBar(
-                      controller: _searchController,
-                      hintText: 'البحث في المسابقات...',
-                      onChanged: _onSearchChanged,
-                      onClear: () {
-                        _searchController.clear();
-                        _onSearchChanged('');
-                      },
-                      margin: EdgeInsets.zero,
+              ? const ModernLoadingIndicator()
+              : ModernPullToRefresh(
+                onRefresh: _refreshData,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    const AppGradientHeader(
+                      icon: Icons.photo_library_rounded,
+                      title: 'أرشيف المسابقات',
+                      subtitle: 'صور ومقاطع من النسخ السابقة',
                     ),
-                  ),
-
-                  // Liste des compétitions
-                  Expanded(
-                    child:
-                        _filteredVersions.isEmpty
-                            ? EmptyState(
-                              icon: Icons.archive_outlined,
+                    Padding(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ModernSearchBar(
+                            controller: _searchController,
+                            hintText: 'البحث في المسابقات...',
+                            onChanged: _onSearchChanged,
+                            onClear: () => _onSearchChanged(''),
+                            margin: EdgeInsets.zero,
+                          ),
+                          const SizedBox(height: AppTheme.spacingM),
+                          if (_filteredVersions.isEmpty)
+                            EmptyState(
+                              icon: Icons.photo_library_rounded,
                               title:
                                   _searchQuery.isEmpty
                                       ? 'لا توجد مسابقات'
@@ -323,27 +198,13 @@ class _ParticipantArchivesPageState extends State<ParticipantArchivesPage> {
                                       ? 'لا توجد مسابقات متاحة حالياً'
                                       : 'جرب البحث بكلمات مختلفة',
                             )
-                            : ModernPullToRefresh(
-                              onRefresh: _refreshData,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppTheme.spacingS,
-                                ),
-                                itemCount: _filteredVersions.length,
-                                itemBuilder: (context, index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(
-                                      bottom: AppTheme.spacingS,
-                                    ),
-                                    child: _buildCompetitionCard(
-                                      _filteredVersions[index],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                  ),
-                ],
+                          else
+                            ..._filteredVersions.map(_buildCompetitionCard),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
     );
   }

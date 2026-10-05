@@ -1,15 +1,17 @@
 import 'dart:async';
 import '../../../../core/widgets/notification_bell.dart';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/logout_dialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/services/competition_version_service.dart';
 import '../../../../core/services/eid_session_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/modern_dashboard.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
-import '../../../../core/widgets/ui_components.dart';
 import '../../../../models/competition_version.dart';
 import '../../../../models/eid_session.dart';
 
@@ -219,12 +221,13 @@ class _ParticipantHomePageState extends State<ParticipantHomePage>
           await _competitionService.fetchActiveVersionsWithOpenRegistration();
       await _updateCompetitionData(activeVersions);
     } catch (e) {
+      print('Erreur lors de la vérification des compétitions: $e');
+      if (!mounted) return;
       setState(() {
         _hasActiveCompetition = false;
         _activeVersion = null;
         _isLoading = false;
       });
-      print('Erreur lors de la vérification des compétitions: $e');
     }
   }
 
@@ -272,29 +275,64 @@ class _ParticipantHomePageState extends State<ParticipantHomePage>
     );
   }
 
+  /// Visiteur : bouton de connexion. Membre connecté : menu « حسابي » donnant
+  /// accès au profil (et à la suppression du compte) et à la déconnexion.
+  /// Auparavant, ce bouton déconnectait le membre sans prévenir.
+  Widget _buildAccountButton() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return IconButton(
+        icon: const Icon(Icons.login_rounded),
+        tooltip: 'تسجيل الدخول',
+        onPressed: () => context.push('/login'),
+      );
+    }
+
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.account_circle_rounded),
+      tooltip: 'حسابي',
+      onSelected: (value) async {
+        if (value == 'profile') {
+          context.push('/profile');
+        } else if (value == 'logout') {
+          await _confirmLogout();
+        }
+      },
+      itemBuilder:
+          (context) => const [
+            PopupMenuItem(
+              value: 'profile',
+              child: ListTile(
+                leading: Icon(Icons.person_rounded),
+                title: Text('حسابي'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'logout',
+              child: ListTile(
+                leading: Icon(Icons.logout_rounded, color: AppTheme.errorColor),
+                title: Text('تسجيل الخروج'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final signedOut = await confirmAndSignOut(context, redirectTo: null);
+    // Le menu « حسابي » redevient le bouton de connexion
+    if (signedOut && mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: ModernAppBar(
         title: 'مسابقة أهل القرآن الواتسابية',
         centerTitle: true,
-        actions: [
-          const NotificationBell(),
-          IconButton(
-            icon: const Icon(Icons.login),
-            tooltip: 'تسجيل الدخول',
-            onPressed: () async {
-              // Déconnexion si connecté, sinon aller sur login
-              final user = Supabase.instance.client.auth.currentUser;
-              if (user != null) {
-                await Supabase.instance.client.auth.signOut();
-                // Nettoyer les permissions si besoin, par exemple :
-                // PermissionService().clearPermissions();
-              }
-              context.push('/login');
-            },
-          ),
-        ],
+        actions: [const NotificationBell(), _buildAccountButton()],
       ),
 
       body:
@@ -305,611 +343,216 @@ class _ParticipantHomePageState extends State<ParticipantHomePage>
               )
               : ModernPullToRefresh(
                 onRefresh: _loadVersions,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppTheme.spacingXS),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section session Eid (si active)
-                      if (_activeEidSession != null) ...[
-                        ModernCard(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.green.shade400,
-                                  Colors.green.shade600,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusM,
-                              ),
+                child: ListView(
+                  // Permet de tirer pour actualiser même si le contenu est court
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildWelcomeHeader(),
+                    Padding(
+                      padding: const EdgeInsets.all(AppTheme.spacingM),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_activeEidSession != null) ...[
+                            _buildEidCard(),
+                            const SizedBox(height: AppTheme.spacingM),
+                          ],
+                          _buildRegistrationSection(),
+                          const SizedBox(height: AppTheme.spacingM),
+                          AppListCard(
+                            margin: EdgeInsets.zero,
+                            onTap:
+                                () => context.push('/participant_result_page'),
+                            leading: const AppIconBadge(
+                              icon: Icons.leaderboard_rounded,
+                              color: AppTheme.secondaryColor,
+                              size: 24,
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(AppTheme.spacingXS),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(
-                                          AppTheme.spacingS,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusM,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.celebration,
-                                          color: Colors.white,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingXS),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              _activeEidSession!.name,
-                                              style: AppTheme.headingSmall
-                                                  .copyWith(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                            ),
-                                            if (_activeEidSession!
-                                                    .description !=
-                                                null) ...[
-                                              const SizedBox(
-                                                height: AppTheme.spacingXS,
-                                              ),
-                                              Text(
-                                                _activeEidSession!.description!,
-                                                style: AppTheme.bodyMedium
-                                                    .copyWith(
-                                                      color: Colors.white
-                                                          .withOpacity(0.9),
-                                                    ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppTheme.spacingXS),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: () {
-                                        context.push(
-                                          '/participant/eid-session',
-                                          extra: _activeEidSession,
-                                        );
-                                      },
-                                      icon: Icon(
-                                        _activeEidSession!.isOpen
-                                            ? Icons.person_add
-                                            : Icons.emoji_events,
-                                        color: Colors.white,
-                                      ),
-                                      label: Text(
-                                        _activeEidSession!.isOpen
-                                            ? 'التسجيل في الفسحة'
-                                            : 'عرض الفائزين',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white
-                                            .withOpacity(0.2),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: AppTheme.spacingS,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusM,
-                                          ),
-                                          side: const BorderSide(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            title: 'نتائج المسابقة',
+                            subtitle: 'عرض النتائج المنشورة لكل نسخة',
                           ),
-                        ),
-                        const SizedBox(height: AppTheme.spacingXS),
-                      ],
-
-                      // Section d'inscription
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      AppTheme.spacingS,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryColor.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.person_add,
-                                      color: AppTheme.primaryColor,
-                                      size: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Text(
-                                    'التسجيل في المسابقة',
-                                    style: AppTheme.labelLarge.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTheme.spacingXS),
-
-                              // Boutons d'inscription ou message d'information
-                              if (_hasActiveCompetition &&
-                                  _activeVersion != null) ...[
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: PrimaryButton(
-                                        onPressed:
-                                            _childrenRegistrationOpen &&
-                                                    !_isCheckingPlaces
-                                                ? () =>
-                                                    _openRegistration('صغار')
-                                                : null,
-                                        text: 'فرع الصغار',
-                                      ),
-                                    ),
-                                    const SizedBox(width: AppTheme.spacingXS),
-                                    Expanded(
-                                      child: PrimaryButton(
-                                        onPressed:
-                                            _adultsRegistrationOpen &&
-                                                    !_isCheckingPlaces
-                                                ? () =>
-                                                    _openRegistration('كبار')
-                                                : null,
-                                        text: 'فرع الكبار',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                // Message d'information si un groupe est complet
-                                if (!_childrenRegistrationOpen ||
-                                    !_adultsRegistrationOpen) ...[
-                                  const SizedBox(height: AppTheme.spacingXS),
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      AppTheme.spacingS,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.warningColor.withOpacity(
-                                        0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                      border: Border.all(
-                                        color: AppTheme.warningColor
-                                            .withOpacity(0.3),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          color: AppTheme.warningColor,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(
-                                          width: AppTheme.spacingXS,
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            !_childrenRegistrationOpen &&
-                                                    !_adultsRegistrationOpen
-                                                ? 'تم الوصول للحد الأقصى من المشاركين في كلا الفرعين'
-                                                : !_childrenRegistrationOpen
-                                                ? 'تم الوصول للحد الأقصى من المشاركين في فرع الصغار'
-                                                : 'تم الوصول للحد الأقصى من المشاركين في فرع الكبار',
-                                            style: AppTheme.bodySmall.copyWith(
-                                              color: AppTheme.warningColor,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ] else ...[
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(
-                                      AppTheme.spacingS,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                      border: Border.all(
-                                        color: Colors.orange.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          color: Colors.orange,
-                                          size: 24,
-                                        ),
-                                        const SizedBox(
-                                          height: AppTheme.spacingS,
-                                        ),
-                                        Text(
-                                          'مرحبا بكم في تطبيق مسابقة أهل القرآن الواتسابية التسجيل غير متاح حاليا',
-                                          style: AppTheme.labelLarge.copyWith(
-                                            color: Colors.orange,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
+                          const SizedBox(height: AppTheme.spacingM),
+                          _buildServicesSection(),
+                          const SizedBox(height: AppTheme.spacingL),
+                        ],
                       ),
-
-                      // Section des résultats (toujours visible)
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingXS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(
-                                      AppTheme.spacingS,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.successColor.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusM,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.emoji_events,
-                                      color: AppTheme.successColor,
-                                      size: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppTheme.spacingS),
-                                  Text(
-                                    'نتائج المسابقة',
-                                    style: AppTheme.labelLarge.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTheme.spacingXS),
-                              SizedBox(
-                                width: double.infinity,
-                                child: SecondaryButton(
-                                  onPressed: () {
-                                    context.push('/participant_result_page');
-                                  },
-                                  text: 'عرض النتائج',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Section des services
-                      ModernCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppTheme.spacingXS),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // const SizedBox(height: AppTheme.spacingS),
-
-                              // Grille des services
-                              Column(
-                                children: [
-                                  // Ligne 1: فوائد قرآنية et أحكام التجويد
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildServiceCard(
-                                          title: 'الفوائد القرآنية',
-                                          imagePath:
-                                              'assets/images/فوائد قرآنية.png',
-                                          color: AppTheme.successColor,
-                                          onTap: () {
-                                            context.push(
-                                              '/participant/benefits',
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Expanded(
-                                        child: _buildServiceCard(
-                                          title: 'أحكام التجويد',
-                                          imagePath:
-                                              'assets/images/tajweed_rules.png',
-                                          color: AppTheme.primaryColor,
-                                          onTap: () {
-                                            context.push(
-                                              '/participant/tajweed',
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppTheme.spacingS),
-
-                                  // Ligne 2: مسابقات التجويد et أرشيف المسابقات
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildServiceCard(
-                                          title: 'أسئلة و أجوبة في القرآن',
-                                          imagePath:
-                                              'assets/images/أسئلة_وأجوبة_عن_القرآن_الكريم.png',
-                                          color: AppTheme.warningColor,
-                                          onTap: () {
-                                            context.push('/participant/quiz');
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Expanded(
-                                        child: _buildServiceCard(
-                                          title: 'أرشيف المسابقات',
-                                          imagePath:
-                                              'assets/images/archive.png',
-                                          color: AppTheme.secondaryColor,
-                                          onTap: () {
-                                            context.push(
-                                              '/participant/archives',
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: AppTheme.spacingS),
-
-                                  // Ligne 3: من نحن et قائمة المشاركين
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildServiceCard(
-                                          title: 'من نحن',
-                                          imagePath:
-                                              'assets/images/about-us.png',
-                                          color: Colors.teal,
-                                          onTap: () {
-                                            context.push(
-                                              '/participant/about-us',
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: AppTheme.spacingS),
-                                      Expanded(
-                                        child: _buildServiceCard(
-                                          title: 'قائمة المشاركين',
-                                          icon: Icons.people,
-                                          color: Colors.blue,
-                                          onTap: () {
-                                            // Utiliser une version par défaut ou la version active
-                                            final versionId =
-                                                _activeVersion?.id ?? 'default';
-                                            context.push(
-                                              '/participant/list/$versionId',
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  // Ligne 4: Message informatif (si compétition active)
-                                  if (_hasActiveCompetition &&
-                                      _activeVersion != null) ...[
-                                    const SizedBox(height: AppTheme.spacingS),
-                                    Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: AppTheme.spacingS,
-                                        vertical: AppTheme.spacingXS,
-                                      ),
-                                      padding: const EdgeInsets.all(
-                                        AppTheme.spacingS,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusS,
-                                        ),
-                                        border: Border.all(
-                                          color: Colors.blue.withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.info_outline,
-                                            color: Colors.blue,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(
-                                            width: AppTheme.spacingS,
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              'يمكنك الآن الاطلاع على قائمة المشاركين في هذه النسخة النشطة',
-                                              style: AppTheme.bodySmall
-                                                  .copyWith(
-                                                    color: Colors.blue[700],
-                                                  ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    Container(),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
     );
   }
 
-  Widget _buildServiceCard({
-    required String title,
-    IconData? icon,
-    String? imagePath,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 130,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingS,
-          vertical: AppTheme.spacingM,
+  Widget _buildWelcomeHeader() {
+    return AppGradientHeader(
+      leading: CircleAvatar(
+        radius: 38,
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Image.asset('assets/images/logos/logo.png'),
         ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppTheme.radiusL),
-          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+      ),
+      title: 'مسابقة أهل القرآن الواتسابية',
+      subtitle: 'مرحباً بكم، تعلّم وتنافس في خدمة كتاب الله',
+      badges: [
+        if (_hasActiveCompetition && _activeVersion != null)
+          AppHeaderBadge(
+            icon: Icons.emoji_events_rounded,
+            text: _activeVersion!.name,
+            highlightColor: AppTheme.secondaryColor,
+          ),
+      ],
+    );
+  }
+
+  /// Session « فسحة العيد » active
+  Widget _buildEidCard() {
+    final session = _activeEidSession!;
+
+    return AppGradientHeader(
+      shape: AppHeaderShape.card,
+      compact: true,
+      icon: Icons.celebration_rounded,
+      title: session.name,
+      subtitle: session.description,
+      bottom: ElevatedButton.icon(
+        onPressed:
+            () => context.push('/participant/eid-session', extra: session),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primaryColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (imagePath != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                child: Image.asset(
-                  imagePath,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                  cacheWidth: 96,
-                  cacheHeight: 96,
-                  errorBuilder: (context, error, stackTrace) {
-                    print('❌ Error loading image: $imagePath - $error');
-                    return Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      ),
-                      child:
-                          icon != null
-                              ? Icon(icon, color: color, size: 24)
-                              : const SizedBox.shrink(),
-                    );
-                  },
-                ),
+        icon: Icon(
+          session.isOpen
+              ? Icons.person_add_alt_1_rounded
+              : Icons.emoji_events_rounded,
+        ),
+        label: Text(session.isOpen ? 'التسجيل في الفسحة' : 'عرض الفائزين'),
+      ),
+    );
+  }
+
+  Widget _buildRegistrationSection() {
+    final hasCompetition = _hasActiveCompetition && _activeVersion != null;
+
+    return AppSection(
+      icon: Icons.how_to_reg_rounded,
+      title: 'التسجيل في المسابقة',
+      subtitle: hasCompetition ? _activeVersion!.name : null,
+      child:
+          !hasCompetition
+              ? const AppNotice(
+                text:
+                    'مرحباً بكم في تطبيق مسابقة أهل القرآن الواتسابية. التسجيل غير متاح حالياً.',
+                color: AppTheme.warningColor,
+                icon: Icons.info_rounded,
               )
-            else if (icon != null)
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                ),
-                child: Icon(icon, color: color, size: 24),
+              : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              _childrenRegistrationOpen && !_isCheckingPlaces
+                                  ? () => _openRegistration('صغار')
+                                  : null,
+                          style: AppButtonStyles.filled(AppTheme.primaryColor),
+                          icon: const Icon(Icons.child_care_rounded),
+                          label: const FittedBox(child: Text('فرع الصغار')),
+                        ),
+                      ),
+                      const SizedBox(width: AppTheme.spacingS),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              _adultsRegistrationOpen && !_isCheckingPlaces
+                                  ? () => _openRegistration('كبار')
+                                  : null,
+                          style: AppButtonStyles.filled(AppTheme.primaryColor),
+                          icon: const Icon(Icons.person_rounded),
+                          label: const FittedBox(child: Text('فرع الكبار')),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!_childrenRegistrationOpen ||
+                      !_adultsRegistrationOpen) ...[
+                    const SizedBox(height: AppTheme.spacingS),
+                    AppNotice(
+                      text:
+                          !_childrenRegistrationOpen && !_adultsRegistrationOpen
+                              ? 'تم الوصول للحد الأقصى من المشاركين في كلا الفرعين'
+                              : !_childrenRegistrationOpen
+                              ? 'تم الوصول للحد الأقصى من المشاركين في فرع الصغار'
+                              : 'تم الوصول للحد الأقصى من المشاركين في فرع الكبار',
+                      color: AppTheme.warningColor,
+                      icon: Icons.info_rounded,
+                    ),
+                  ],
+                ],
               ),
-            const SizedBox(height: AppTheme.spacingXS),
-            Flexible(
-              child: Text(
-                title,
-                style: AppTheme.labelMedium.copyWith(
-                  color: AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w600,
+    );
+  }
+
+  Widget _buildServicesSection() {
+    return AppSection(
+      icon: Icons.apps_rounded,
+      title: 'الخدمات',
+      subtitle: 'تعلّم وتابع المسابقة',
+      child: QuickActionGrid(
+        crossAxisCount: 3,
+        childAspectRatio: 0.85,
+        actions: [
+          QuickAction(
+            title: 'الفوائد القرآنية',
+            icon: Icons.menu_book_rounded,
+            color: AppTheme.primaryColor,
+            onTap: () => context.push('/participant/benefits'),
+          ),
+          QuickAction(
+            title: 'أحكام التجويد',
+            icon: Icons.record_voice_over_rounded,
+            color: AppTheme.secondaryColor,
+            onTap: () => context.push('/participant/tajweed'),
+          ),
+          QuickAction(
+            title: 'أسئلة وأجوبة',
+            icon: Icons.quiz_rounded,
+            color: AppTheme.infoColor,
+            onTap: () => context.push('/participant/quiz'),
+          ),
+          QuickAction(
+            title: 'أرشيف المسابقات',
+            icon: Icons.photo_library_rounded,
+            color: AppTheme.accentColor,
+            onTap: () => context.push('/participant/archives'),
+          ),
+          QuickAction(
+            title: 'قائمة المشاركين',
+            icon: Icons.groups_rounded,
+            color: AppTheme.warningColor,
+            // Version active, sinon la dernière version
+            onTap:
+                () => context.push(
+                  '/participant/list/${_activeVersion?.id ?? 'default'}',
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+          ),
+          QuickAction(
+            title: 'من نحن',
+            icon: Icons.info_rounded,
+            color: AppTheme.textSecondaryColor,
+            onTap: () => context.push('/participant/about-us'),
+          ),
+        ],
       ),
     );
   }

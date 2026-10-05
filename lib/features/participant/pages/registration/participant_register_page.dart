@@ -108,7 +108,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                       content: Text(
                         _registrationErrorMessage ?? 'التسجيل غير متاح',
                       ),
-                      backgroundColor: Colors.orange,
+                      backgroundColor: AppTheme.warningColor,
                       duration: const Duration(seconds: 3),
                     ),
                   );
@@ -116,7 +116,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('التسجيل متاح الآن'),
-                      backgroundColor: Colors.green,
+                      backgroundColor: AppTheme.successColor,
                       duration: Duration(seconds: 2),
                     ),
                   );
@@ -147,17 +147,20 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       );
 
       if (!versionExists) {
+        if (!mounted) return;
         setState(() {
           _isRegistrationAllowed = false;
           _registrationErrorMessage = 'النسخة غير نشطة أو التسجيل مغلق';
         });
       } else {
+        if (!mounted) return;
         setState(() {
           _isRegistrationAllowed = true;
           _registrationErrorMessage = null;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isRegistrationAllowed = false;
         _registrationErrorMessage = 'خطأ في التحقق من حالة النسخة';
@@ -173,6 +176,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
         widget.versionId,
       );
       if (version == null) {
+        if (!mounted) return;
         setState(() {
           _isRegistrationAllowed = false;
           _registrationErrorMessage = 'النسخة غير موجودة';
@@ -197,6 +201,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       );
 
       if (currentCount >= maxCount) {
+        if (!mounted) return;
         setState(() {
           _isRegistrationAllowed = false;
           _registrationErrorMessage =
@@ -226,11 +231,25 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       }
     } catch (e) {
       print('Erreur lors de la vérification de la limite du groupe d\'âge: $e');
+      if (!mounted) return;
       setState(() {
         _isRegistrationAllowed = false;
         _registrationErrorMessage = 'خطأ في التحقق من الحد الأقصى للمشاركين';
       });
     }
+  }
+
+  Future<void> _refreshRegistrationStatus() async {
+    await _checkRegistrationStatus();
+    if (_isRegistrationAllowed) await _checkAgeGroupLimit();
+    if (!mounted || !_isRegistrationAllowed) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('التسجيل متاح'),
+        backgroundColor: AppTheme.successColor,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _pickBirthDate() async {
@@ -250,30 +269,12 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
   }
 
   Future<void> _submit() async {
-    // Vérifier en temps réel si l'inscription est toujours autorisée
-    await _checkRegistrationStatus();
+    // Un envoi est déjà en cours : on ignore les appuis répétés, qui
+    // pouvaient créer deux inscriptions.
+    if (_isLoading) return;
 
-    if (!_isRegistrationAllowed) {
-      ModernDialog.showWarning(
-        context,
-        title: 'التسجيل غير متاح',
-        message: _registrationErrorMessage ?? 'التسجيل غير متاح حالياً',
-        onConfirm: () {
-          Navigator.of(context).pop(); // Fermer le dialog
-          Navigator.of(context).pop(); // Retourner à la page précédente
-        },
-      );
-      return;
-    }
-
-    // Vérifier si le groupe d'âge a atteint sa limite
-    await _checkAgeGroupLimit();
-
-    // Vérifier à nouveau juste avant l'inscription (double vérification)
-    if (!_isRegistrationAllowed) {
-      return; // Sortir si l'inscription n'est pas autorisée
-    }
-
+    // 1. Validation locale d'abord : inutile d'interroger le serveur si le
+    //    formulaire est incomplet.
     if (!_formKey.currentState!.validate()) return;
     if (_selectedBirthDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -290,7 +291,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
             content: Text(
               'يجب أن يتراوح عمر المشاركين في فرع الصغار بين 6 و 12 سنة',
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
         return;
@@ -302,7 +303,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
             content: Text(
               'يجب أن يكون عمر المشاركين في فرع الكبار 13 سنة أو أكثر',
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
         return;
@@ -314,7 +315,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار الجنس'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -324,7 +325,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار مستوى الحفظ'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -334,7 +335,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار عدد الروايات'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -344,19 +345,35 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى اختيار مكان الإقامة'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      print('🔄 Loading démarré: $_isLoading');
-    });
+    // 2. Le bouton est désactivé avant toute requête réseau
+    setState(() => _isLoading = true);
 
-    // Vérification finale des limites juste avant l'inscription
+    // 3. Vérifications serveur : inscription toujours ouverte et places
+    //    encore disponibles dans ce فرع
+    await _checkRegistrationStatus();
+    if (!mounted) return;
+    if (!_isRegistrationAllowed) {
+      setState(() => _isLoading = false);
+      ModernDialog.showWarning(
+        context,
+        title: 'التسجيل غير متاح',
+        message: _registrationErrorMessage ?? 'التسجيل غير متاح حالياً',
+        onConfirm: () {
+          Navigator.of(context).pop(); // Fermer le dialog
+          Navigator.of(context).pop(); // Retourner à la page précédente
+        },
+      );
+      return;
+    }
+
     await _checkAgeGroupLimit();
+    if (!mounted) return;
     if (!_isRegistrationAllowed) {
       setState(() => _isLoading = false);
       return;
@@ -436,6 +453,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
             'تم تسجيلك بنجاح في فرع $ageGroupText برقم التسجيل: $frenchRegistrationNumber';
       }
 
+      if (!mounted) return;
       // Arrêter le loading avant d'afficher le dialog de succès
       setState(() {
         _isLoading = false;
@@ -465,7 +483,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+                    color: AppTheme.infoColor,
                   ),
                 ),
               ),
@@ -476,6 +494,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
     } catch (e) {
       print('فشل التسجيل: $e');
 
+      if (!mounted) return;
       // Arrêter le loading avant d'afficher l'erreur
       setState(() {
         _isLoading = false;
@@ -484,17 +503,17 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
 
       // Message d'erreur plus convivial pour l'utilisateur
       String errorMessage = 'حدث خطأ أثناء التسجيل';
-      Color backgroundColor = Colors.red;
+      Color backgroundColor = AppTheme.errorColor;
 
       if (e.toString().contains(
         'type \'Null\' is not a subtype of type \'int\'',
       )) {
         errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في معالجة البيانات';
-        backgroundColor = Colors.orange; // Orange car l'inscription a réussi
+        backgroundColor = AppTheme.warningColor; // Orange car l'inscription a réussi
       } else if (e.toString().contains('is_accepted') &&
           e.toString().contains('null')) {
         errorMessage = 'تم التسجيل بنجاح ولكن حدث خطأ في تحديد حالة القبول';
-        backgroundColor = Colors.orange; // Orange car l'inscription a réussi
+        backgroundColor = AppTheme.warningColor; // Orange car l'inscription a réussi
       } else if (e.toString().contains('التسجيل غير متاح لهذه المسابقة')) {
         errorMessage = 'التسجيل غير متاح لهذه النسخة';
       } else if (e.toString().contains('رقم الهاتف')) {
@@ -530,11 +549,11 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
       appBar: ModernAppBar(
         title: widget.ageGroup == "كبار" ? 'تسجيل الكبار' : 'تسجيل الصغار',
         actions: [
-          // Bouton de test pour forcer une vérification
+          // Vérifie à la demande que l'inscription est toujours possible
           IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Vérifier le statut',
-            onPressed: () {},
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'التحقق من حالة التسجيل',
+            onPressed: _isLoading ? null : _refreshRegistrationStatus,
           ),
         ],
       ),
@@ -571,26 +590,26 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                               bottom: AppTheme.spacingS,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.1),
+                              color: AppTheme.errorColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(
                                 AppTheme.radiusM,
                               ),
                               border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.3),
+                                color: AppTheme.errorColor.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Column(
                               children: [
                                 Icon(
-                                  Icons.error_outline,
-                                  color: Colors.red,
+                                  Icons.error_outline_rounded,
+                                  color: AppTheme.errorColor,
                                   size: 32,
                                 ),
                                 const SizedBox(height: AppTheme.spacingS),
                                 Text(
                                   'التسجيل غير متاح',
                                   style: AppTheme.labelLarge.copyWith(
-                                    color: Colors.red,
+                                    color: AppTheme.errorColor,
                                     fontWeight: FontWeight.w600,
                                   ),
                                   textAlign: TextAlign.center,
@@ -599,7 +618,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                 Text(
                                   _registrationErrorMessage!,
                                   style: AppTheme.labelMedium.copyWith(
-                                    color: Colors.red[700],
+                                    color: AppTheme.errorColor,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -630,7 +649,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                         ),
                                       ),
                                       child: Icon(
-                                        Icons.person,
+                                        Icons.person_rounded,
                                         color: AppTheme.primaryColor,
                                         size: 20,
                                       ),
@@ -733,8 +752,8 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                         child: Row(
                                           children: [
                                             const Icon(
-                                              Icons.public,
-                                              color: Colors.grey,
+                                              Icons.public_rounded,
+                                              color: AppTheme.textSecondaryColor,
                                             ),
                                             const SizedBox(
                                               width: AppTheme.spacingXS,
@@ -828,7 +847,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                         ),
                                       ),
                                       child: Icon(
-                                        Icons.menu_book,
+                                        Icons.menu_book_rounded,
                                         color: AppTheme.successColor,
                                         size: 20,
                                       ),
@@ -978,7 +997,7 @@ class _ParticipantRegisterPageState extends State<ParticipantRegisterPage> {
                                         ),
                                       ),
                                       child: Icon(
-                                        Icons.help_outline,
+                                        Icons.help_outline_rounded,
                                         color: AppTheme.warningColor,
                                         size: 20,
                                       ),

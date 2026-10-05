@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -108,7 +109,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في اختيار الصورة: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -175,7 +176,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في التحميل : $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -195,7 +196,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('ليس لديك صلاحية تعديل المحتوى'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
         ),
       );
       return;
@@ -269,7 +270,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_isEditing ? 'تم التحديث بنجاح' : 'تم الإنشاء بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
           ),
         );
         context.pop();
@@ -279,7 +280,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في الحفظ : $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -420,7 +421,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: Colors.grey[300]!,
+                                      color: AppTheme.dividerColor,
                                     ),
                                   ),
                                   child: ClipRRect(
@@ -437,7 +438,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                                     Expanded(
                                       child: OutlinedButton.icon(
                                         onPressed: _pickImage,
-                                        icon: const Icon(Icons.edit),
+                                        icon: const Icon(Icons.edit_rounded),
                                         label: const Text('تغيير الصورة'),
                                       ),
                                     ),
@@ -446,12 +447,12 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                                       child: OutlinedButton.icon(
                                         onPressed: _removeSelectedImage,
                                         icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.red,
+                                          Icons.delete_rounded,
+                                          color: AppTheme.errorColor,
                                         ),
                                         label: const Text(
                                           'حذف',
-                                          style: TextStyle(color: Colors.red),
+                                          style: TextStyle(color: AppTheme.errorColor),
                                         ),
                                       ),
                                     ),
@@ -468,11 +469,11 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
                                     onPressed: _pickImage,
-                                    icon: const Icon(Icons.photo_library),
+                                    icon: const Icon(Icons.photo_library_rounded),
                                     label: const Text('اختيار صورة من المعرض'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue[50],
-                                      foregroundColor: Colors.blue[700],
+                                      backgroundColor: AppTheme.infoColor.withValues(alpha: 0.08),
+                                      foregroundColor: AppTheme.infoColor,
                                     ),
                                   ),
                                 ),
@@ -486,11 +487,11 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                                   labelText: 'أو رابط الصورة (اختياري)',
                                   hintText: 'https://example.com/image.jpg',
                                   border: const OutlineInputBorder(),
-                                  prefixIcon: const Icon(Icons.link),
+                                  prefixIcon: const Icon(Icons.link_rounded),
                                   suffixIcon:
                                       _imageUrlController.text.isNotEmpty
                                           ? IconButton(
-                                            icon: const Icon(Icons.clear),
+                                            icon: const Icon(Icons.clear_rounded),
                                             onPressed: () {
                                               _imageUrlController.clear();
                                               setState(() {});
@@ -522,7 +523,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                             labelText: 'رابط الفيديو',
                             hintText: 'https://youtube.com/watch?v=...',
                             border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.video_library),
+                            prefixIcon: Icon(Icons.video_library_rounded),
                           ),
                           keyboardType: TextInputType.url,
                           validator: (value) {
@@ -547,18 +548,18 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
 
                       // Informations sur l'état par défaut
                       Card(
-                        color: Colors.orange[50],
+                        color: AppTheme.warningColor.withValues(alpha: 0.08),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
-                              Icon(Icons.info, color: Colors.orange[700]),
+                              Icon(Icons.info_rounded, color: AppTheme.warningColor),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'سيكون المنشور غير نشط افتراضياً. يمكنك تفعيله لاحقاً.',
                                   style: TextStyle(
-                                    color: Colors.orange[700],
+                                    color: AppTheme.warningColor,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -584,7 +585,7 @@ class _TajweedRuleFormPageState extends State<TajweedRuleFormPage> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _saveRule,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
+                                backgroundColor: AppTheme.infoColor,
                                 foregroundColor: Colors.white,
                               ),
                               child:

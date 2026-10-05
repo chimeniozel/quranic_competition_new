@@ -31,13 +31,13 @@ class PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
+          // Même rendu que AppButtonStyles.filled (kit partagé)
           backgroundColor: backgroundColor ?? AppTheme.primaryColor,
           foregroundColor: textColor ?? Colors.white,
-          elevation: AppTheme.elevationS,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.spacingL,
-            vertical: AppTheme.spacingS,
-          ),
+          disabledBackgroundColor: AppTheme.dividerColor,
+          disabledForegroundColor: AppTheme.textDisabledColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
           ),
@@ -107,15 +107,14 @@ class SecondaryButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
+          // Même rendu que AppButtonStyles.outlined (kit partagé)
           foregroundColor: textColor ?? AppTheme.primaryColor,
           side: BorderSide(
-            color: borderColor ?? AppTheme.primaryColor,
-            width: 1.5,
+            color: (borderColor ?? AppTheme.primaryColor).withValues(
+              alpha: 0.6,
+            ),
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.spacingL,
-            vertical: AppTheme.spacingS,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
           ),
@@ -190,14 +189,14 @@ class ModernCard extends StatelessWidget {
       margin: margin ?? const EdgeInsets.all(AppTheme.spacingS),
       decoration: BoxDecoration(
         color: backgroundColor ?? AppTheme.cardColor,
-        borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusM),
+        borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusL),
         boxShadow: AppTheme.shadowS,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusM),
+          borderRadius: borderRadius ?? BorderRadius.circular(AppTheme.radiusL),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(AppTheme.spacingS),
             child: child,
@@ -323,7 +322,7 @@ class CustomAvatar extends StatelessWidget {
                 ),
               )
               : Icon(
-                fallbackIcon ?? Icons.person,
+                fallbackIcon ?? Icons.person_rounded,
                 color: textColor ?? Colors.white,
                 size: size * 0.5,
               ),
@@ -527,7 +526,7 @@ class ModernAlert extends StatelessWidget {
           if (onClose != null)
             IconButton(
               onPressed: onClose,
-              icon: const Icon(Icons.close, size: 18),
+              icon: const Icon(Icons.close_rounded, size: 18),
               color: colors['icon'],
             ),
         ],
@@ -571,13 +570,13 @@ class ModernAlert extends StatelessWidget {
   IconData _getIconForType(String type) {
     switch (type) {
       case 'success':
-        return Icons.check_circle_outline;
+        return Icons.check_circle_outline_rounded;
       case 'warning':
-        return Icons.warning_amber_outlined;
+        return Icons.warning_amber_rounded;
       case 'error':
-        return Icons.error_outline;
+        return Icons.error_outline_rounded;
       default:
-        return Icons.info_outline;
+        return Icons.info_outline_rounded;
     }
   }
 }
@@ -609,26 +608,10 @@ class ModernSearchBar extends StatelessWidget {
       margin: margin ?? const EdgeInsets.all(AppTheme.spacingS),
       padding: padding,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.backgroundColor,
-            AppTheme.backgroundColor.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppTheme.dividerColor),
+        boxShadow: AppTheme.shadowS,
       ),
       child: TextField(
         controller: controller,
@@ -638,38 +621,31 @@ class ModernSearchBar extends StatelessWidget {
           hintStyle: AppTheme.bodyMedium.copyWith(
             color: AppTheme.textDisabledColor,
           ),
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(AppTheme.spacingXS),
-            padding: const EdgeInsets.all(AppTheme.spacingXS),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              boxShadow: AppTheme.shadowS,
-            ),
-            child: const Icon(
-              Icons.search,
-              color: Colors.white,
-              size: 18,
-            ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppTheme.textSecondaryColor,
           ),
-          suffixIcon: hasText
-              ? IconButton(
-                  icon: const Icon(
-                    Icons.clear,
-                    color: AppTheme.textSecondaryColor,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    controller.clear();
-                    onChanged?.call('');
-                    onClear?.call();
-                  },
-                )
-              : null,
+          suffixIcon:
+              hasText
+                  ? IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: AppTheme.textSecondaryColor,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      controller.clear();
+                      onChanged?.call('');
+                      onClear?.call();
+                    },
+                  )
+                  : null,
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppTheme.spacingS,
-            vertical: AppTheme.spacingS,
+            vertical: 14,
           ),
           filled: false,
         ),
@@ -705,7 +681,7 @@ class ModernDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.error_outline,
+                Icons.error_outline_rounded,
                 color: AppTheme.errorColor,
                 size: 24,
               ),
@@ -720,10 +696,7 @@ class ModernDialog {
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: AppTheme.bodyMedium,
-          ),
+          content: Text(message, style: AppTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: onConfirm ?? () => Navigator.of(context).pop(),
@@ -759,7 +732,7 @@ class ModernDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.check_circle_outline,
+                Icons.check_circle_outline_rounded,
                 color: AppTheme.successColor,
                 size: 24,
               ),
@@ -774,10 +747,7 @@ class ModernDialog {
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: AppTheme.bodyMedium,
-          ),
+          content: Text(message, style: AppTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: onConfirm ?? () => Navigator.of(context).pop(),
@@ -813,7 +783,7 @@ class ModernDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.warning_amber_outlined,
+                Icons.warning_amber_rounded,
                 color: AppTheme.warningColor,
                 size: 24,
               ),
@@ -828,10 +798,7 @@ class ModernDialog {
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: AppTheme.bodyMedium,
-          ),
+          content: Text(message, style: AppTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: onConfirm ?? () => Navigator.of(context).pop(),
@@ -867,7 +834,7 @@ class ModernDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.info_outline,
+                Icons.info_outline_rounded,
                 color: AppTheme.infoColor,
                 size: 24,
               ),
@@ -882,10 +849,7 @@ class ModernDialog {
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: AppTheme.bodyMedium,
-          ),
+          content: Text(message, style: AppTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: onConfirm ?? () => Navigator.of(context).pop(),
@@ -922,7 +886,7 @@ class ModernDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.help_outline,
+                Icons.help_outline_rounded,
                 color: AppTheme.warningColor,
                 size: 24,
               ),
@@ -937,10 +901,7 @@ class ModernDialog {
               ),
             ],
           ),
-          content: Text(
-            message,
-            style: AppTheme.bodyMedium,
-          ),
+          content: Text(message, style: AppTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),

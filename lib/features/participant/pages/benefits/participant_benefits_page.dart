@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/quranic_benefit_service.dart';
 import 'package:quranic_competition/models/quranic_benefit.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/loading_states.dart';
 import '../../../../core/widgets/modern_navigation.dart';
-import '../../../../core/widgets/ui_components.dart';
 
 class ParticipantBenefitsPage extends StatefulWidget {
   const ParticipantBenefitsPage({super.key});
@@ -48,173 +49,191 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
   }
 
   Future<void> _loadBenefits({bool reset = true}) async {
-    if (_isLoading) return;
+    if (_isLoading || (!reset && _isLoadingMore)) return;
 
+    final page = reset ? 0 : _currentPage + 1;
     setState(() {
-      _isLoading = true;
+      // Le chargement initial / rafraîchissement remplace la liste ; le
+      // chargement de la page suivante garde la liste et la position.
       if (reset) {
-        _currentPage = 0;
-        _hasMore = true;
+        _isLoading = true;
+      } else {
+        _isLoadingMore = true;
       }
     });
 
     try {
-      // Utiliser la méthode spécifique pour les participants (seulement les bénéfices actives)
+      // Uniquement les فوائد actives
       final result = await _benefitService.getActiveBenefitsWithPagination(
         searchQuery: '',
-        page: _currentPage,
+        page: page,
         limit: 20,
       );
+      if (!mounted) return;
 
       setState(() {
+        final benefits = result['benefits'] as List<QuranicBenefit>;
         if (reset) {
-          _benefits = result['benefits'] as List<QuranicBenefit>;
+          _benefits = benefits;
         } else {
-          _benefits.addAll(result['benefits'] as List<QuranicBenefit>);
+          _benefits.addAll(benefits);
         }
-        // _totalCount = result['totalCount'] as int;
+        // La page n'avance qu'en cas de succès
+        _currentPage = page;
         _hasMore = result['hasMore'] as bool;
-        _isLoading = false;
-        _isLoadingMore = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
+      debugPrint('Erreur lors du chargement des فوائد: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تحميل الفوائد القرآنية: $e'),
-            backgroundColor: Colors.red,
+          const SnackBar(
+            content: Text('تعذر تحميل الفوائد القرآنية. حاول مجدداً.'),
+            backgroundColor: AppTheme.errorColor,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
       }
     }
   }
 
-  Future<void> _loadMoreBenefits() async {
-    if (_isLoadingMore || !_hasMore) return;
+  Future<void> _loadMoreBenefits() => _loadBenefits(reset: false);
 
-    setState(() {
-      _isLoadingMore = true;
-      _currentPage++;
-    });
-
-    await _loadBenefits(reset: false);
+  void _openBenefit(QuranicBenefit benefit) {
+    context.push('/participant/benefits/${benefit.id}', extra: benefit);
   }
 
+  /// Publiée depuis moins de 7 jours
+  bool _isNew(QuranicBenefit benefit) =>
+      DateTime.now().difference(benefit.createdAt).inDays < 7;
+
+  /// Aperçu « citation » : titre, image réduite et début du texte. Le texte
+  /// complet est affiché dans la page de détail.
   Widget _buildBenefitCard(QuranicBenefit benefit) {
+    final hasImage = benefit.imageUrl != null && benefit.imageUrl!.isNotEmpty;
+
     return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: 4,
+      margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusL),
+        boxShadow: AppTheme.shadowM,
       ),
-      child: ModernCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingS),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      benefit.title,
-                      style: AppTheme.labelLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.successColor,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.spacingS,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.successColor,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                    ),
-                    child: Text(
-                      'فائدة قرآنية',
-                      style: AppTheme.labelSmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-              if (benefit.imageUrl != null && benefit.imageUrl!.isNotEmpty) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  child: Image.network(
-                    benefit.imageUrl!,
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 200,
-                        color: AppTheme.backgroundColor,
-                        child: const Center(
-                          child: Icon(Icons.image_not_supported, size: 50),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openBenefit(benefit),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Accent doré, couleur du logo
+                Container(width: 5, color: AppTheme.goldColor),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (hasImage)
+                        Image.network(
+                          benefit.imageUrl!,
+                          height: 150,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
                         ),
-                      );
-                    },
+                      Padding(
+                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.format_quote_rounded,
+                                  color: AppTheme.goldColor,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: AppTheme.spacingXS),
+                                Expanded(
+                                  child: Text(
+                                    benefit.title,
+                                    style: AppTheme.bodyLarge.copyWith(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.primaryDarkColor,
+                                      height: 1.5,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (_isNew(benefit))
+                                  const AppTag(
+                                    text: 'جديد',
+                                    color: AppTheme.secondaryColor,
+                                    icon: Icons.auto_awesome_rounded,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+                            Text(
+                              benefit.content,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.bodyMedium.copyWith(
+                                color: AppTheme.textPrimaryColor.withValues(
+                                  alpha: 0.75,
+                                ),
+                                height: 1.8,
+                              ),
+                            ),
+                            const SizedBox(height: AppTheme.spacingS),
+                            const Divider(),
+                            const SizedBox(height: AppTheme.spacingXS),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 14,
+                                  color: AppTheme.textSecondaryColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatDate(benefit.createdAt),
+                                  style: AppTheme.bodySmall,
+                                ),
+                                const Spacer(),
+                                Text(
+                                  'اقرأ الفائدة',
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 18,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: AppTheme.spacingS),
               ],
-              Text(
-                benefit.content,
-                style: AppTheme.labelMedium.copyWith(
-                  height: 1.6,
-                  color: AppTheme.textPrimaryColor,
-                ),
-              ),
-              const SizedBox(height: AppTheme.spacingS),
-              Container(
-                padding: const EdgeInsets.all(AppTheme.spacingS),
-                decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                  border: Border.all(color: AppTheme.dividerColor),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.person,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(width: AppTheme.spacingS),
-                    Text(
-                      'نشر بواسطة: الإدارة',
-                      style: AppTheme.labelSmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.calendar_today,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(benefit.createdAt),
-                      style: AppTheme.labelSmall.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -222,14 +241,23 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   Widget _buildEmptyState() {
-    return EmptyState(
-      icon: Icons.menu_book_outlined,
+    return const EmptyState(
+      icon: Icons.menu_book_rounded,
       title: 'لا توجد فوائد قرآنية متاحة حالياً',
       subtitle: 'سيتم إضافة فوائد جديدة قريباً',
+    );
+  }
+
+  Widget _buildHeader() {
+    return const AppGradientHeader(
+      icon: Icons.menu_book_rounded,
+      title: 'الفوائد القرآنية',
+      subtitle: 'تأملات وفوائد من كتاب الله تعالى',
     );
   }
 
@@ -240,42 +268,55 @@ class _ParticipantBenefitsPageState extends State<ParticipantBenefitsPage> {
         title: 'الفوائد القرآنية',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _loadBenefits(reset: true),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'تحديث',
+            onPressed: _isLoading ? null : () => _loadBenefits(reset: true),
           ),
         ],
       ),
       body:
-          _isLoading
-              ? const LoadingOverlay(child: SizedBox())
-              : _benefits.isEmpty && !_isLoading
-              ? _buildEmptyState()
+          _isLoading && _benefits.isEmpty
+              ? const ModernLoadingIndicator()
               : ModernPullToRefresh(
                 onRefresh: () => _loadBenefits(reset: true),
                 child: ListView.builder(
                   controller: _scrollController,
-                  itemCount: _benefits.length + (_hasMore ? 1 : 0),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: AppTheme.spacingL),
+                  // En-tête + فوائد (ou état vide) + pied de liste
+                  itemCount:
+                      1 +
+                      (_benefits.isEmpty ? 1 : _benefits.length) +
+                      (_hasMore && _benefits.isNotEmpty ? 1 : 0),
                   itemBuilder: (context, index) {
-                    if (index == _benefits.length) {
-                      return _isLoadingMore
-                          ? const Padding(
-                            padding: EdgeInsets.all(AppTheme.spacingS),
-                            child: const Center(child: CircularProgressIndicator()),
-                          )
-                          : _hasMore
-                          ? Padding(
-                            padding: const EdgeInsets.all(AppTheme.spacingS),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: SecondaryButton(
-                                onPressed: _loadMoreBenefits,
-                                text: 'تحميل المزيد',
-                              ),
-                            ),
-                          )
-                          : const SizedBox.shrink();
+                    if (index == 0) return _buildHeader();
+                    if (_benefits.isEmpty) return _buildEmptyState();
+
+                    final i = index - 1;
+                    if (i == _benefits.length) {
+                      return Padding(
+                        padding: const EdgeInsets.all(AppTheme.spacingM),
+                        child:
+                            _isLoadingMore
+                                ? const Center(
+                                  child: CircularProgressIndicator(),
+                                )
+                                : OutlinedButton(
+                                  onPressed: _loadMoreBenefits,
+                                  child: const Text('تحميل المزيد'),
+                                ),
+                      );
                     }
-                    return _buildBenefitCard(_benefits[index]);
+
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        AppTheme.spacingM,
+                        i == 0 ? AppTheme.spacingM : 0,
+                        AppTheme.spacingM,
+                        0,
+                      ),
+                      child: _buildBenefitCard(_benefits[i]),
+                    );
                   },
                 ),
               ),

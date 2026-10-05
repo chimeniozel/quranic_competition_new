@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:quranic_competition/core/widgets/app_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quranic_competition/core/services/competition_version_service.dart';
 import 'package:quranic_competition/core/services/archive_media_service.dart';
@@ -66,7 +67,7 @@ class _NewCompetitionArchivesPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -117,180 +118,49 @@ class _NewCompetitionArchivesPageState
     final activeMediaCount = _getActiveMediaCount(version.id);
     final totalMediaCount = _getTotalMediaCount(version.id);
     final videoCount =
-        mediaForVersion
-            .where((m) => m.type.toString().contains('video'))
-            .length;
+        mediaForVersion.where((m) => m.type == MediaType.video).length;
     final imageCount =
-        mediaForVersion
-            .where((m) => m.type.toString().contains('image'))
-            .length;
+        mediaForVersion.where((m) => m.type == MediaType.image).length;
 
-    return ModernCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingS,
-        vertical: AppTheme.spacingS,
-      ),
-      padding: const EdgeInsets.all(AppTheme.spacingS),
+    final inactiveCount = totalMediaCount - activeMediaCount;
+
+    return AppListCard(
       onTap: () => context.push('/admin/archives/competition/${version.id}'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                ),
-                child: Icon(
-                  Icons.archive,
-                  color: AppTheme.primaryColor,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      version.name,
-                      style: AppTheme.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'مسابقة أهل القرآن الواتسابية',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.infoColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      activeMediaCount > 0
-                          ? AppTheme.successColor.withValues(alpha: 0.1)
-                          : AppTheme.warningColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        activeMediaCount > 0
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                  ),
-                ),
-                child: Text(
-                  activeMediaCount > 0 ? 'نشط ($activeMediaCount)' : 'غير نشط',
-                  style: TextStyle(
-                    color:
-                        activeMediaCount > 0
-                            ? AppTheme.successColor
-                            : AppTheme.warningColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacingS),
-
-          // Statistiques des médias
-          Row(
-            children: [
-              Icon(
-                Icons.perm_media,
-                size: 16,
-                color: AppTheme.textSecondaryColor,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'إجمالي: $totalMediaCount',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Icon(Icons.check_circle, size: 16, color: AppTheme.successColor),
-              const SizedBox(width: 4),
-              Text(
-                'نشط: $activeMediaCount',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.successColor,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Icon(Icons.cancel, size: 16, color: AppTheme.errorColor),
-              const SizedBox(width: 4),
-              Text(
-                'غير نشط: ${totalMediaCount - activeMediaCount}',
-                style: AppTheme.bodySmall.copyWith(color: AppTheme.errorColor),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Répartition par type
-          Row(
-            children: [
-              Icon(Icons.video_library, size: 16, color: AppTheme.infoColor),
-              const SizedBox(width: 4),
-              Text(
-                'فيديوهات: $videoCount',
-                style: AppTheme.bodySmall.copyWith(color: AppTheme.infoColor),
-              ),
-              const SizedBox(width: 16),
-              Icon(Icons.image, size: 16, color: AppTheme.warningColor),
-              const SizedBox(width: 4),
-              Text(
-                'صور: $imageCount',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.warningColor,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppTheme.spacingS),
-
-          // Boutons d'action
-          Row(
-            children: [
-              Expanded(
-                child: SecondaryButton(
-                  text: 'إدارة الأرشيف',
-                  onPressed:
-                      () => context.push(
-                        '/admin/archives/competition/${version.id}',
-                      ),
-                ),
-              ),
-              const SizedBox(width: AppTheme.spacingS),
-              Expanded(
-                child: PrimaryButton(
-                  text: 'إضافة أرشيف',
-                  onPressed: () => context.push('/admin/archives/batch-add'),
-                ),
-              ),
-            ],
-          ),
-        ],
+      leading: AppIconBadge(
+        icon: Icons.photo_library_rounded,
+        color:
+            activeMediaCount > 0
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondaryColor,
+        size: 24,
       ),
+      title: version.name,
+      subtitle: totalMediaCount == 0 ? 'لا توجد وسائط بعد' : null,
+      tags: [
+        AppTag(
+          text: '$totalMediaCount وسائط',
+          color: AppTheme.primaryColor,
+          icon: Icons.perm_media_rounded,
+        ),
+        if (videoCount > 0)
+          AppTag(
+            text: '$videoCount فيديو',
+            color: AppTheme.accentColor,
+            icon: Icons.videocam_rounded,
+          ),
+        if (imageCount > 0)
+          AppTag(
+            text: '$imageCount صور',
+            color: AppTheme.warningColor,
+            icon: Icons.image_rounded,
+          ),
+        if (inactiveCount > 0)
+          AppTag(
+            text: '$inactiveCount مخفية',
+            color: AppTheme.textSecondaryColor,
+            icon: Icons.visibility_off_rounded,
+          ),
+      ],
     );
   }
 
@@ -302,14 +172,14 @@ class _NewCompetitionArchivesPageState
         actions: [
           IconButton(
             onPressed: _refreshData,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'تحديث',
           ),
         ],
       ),
       floatingActionButton: ModernFAB(
         onPressed: () => context.push('/admin/archives/batch-add'),
-        icon: Icons.add_box,
+        icon: Icons.add_box_rounded,
       ),
       body:
           _isLoading
@@ -331,7 +201,7 @@ class _NewCompetitionArchivesPageState
                               child: StatCard(
                                 title: 'إجمالي المسابقات',
                                 value: '${_versions.length}',
-                                icon: Icons.emoji_events,
+                                icon: Icons.emoji_events_rounded,
                                 color: AppTheme.primaryColor,
                               ),
                             ),
@@ -340,7 +210,7 @@ class _NewCompetitionArchivesPageState
                               child: StatCard(
                                 title: 'إجمالي الوسائط',
                                 value: '${_allMedia.length}',
-                                icon: Icons.perm_media,
+                                icon: Icons.perm_media_rounded,
                                 color: AppTheme.infoColor,
                               ),
                             ),
@@ -382,7 +252,7 @@ class _NewCompetitionArchivesPageState
                                           MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          Icons.archive_outlined,
+                                          Icons.archive_rounded,
                                           size: 64,
                                           color: AppTheme.textSecondaryColor,
                                         ),
