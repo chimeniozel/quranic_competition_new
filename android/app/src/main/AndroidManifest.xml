@@ -12,6 +12,11 @@
 
     <!-- Permissions pour les notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Localisation (uniquement pendant l'utilisation de l'application).
+         COARSE doit accompagner FINE depuis Android 12. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!--
         SCHEDULE_EXACT_ALARM retirée : l'application ne programme aucune
         notification à une heure précise. C'est une permission restreinte qui
