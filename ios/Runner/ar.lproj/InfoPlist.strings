@@ -1,0 +1,5 @@
+/* Permission usage descriptions (Arabic) */
+"NSCameraUsageDescription" = "يحتاج التطبيق إلى الوصول إلى الكاميرا لالتقاط الصور وإضافتها إلى محتوى المسابقات والوسائط.";
+"NSLocationWhenInUseUsageDescription" = "لا يستخدم التطبيق موقعك. قد تطلب بعض المكتبات المدمجة هذا الإذن، ولن يتم جمع أي بيانات عن الموقع.";
+"NSPhotoLibraryAddUsageDescription" = "يحتاج التطبيق إلى الوصول إلى الصور لحفظ الصور في المعرض.";
+"NSPhotoLibraryUsageDescription" = "يحتاج التطبيق إلى الوصول إلى الصور لتحميل الصور من المعرض.";
