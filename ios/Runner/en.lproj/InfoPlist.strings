@@ -1,5 +1,0 @@
-/* Permission usage descriptions (English) */
-"NSCameraUsageDescription" = "The app needs access to your camera to take photos and add them to competition content and media.";
-"NSLocationWhenInUseUsageDescription" = "The app does not use your location. Some bundled libraries may request this permission, but no location data is collected.";
-"NSPhotoLibraryAddUsageDescription" = "The app needs access to your photos to save images to your gallery.";
-"NSPhotoLibraryUsageDescription" = "The app needs access to your photos to upload images from your gallery.";
