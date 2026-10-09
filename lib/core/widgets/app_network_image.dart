@@ -90,6 +90,18 @@ class YoutubeThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sans hauteur imposée par le parent (Column, liste...), la miniature
+    // garde le format 16:9 au lieu d'une hauteur infinie.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final thumbnail = _buildThumbnail();
+        if (constraints.hasBoundedHeight) return thumbnail;
+        return AspectRatio(aspectRatio: 16 / 9, child: thumbnail);
+      },
+    );
+  }
+
+  Widget _buildThumbnail() {
     if (videoId.isEmpty) {
       return const MediaErrorPlaceholder(icon: Icons.videocam_off_rounded);
     }
